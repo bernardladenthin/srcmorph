@@ -6,7 +6,9 @@
 The quality score of a model is the mean of four shares, each 0..1:
 Java recall, SQL recall, other-file recall (all three as in score.py, a failed body scoring 0),
 and the share of its .ai.md that hold the format: a summary that did not fail, with the '>' lead, no
-'#'-'###' heading, no code fence and no leaked reasoning marker.
+'#'-'###' heading, no code fence and no leaked reasoning marker. The share is over every summary a
+full run writes (files.tsv has a missing row for each one the run did not write, the package and
+project summaries included), so a run whose package phase failed does not hold the format over fewer.
 
 Every chart is written twice, for a light and a dark page (charts/<name>-light.svg and
 charts/<name>-dark.svg), so MODEL-CARD.md can pick one with <picture>. A second, light-only set
@@ -111,8 +113,8 @@ def load():
         files = rows[key]
         recall = {}
         for kind in ("java", "sql", "other"):
-            per_file = [0.0 if r["failed"] else int(r["idsFound"]) / int(r["idsExpected"])
-                        for r in files if r["kind"] == kind and int(r["idsExpected"] or 0)]
+            # score.py's per-file recall (a failed or missing summary 0, an unmeasured file empty)
+            per_file = [float(r["recall"]) for r in files if r["kind"] == kind and r["recall"] != ""]
             recall[kind] = sum(per_file) / len(per_file) if per_file else 0.0
         clean = sum(1 for r in files if not r["failed"] and r["lead"] == "True" and r["badHeadings"] == "0"
                     and r["fences"] == "0" and r["leaks"] == "0")

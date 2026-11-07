@@ -12,7 +12,7 @@
 # them covers the parts only Maven does:
 #
 #   * what Maven injects: the project directory and its source and resource directories (the
-#     subtrees when the configuration file names none), the project's name, version and properties
+#     subtrees when the configuration file names none), the project's name and properties
 #     (a ${...} in the file), the command line's -D properties;
 #   * goal-prefix resolution: that `mvn srcmorph:generate` finds this plugin at all;
 #   * the srcmorph.* @Parameter property strings, which nothing else asserts -- rename one and
@@ -144,9 +144,10 @@ grep -q "^#### Overview" "$OUT/project.ai.md" || fail "the project index has no 
 # ${it.aiVersion} of the file, filled from the fixture pom's property.
 grep -q "^- A: 0.0.0-it$" "$GENERATED" \
     || fail "the pom property did not reach \${it.aiVersion} of the file -- got: $(grep '^- A: ' "$GENERATED" || echo none)"
-# The two ${project.*} values Maven fills. 1.0.0 is the FIXTURE pom's version, fixed and independent
-# of the reactor version, so this stays stable across releases.
-grep -q "^- G: 1.0.0$" "$GENERATED" || fail "\${project.version} did not fill pluginVersion"
+# G is srcmorph's own version (support.GeneratorVersion), the plugin's, not the fixture pom's 1.0.0.
+grep -qxF -e "- G: $VERSION" "$GENERATED" \
+    || fail "G is not the plugin's version $VERSION -- got: $(grep '^- G: ' "$GENERATED" || echo none)"
+# ${project.name}, which Maven fills.
 grep -q "^### srcmorph plugin integration-test fixture$" "$OUT/project.ai.md" \
     || fail "\${project.name} did not reach the project index"
 echo "ok: $(written "$OUT" | wc -l) .ai.md file(s); subtrees, excludes, skip rule, facts, properties and \${project.*} all observable"
@@ -212,7 +213,7 @@ reset
 grep -q "AI index plan" "$LOGS/run4.log" || fail "the plan was not printed"
 # The routing rule is matched BY ID here, which proves the condition tree routed rather than
 # everything falling through to the fallback.
-grep -q "| java | file-body-java |" "$LOGS/run4.log" \
+grep -q "| java | file-body-oop |" "$LOGS/run4.log" \
     || fail "the .java routing rule did not match -- the condition tree did not route"
 # If srcmorph.planOnly is ever renamed, the property stops binding, the run generates for real, and
 # this is the assertion that catches it.
@@ -304,7 +305,7 @@ mvn -B --no-transfer-progress -f "$REPO_ROOT/srcmorph-maven-plugin/pom.xml" -P s
     "net.ladenthin:srcmorph-maven-plugin:$VERSION:generate" -Dsrcmorph.planOnly=true \
     > "$LOGS/run7-selftest.log" 2>&1 \
     || { cat "$LOGS/run7-selftest.log"; fail "the srcmorph-selftest profile did not plan"; }
-grep -q "| java | file-body-java |" "$LOGS/run7-selftest.log" \
+grep -q "| java | file-body-oop |" "$LOGS/run7-selftest.log" \
     || fail "the self-test profile routed no Java file to its java rule"
 echo "ok: the self-test profile planned"
 

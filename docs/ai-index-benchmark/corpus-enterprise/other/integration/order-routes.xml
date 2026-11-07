@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+
+SPDX-License-Identifier: Apache-2.0
+-->
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans https://www.springframework.org/schema/beans/spring-beans.xsd
+                           http://camel.apache.org/schema/spring https://camel.apache.org/schema/spring/camel-spring.xsd">
+
+    <bean id="orderValidator" class="shop.integration.OrderValidator"/>
+    <bean id="invoiceTranslator" class="shop.integration.InvoiceTranslator"/>
+
+    <camelContext id="orderIntegration" xmlns="http://camel.apache.org/schema/spring">
+        <propertyPlaceholder id="properties" location="classpath:integration.properties"/>
+
+        <onException>
+            <exception>shop.integration.ErpUnavailableException</exception>
+            <redeliveryPolicy maximumRedeliveries="5" redeliveryDelay="2000" useExponentialBackOff="true"/>
+            <handled><constant>true</constant></handled>
+            <to uri="jms:queue:orders.deadletter"/>
+        </onException>
+
+        <route id="incomingOrders">
+            <from uri="jms:queue:{{orders.incoming.queue}}"/>
+            <bean ref="orderValidator" method="validate"/>
+            <choice>
+                <when>
+                    <simple>${body.total} &gt; {{orders.review.threshold}}</simple>
+                    <to uri="direct:manualReview"/>
+                </when>
+                <otherwise>
+                    <to uri="direct:toErp"/>
+                </otherwise>
+            </choice>
+            <wireTap uri="seda:orderAudit"/>
+        </route>
+
+        <route id="toErp">
+            <from uri="direct:toErp"/>
+            <bean ref="invoiceTranslator"/>
+            <toD uri="https://{{erp.host}}/api/orders/${header.orderId}"/>
+        </route>
+
+        <route id="manualReview">
+            <from uri="direct:manualReview"/>
+            <split>
+                <simple>${body.lines}</simple>
+                <to uri="jms:queue:review.lines"/>
+            </split>
+        </route>
+
+        <!--
+        <route id="legacyFtpImport">
+            <from uri="ftp://legacy-host/orders"/>
+            <to uri="direct:toErp"/>
+        </route>
+        -->
+    </camelContext>
+</beans>

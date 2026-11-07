@@ -22,7 +22,7 @@ import java.util.Map;
 import lombok.ToString;
 import net.ladenthin.srcmorph.cli.configuration.CCommand;
 import net.ladenthin.srcmorph.cli.configuration.CConfiguration;
-import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
+import net.ladenthin.srcmorph.config.RoutingRule;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
 import net.ladenthin.srcmorph.config.SrcMorphConfigurationFile;
 import net.ladenthin.srcmorph.config.SrcMorphConfigurationFileLoader;
@@ -33,6 +33,7 @@ import net.ladenthin.srcmorph.engine.CalibrationReport;
 import net.ladenthin.srcmorph.engine.GenerateEngine;
 import net.ladenthin.srcmorph.engine.ListModelsEngine;
 import net.ladenthin.srcmorph.engine.SrcMorphException;
+import net.ladenthin.srcmorph.support.UrlUserInfo;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -78,7 +79,7 @@ public class Main {
      * @return the file contents
      * @throws IOException if the file cannot be read
      */
-    public static String readString(final Path path) throws IOException {
+    static String readString(final Path path) throws IOException {
         return new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
     }
 
@@ -90,7 +91,7 @@ public class Main {
      * @throws IOException if the JSON cannot be deserialised, including an unknown property (the
      *                      mapper is strict — see {@link SrcMorphConfigurationFileLoader#newJsonMapper()})
      */
-    public static CConfiguration fromJson(final String configurationString) throws IOException {
+    static CConfiguration fromJson(final String configurationString) throws IOException {
         return fromFile(SrcMorphConfigurationFileLoader.parse(configurationString, false));
     }
 
@@ -102,7 +103,7 @@ public class Main {
      * @throws IOException if the YAML cannot be deserialised, including an unknown property (the
      *                      mapper is strict — see {@link SrcMorphConfigurationFileLoader#newYamlMapper()})
      */
-    public static CConfiguration fromYaml(final String configurationString) throws IOException {
+    static CConfiguration fromYaml(final String configurationString) throws IOException {
         return fromFile(SrcMorphConfigurationFileLoader.parse(configurationString, true));
     }
 
@@ -127,8 +128,8 @@ public class Main {
         }
         configuration.modelFilter = file.getModelFilter();
         configuration.srcMorph = file.getSrcMorph();
-        configuration.packageFieldGenerations = file.getPackageFieldGenerations();
-        configuration.projectFieldGenerations = file.getProjectFieldGenerations();
+        configuration.packageRules = file.getPackageRules();
+        configuration.projectRules = file.getProjectRules();
         return configuration;
     }
 
@@ -139,7 +140,7 @@ public class Main {
      * @return the JSON representation
      * @throws IOException if the configuration cannot be serialised
      */
-    public static String configurationToJson(final CConfiguration configuration) throws IOException {
+    static String configurationToJson(final CConfiguration configuration) throws IOException {
         final ObjectMapper mapper = SrcMorphConfigurationFileLoader.newJsonMapper();
         mapper.enable(SerializationFeature.INDENT_OUTPUT);
         return mapper.writeValueAsString(configuration);
@@ -152,7 +153,7 @@ public class Main {
      * @return the YAML representation
      * @throws IOException if the configuration cannot be serialised
      */
-    public static String configurationToYAML(final CConfiguration configuration) throws IOException {
+    static String configurationToYaml(final CConfiguration configuration) throws IOException {
         final YAMLMapper mapper = SrcMorphConfigurationFileLoader.newYamlMapper();
         return mapper.writeValueAsString(configuration);
     }
@@ -228,7 +229,7 @@ public class Main {
         final Path configurationPath = Paths.get(args[0]);
         final CConfiguration configuration = loadConfiguration(configurationPath);
         final Main main = new Main(configuration);
-        main.logConfigurationTransformation();
+        main.logConfigurationEcho();
         main.run();
     }
 
@@ -238,20 +239,32 @@ public class Main {
      *
      * @throws IOException if the configuration cannot be serialised
      */
-    public void logConfigurationTransformation() throws IOException {
-        final String json = configurationToJson(configuration);
-        final String yaml = configurationToYAML(configuration);
-        LOGGER.info("Please review the transformed configuration to ensure it aligns with your expectations "
-                + "and requirements before proceeding.:\n"
-                + "########## BEGIN transformed JSON configuration ##########\n"
-                + json
-                + "\n"
-                + "########## END   transformed JSON configuration ##########\n"
-                + "\n"
-                + "########## BEGIN transformed YAML configuration ##########\n"
-                + yaml
-                + "\n"
-                + "########## END   transformed YAML configuration ##########\n");
+    public void logConfigurationEcho() throws IOException {
+        LOGGER.info(configurationEcho(configuration));
+    }
+
+    /**
+     * The configuration echo {@link #logConfigurationEcho()} logs: the JSON and the YAML form,
+     * every URL's user info masked, so a password written into a {@code baseUrl} reaches no log line
+     * (srcmorph never sends it either).
+     *
+     * @param configuration the configuration
+     * @return the echo
+     * @throws IOException if the configuration cannot be serialised
+     */
+    static String configurationEcho(final CConfiguration configuration) throws IOException {
+        return UrlUserInfo.mask(
+                "Please review the transformed configuration to ensure it aligns with your expectations "
+                        + "and requirements before proceeding.:\n"
+                        + "########## BEGIN transformed JSON configuration ##########\n"
+                        + configurationToJson(configuration)
+                        + "\n"
+                        + "########## END   transformed JSON configuration ##########\n"
+                        + "\n"
+                        + "########## BEGIN transformed YAML configuration ##########\n"
+                        + configurationToYaml(configuration)
+                        + "\n"
+                        + "########## END   transformed YAML configuration ##########\n");
     }
 
     /**
@@ -272,10 +285,10 @@ public class Main {
                 case Check: {
                     new GenerateEngine(configuration.srcMorph).check();
                     // the package phase only when configured: GenerateFileIndex alone needs no package rule
-                    if (configuration.packageFieldGenerations != null) {
-                        new AggregatePackagesEngine(forPhase(configuration.packageFieldGenerations)).check();
+                    if (configuration.packageRules != null) {
+                        new AggregatePackagesEngine(forPhase(configuration.packageRules)).check();
                     }
-                    new AggregateProjectEngine(forPhase(configuration.projectFieldGenerations)).check();
+                    new AggregateProjectEngine(forPhase(configuration.projectRules)).check();
                     break;
                 }
                 case GenerateFileIndex: {
@@ -283,11 +296,11 @@ public class Main {
                     break;
                 }
                 case AggregatePackages: {
-                    new AggregatePackagesEngine(forPhase(configuration.packageFieldGenerations)).execute();
+                    new AggregatePackagesEngine(forPhase(configuration.packageRules)).execute();
                     break;
                 }
                 case AggregateProject: {
-                    new AggregateProjectEngine(forPhase(configuration.projectFieldGenerations)).execute();
+                    new AggregateProjectEngine(forPhase(configuration.projectRules)).execute();
                     break;
                 }
                 case All: {
@@ -297,8 +310,8 @@ public class Main {
                         LOGGER.info("planOnly: the package and project phases do not run.");
                         break;
                     }
-                    new AggregatePackagesEngine(forPhase(configuration.packageFieldGenerations)).execute();
-                    new AggregateProjectEngine(forPhase(configuration.projectFieldGenerations)).execute();
+                    new AggregatePackagesEngine(forPhase(configuration.packageRules)).execute();
+                    new AggregateProjectEngine(forPhase(configuration.projectRules)).execute();
                     break;
                 }
                 case Calibrate: {
@@ -331,22 +344,19 @@ public class Main {
 
     /**
      * The configuration one aggregation phase runs with: a copy of {@link CConfiguration#srcMorph} whose
-     * {@code fieldGenerations} are the phase's own rule, as the plugin's aggregate goals build theirs. The
+     * {@code rules} are the phase's own rule, as the plugin's aggregate goals build theirs. The
      * file rules of {@code srcMorph} never reach a phase: the package phase takes exactly one rule and
-     * fails without {@link CConfiguration#packageFieldGenerations}, the project phase writes its index
-     * without an overview when {@link CConfiguration#projectFieldGenerations} is unset. The shared
+     * fails without {@link CConfiguration#packageRules}, the project phase writes its index
+     * without an overview when {@link CConfiguration#projectRules} is unset. The shared
      * configuration is never modified, so the file phase of {@link CCommand#All} keeps its own rules.
      *
-     * @param phaseFieldGenerations the phase's rules ({@link CConfiguration#packageFieldGenerations}
-     *                              or {@link CConfiguration#projectFieldGenerations}), or {@code null}
+     * @param phaseRules the phase's rules ({@link CConfiguration#packageRules}
+     *                              or {@link CConfiguration#projectRules}), or {@code null}
      * @return the configuration to hand the phase's engine
      */
-    private SrcMorphConfiguration forPhase(final @Nullable List<AiFieldGenerationConfig> phaseFieldGenerations) {
+    private SrcMorphConfiguration forPhase(final @Nullable List<RoutingRule> phaseRules) {
         final SrcMorphConfiguration copy = deepCopy(configuration.srcMorph);
-        copy.setFieldGenerations(
-                phaseFieldGenerations == null
-                        ? Collections.<AiFieldGenerationConfig>emptyList()
-                        : phaseFieldGenerations);
+        copy.setRules(phaseRules == null ? Collections.<RoutingRule>emptyList() : phaseRules);
         return copy;
     }
 

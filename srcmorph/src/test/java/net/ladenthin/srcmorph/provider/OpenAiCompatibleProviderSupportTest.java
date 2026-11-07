@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.srcmorph.provider;
 
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -13,6 +14,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.file.Paths;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -25,10 +28,10 @@ import net.ladenthin.llama.value.ChatMessage;
 import net.ladenthin.llama.value.ChatResponse;
 import net.ladenthin.llama.value.Usage;
 import net.ladenthin.srcmorph.CommonTestFixtures;
-import net.ladenthin.srcmorph.document.AiGenerationRequest;
 import net.ladenthin.srcmorph.document.AiMdHeader;
 import net.ladenthin.srcmorph.document.AiMdHeaderCodec;
-import net.ladenthin.srcmorph.prompt.AiPromptSupport;
+import net.ladenthin.srcmorph.prompt.GenerationRequest;
+import net.ladenthin.srcmorph.prompt.PromptCatalog;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
@@ -36,8 +39,8 @@ public class OpenAiCompatibleProviderSupportTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    private static final AiPromptSupport PROMPT_SUPPORT =
-            new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
+    private static final PromptCatalog PROMPT_SUPPORT =
+            new PromptCatalog(CommonTestFixtures.createFilePromptDefinitions());
 
     private static final Function<String, @Nullable String> NO_ENVIRONMENT = name -> null;
 
@@ -51,26 +54,29 @@ public class OpenAiCompatibleProviderSupportTest {
             "0.0.0",
             AiMdHeaderCodec.NODE_TYPE_FILE);
 
-    private static final AiGenerationRequest REQUEST = new AiGenerationRequest(
-            CommonTestFixtures.PROMPT_KEY_FILE_BODY, Paths.get("Test.java"), "class Test {}", HEADER);
+    private static final GenerationRequest REQUEST =
+            new GenerationRequest(CommonTestFixtures.PROMPT_KEY_FILE_BODY, Paths.get("Test.java"), "class Test {}");
 
-    private static OpenAiCompatibleProviderSupport support(final LlamaCppJniConfig config) {
+    private static OpenAiCompatibleProviderSupport support(final ProviderConfig config) {
         return new OpenAiCompatibleProviderSupport(config, PROMPT_SUPPORT, NO_ENVIRONMENT);
     }
 
     private static OpenAiCompatibleProviderSupport support(
-            final LlamaCppJniConfig config, final Map<String, String> environment) {
+            final ProviderConfig config, final Map<String, String> environment) {
         return new OpenAiCompatibleProviderSupport(config, PROMPT_SUPPORT, environment::get);
     }
 
-    private static JsonNode body(final LlamaCppJniConfig config) throws Exception {
+    private static JsonNode body(final ProviderConfig config) throws Exception {
         return MAPPER.readTree(support(config).requestBody(REQUEST));
     }
 
     // <editor-fold defaultstate="collapsed" desc="constructor">
     @Test
     public void constructor_nullArguments_throw() {
-        final LlamaCppJniConfig config = LlamaCppJniConfig.builder("").build();
+        // arrange
+        final ProviderConfig config = ProviderConfig.builder().modelPath("").build();
+
+        // act, assert
         assertThrows(
                 NullPointerException.class,
                 () -> new OpenAiCompatibleProviderSupport(null, PROMPT_SUPPORT, NO_ENVIRONMENT));
@@ -83,9 +89,9 @@ public class OpenAiCompatibleProviderSupportTest {
 
     // <editor-fold defaultstate="collapsed" desc="requestBody">
     @Test
-    public void requestBody_carriesTheSameMessagesAsTheJniProvider() throws Exception {
+    public void requestBody_defaultConfig_carriesTheSameMessagesAsTheJniProvider() throws Exception {
         // act
-        final JsonNode body = body(LlamaCppJniConfig.builder("").build());
+        final JsonNode body = body(ProviderConfig.builder().modelPath("").build());
 
         // assert
         final JsonNode messages = body.get("messages");
@@ -104,7 +110,7 @@ public class OpenAiCompatibleProviderSupportTest {
     @Test
     public void requestBody_defaults_sendTheDefaultSamplingAndOmitTheUnsetOptionalFields() throws Exception {
         // act
-        final JsonNode body = body(LlamaCppJniConfig.builder("").build());
+        final JsonNode body = body(ProviderConfig.builder().modelPath("").build());
 
         // assert
         assertThat(body.has("model"), is(false));
@@ -122,7 +128,8 @@ public class OpenAiCompatibleProviderSupportTest {
     @Test
     public void requestBody_setValues_areAllSent() throws Exception {
         // arrange
-        final LlamaCppJniConfig config = LlamaCppJniConfig.builder("")
+        final ProviderConfig config = ProviderConfig.builder()
+                .modelPath("")
                 .remoteModel("openai/gpt-6-luna")
                 .maxOutputTokens(256)
                 .temperature(0.5f)
@@ -156,7 +163,8 @@ public class OpenAiCompatibleProviderSupportTest {
     @Test
     public void requestBody_disabledValues_areOmitted() throws Exception {
         // arrange
-        final LlamaCppJniConfig config = LlamaCppJniConfig.builder("")
+        final ProviderConfig config = ProviderConfig.builder()
+                .modelPath("")
                 .remoteModel("   ")
                 .topK(0)
                 .seed(-1)
@@ -177,38 +185,58 @@ public class OpenAiCompatibleProviderSupportTest {
 
     @Test
     public void requestBody_default_doesNotStream() throws Exception {
-        final JsonNode body = body(LlamaCppJniConfig.builder("").build());
+        // act
+        final JsonNode body = body(ProviderConfig.builder().modelPath("").build());
+
+        // assert
         assertThat(body.get("stream").asBoolean(), is(false));
         assertThat(body.has("stream_options"), is(false));
     }
 
     @Test
     public void requestBody_stream_asksForTheEventStreamAndItsUsageChunk() throws Exception {
-        final JsonNode body = body(LlamaCppJniConfig.builder("").stream(true).build());
+        // act
+        final JsonNode body =
+                body(ProviderConfig.builder().modelPath("").stream(true).build());
+
+        // assert
         assertThat(body.get("stream").asBoolean(), is(true));
         assertThat(body.get("stream_options").get("include_usage").asBoolean(), is(true));
     }
     // </editor-fold>
 
-    // <editor-fold defaultstate="collapsed" desc="accept / completionJson">
+    // <editor-fold defaultstate="collapsed" desc="accept">
     @Test
-    public void accept_followsTheStreamSwitch() {
-        assertThat(support(LlamaCppJniConfig.builder("").build()).accept(), is("application/json"));
-        assertThat(support(LlamaCppJniConfig.builder("").stream(true).build()).accept(), is("text/event-stream"));
+    public void accept_streamOnOrOff_followsTheStreamSwitch() {
+        // act, assert
+        assertThat(support(ProviderConfig.builder().modelPath("").build()).accept(), is("application/json"));
+        assertThat(
+                support(ProviderConfig.builder().modelPath("").stream(true).build())
+                        .accept(),
+                is("text/event-stream"));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="completionJson">
     @Test
     public void completionJson_notStreaming_returnsTheBodyUnchanged() throws Exception {
         // a body that is no event stream: assembling it would fail for want of [DONE]
+        // arrange
         final String body = "{\"choices\":[]}";
-        assertThat(support(LlamaCppJniConfig.builder("").build()).completionJson(body), is(body));
+
+        // act, assert
+        assertThat(support(ProviderConfig.builder().modelPath("").build()).completionJson(body), is(body));
     }
 
     @Test
     public void completionJson_streaming_assemblesTheEvents() throws Exception {
-        final String json = support(LlamaCppJniConfig.builder("").stream(true).build())
+        // act
+        final String json = support(
+                        ProviderConfig.builder().modelPath("").stream(true).build())
                 .completionJson(
                         event("{\"choices\":[{\"delta\":{\"content\":\"hi\"},\"finish_reason\":\"stop\"}]}") + DONE);
+
+        // assert
         assertThat(
                 json,
                 is("{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"hi\"},"
@@ -263,41 +291,59 @@ public class OpenAiCompatibleProviderSupportTest {
      */
     @Test
     public void assembleStream_commentsOtherFieldsAndCrLf_areSkipped() throws Exception {
+        // arrange
         final String sse = ": ping\r\n\r\n"
                 + "event: message\r\nid: 7\r\n"
                 + "data:{\"choices\":[{\"delta\":{\"content\":\"ok\"},\"finish_reason\":\"stop\"}]}\r\n\r\n"
                 + ": ping\r\n\r\n"
                 + "data: [DONE]\r\n\r\n";
+
+        // act
         final ChatResponse response = assembled(sse);
+
+        // assert
         assertThat(response.getFirstContent(), is("ok"));
         assertThat(response.getChoices().get(0).getFinishReason(), is("stop"));
     }
 
     @Test
     public void assembleStream_nullDeltasAndALaterNullFinishReason_changeNothing() throws Exception {
+        // arrange
         final String sse = token("\"a\"")
                 + token("null")
                 + event("{\"choices\":[{\"delta\":{\"content\":\"b\"},\"finish_reason\":\"stop\"}]}")
                 + token("null")
                 + DONE;
+
+        // act
         final ChatResponse response = assembled(sse);
+
+        // assert
         assertThat(response.getFirstContent(), is("ab"));
         assertThat(response.getChoices().get(0).getFinishReason(), is("stop"));
     }
 
     @Test
     public void assembleStream_aLaterChunkWithoutUsage_keepsTheUsage() throws Exception {
+        // arrange
         final String sse = event("{\"choices\":[],\"usage\":{\"prompt_tokens\":3,\"completion_tokens\":2}}")
                 + token("\"late\"")
                 + DONE;
+
+        // act
         final ChatResponse response = assembled(sse);
+
+        // assert
         assertThat(response.getUsage().getPromptTokens(), is(3L));
         assertThat(response.getUsage().getCompletionTokens(), is(2L));
     }
 
     @Test
     public void assembleStream_noUsageChunk_reportsNoUsageAndNoFinishReason() throws Exception {
+        // act
         final String json = OpenAiCompatibleProviderSupport.assembleStream(token("\"x\"") + DONE);
+
+        // assert
         assertThat(
                 json,
                 is("{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"x\"},"
@@ -306,15 +352,23 @@ public class OpenAiCompatibleProviderSupportTest {
 
     @Test
     public void assembleStream_afterDone_nothingIsRead() throws Exception {
+        // act
         final ChatResponse response = assembled(token("\"kept\"") + DONE + "data: not json\n\n");
+
+        // assert
         assertThat(response.getFirstContent(), is("kept"));
     }
 
     @Test
     public void assembleStream_noDone_failsInsteadOfPassingForAShortAnswer() {
+        // arrange
         final String sse = token("\"half\"");
+
+        // act
         final IOException thrown =
                 assertThrows(IOException.class, () -> OpenAiCompatibleProviderSupport.assembleStream(sse));
+
+        // assert
         assertThat(
                 thrown.getMessage(),
                 is("The stream ended without 'data: [DONE]' after " + sse.length() + " characters"));
@@ -323,6 +377,7 @@ public class OpenAiCompatibleProviderSupportTest {
     @Test
     public void assembleStream_plainJsonAnswer_failsForWantOfDone() {
         // a server that ignores stream:true and answers with one JSON object
+        // act, assert
         assertThrows(
                 IOException.class,
                 () -> OpenAiCompatibleProviderSupport.assembleStream(
@@ -331,11 +386,16 @@ public class OpenAiCompatibleProviderSupportTest {
 
     @Test
     public void assembleStream_errorChunk_fails() {
+        // arrange
         final String sse = token("\"partial\"")
                 + event("{\"error\":{\"message\":\"Provider returned error\",\"code\":502}}")
                 + DONE;
+
+        // act
         final IOException thrown =
                 assertThrows(IOException.class, () -> OpenAiCompatibleProviderSupport.assembleStream(sse));
+
+        // assert
         assertThat(
                 thrown.getMessage(),
                 is("The stream reported an error: {\"message\":\"Provider returned error\",\"code\":502}"));
@@ -343,13 +403,17 @@ public class OpenAiCompatibleProviderSupportTest {
 
     @Test
     public void assembleStream_nullError_isNoError() throws Exception {
+        // act
         final ChatResponse response =
                 assembled(event("{\"error\":null,\"choices\":[{\"delta\":{\"content\":\"fine\"}}]}") + DONE);
+
+        // assert
         assertThat(response.getFirstContent(), is("fine"));
     }
 
     @Test
     public void assembleStream_malformedData_fails() {
+        // act, assert
         assertThrows(IOException.class, () -> OpenAiCompatibleProviderSupport.assembleStream("data: {oops\n\n" + DONE));
     }
     // </editor-fold>
@@ -357,74 +421,170 @@ public class OpenAiCompatibleProviderSupportTest {
     // <editor-fold defaultstate="collapsed" desc="endpoint">
     @Test
     public void endpoint_default_isOpenRouter() {
+        // act, assert
         assertThat(
-                support(LlamaCppJniConfig.builder("").build()).endpoint(),
+                support(ProviderConfig.builder().modelPath("").build()).endpoint(),
                 is("https://openrouter.ai/api/v1/chat/completions"));
     }
 
     @Test
     public void endpoint_trailingSlashesAndBlanks_areRemoved() {
-        final LlamaCppJniConfig config = LlamaCppJniConfig.builder("")
+        // arrange
+        final ProviderConfig config = ProviderConfig.builder()
+                .modelPath("")
                 .baseUrl(" http://127.0.0.1:8080/v1// ")
                 .build();
+
+        // act, assert
         assertThat(support(config).endpoint(), is("http://127.0.0.1:8080/v1/chat/completions"));
     }
 
     @Test
     public void endpoint_httpsAndHttp_areAccepted() {
+        // act, assert
         assertThat(
-                support(LlamaCppJniConfig.builder("").baseUrl("https://h/v1").build())
+                support(ProviderConfig.builder()
+                                .modelPath("")
+                                .baseUrl("https://h/v1")
+                                .build())
                         .endpoint(),
                 is("https://h/v1/chat/completions"));
         assertThat(
-                support(LlamaCppJniConfig.builder("").baseUrl("http://h/v1").build())
+                support(ProviderConfig.builder()
+                                .modelPath("")
+                                .baseUrl("http://h/v1")
+                                .build())
                         .endpoint(),
                 is("http://h/v1/chat/completions"));
     }
 
     @Test
     public void endpoint_otherScheme_isRejected() {
-        final OpenAiCompatibleProviderSupport support = support(
-                LlamaCppJniConfig.builder("").baseUrl("file:///etc/passwd").build());
+        // arrange
+        final OpenAiCompatibleProviderSupport support = support(ProviderConfig.builder()
+                .modelPath("")
+                .baseUrl("file:///etc/passwd")
+                .build());
+
+        // act
         final IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, support::endpoint);
+
+        // assert
         assertThat(thrown.getMessage(), is("baseUrl is not an http(s) URL: 'file:///etc/passwd'"));
+    }
+
+    @Test
+    public void endpoint_otherSchemeWithUserInfo_isRejectedWithoutTheUserInfo() {
+        // arrange
+        final OpenAiCompatibleProviderSupport support = support(ProviderConfig.builder()
+                .modelPath("")
+                .baseUrl("ftp://u:secret@h/v1")
+                .build());
+
+        // act
+        final IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, support::endpoint);
+
+        // assert
+        assertThat(thrown.getMessage(), is("baseUrl is not an http(s) URL: 'ftp://***@h/v1'"));
+    }
+
+    /** srcmorph never sends a URL's user info, so a key written there would not authenticate. */
+    @Test
+    public void endpoint_userInfo_isRejectedWithoutPrintingIt() {
+        // arrange
+        final OpenAiCompatibleProviderSupport support = support(ProviderConfig.builder()
+                .modelPath("")
+                .baseUrl("https://user:secret@h/v1")
+                .build());
+
+        // act
+        final IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, support::endpoint);
+
+        // assert
+        assertThat(
+                thrown.getMessage(),
+                is("its baseUrl holds an @ ('https://***@h/v1'), read as user info, which srcmorph never sends:"
+                        + " put the key in the variable apiKeyEnv names"));
     }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="apiKey">
     @Test
     public void apiKey_variableSet_returnsTheTrimmedValue() {
+        // arrange
         final Map<String, String> environment = new HashMap<>();
         environment.put("OPENROUTER_API_KEY", " sk-test \n");
-        final LlamaCppJniConfig config =
-                LlamaCppJniConfig.builder("").apiKeyEnv("OPENROUTER_API_KEY").build();
+        final ProviderConfig config = ProviderConfig.builder()
+                .modelPath("")
+                .apiKeyEnv("OPENROUTER_API_KEY")
+                .build();
+
+        // act, assert
         assertThat(support(config, environment).apiKey(), is("sk-test"));
     }
 
     @Test
     public void apiKey_otherVariableNamed_readsThatOne() {
+        // arrange
         final Map<String, String> environment = new HashMap<>();
         environment.put("OPENROUTER_API_KEY", "wrong");
         environment.put("MY_KEY", "right");
-        final LlamaCppJniConfig config =
-                LlamaCppJniConfig.builder("").apiKeyEnv("MY_KEY").build();
+        final ProviderConfig config =
+                ProviderConfig.builder().modelPath("").apiKeyEnv("MY_KEY").build();
+
+        // act, assert
         assertThat(support(config, environment).apiKey(), is("right"));
     }
 
     @Test
     public void apiKey_variableUnset_returnsNull() {
-        final LlamaCppJniConfig config =
-                LlamaCppJniConfig.builder("").apiKeyEnv("OPENROUTER_API_KEY").build();
+        // arrange
+        final ProviderConfig config = ProviderConfig.builder()
+                .modelPath("")
+                .apiKeyEnv("OPENROUTER_API_KEY")
+                .build();
+
+        // act, assert
         assertThat(support(config).apiKey(), is(nullValue()));
     }
 
     @Test
     public void apiKey_variableBlank_returnsNull() {
+        // arrange
         final Map<String, String> environment = new HashMap<>();
         environment.put("OPENROUTER_API_KEY", "  ");
-        final LlamaCppJniConfig config =
-                LlamaCppJniConfig.builder("").apiKeyEnv("OPENROUTER_API_KEY").build();
+        final ProviderConfig config = ProviderConfig.builder()
+                .modelPath("")
+                .apiKeyEnv("OPENROUTER_API_KEY")
+                .build();
+
+        // act, assert
         assertThat(support(config, environment).apiKey(), is(nullValue()));
+    }
+
+    @Test
+    public void apiKey_noVariableNamed_returnsNullWithoutLookingAnythingUp() {
+        // arrange -- an environment that would answer for any name, the empty one included
+        final ProviderConfig config =
+                ProviderConfig.builder().modelPath("").apiKeyEnv("").build();
+        final OpenAiCompatibleProviderSupport support =
+                new OpenAiCompatibleProviderSupport(config, PROMPT_SUPPORT, name -> "any");
+
+        // act, assert
+        assertThat(support.apiKey(), is(nullValue()));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="apiKeyFor">
+    private static OpenAiCompatibleProviderSupport supportWithKey() {
+        final Map<String, String> environment = new HashMap<>();
+        environment.put("OPENROUTER_API_KEY", "sk-test");
+        return support(
+                ProviderConfig.builder()
+                        .modelPath("")
+                        .apiKeyEnv("OPENROUTER_API_KEY")
+                        .build(),
+                environment);
     }
 
     /**
@@ -433,44 +593,31 @@ public class OpenAiCompatibleProviderSupportTest {
      */
     @Test
     public void apiKeyFor_defaultConfigWithACustomHttpsEndpoint_sendsNoKey() throws Exception {
+        // arrange
         final Map<String, String> environment = new HashMap<>();
         environment.put("OPENROUTER_API_KEY", "sk-or-test");
-        final LlamaCppJniConfig config = LlamaCppJniConfig.builder("")
+        final ProviderConfig config = ProviderConfig.builder()
+                .modelPath("")
                 .baseUrl("https://other.example/v1")
                 .build();
+
+        // act, assert
         assertThat(
                 support(config, environment).apiKeyFor("https://other.example/v1/chat/completions"), is(nullValue()));
     }
 
     @Test
-    public void apiKey_noVariableNamed_returnsNullWithoutLookingAnythingUp() {
-        // arrange -- an environment that would answer for any name, the empty one included
-        final LlamaCppJniConfig config =
-                LlamaCppJniConfig.builder("").apiKeyEnv("").build();
-        final OpenAiCompatibleProviderSupport support =
-                new OpenAiCompatibleProviderSupport(config, PROMPT_SUPPORT, name -> "any");
-
-        // act + assert
-        assertThat(support.apiKey(), is(nullValue()));
-    }
-    // </editor-fold>
-
-    // <editor-fold defaultstate="collapsed" desc="apiKeyFor / isLoopbackHost">
-    private static OpenAiCompatibleProviderSupport supportWithKey() {
-        final Map<String, String> environment = new HashMap<>();
-        environment.put("OPENROUTER_API_KEY", "sk-test");
-        return support(
-                LlamaCppJniConfig.builder("").apiKeyEnv("OPENROUTER_API_KEY").build(), environment);
-    }
-
-    @Test
     public void apiKeyFor_https_sendsTheKey() throws Exception {
+        // act, assert
         assertThat(supportWithKey().apiKeyFor("https://example.org/v1/chat/completions"), is("sk-test"));
     }
 
     @Test
     public void apiKeyFor_plainHttpToLoopback_sendsTheKey() throws Exception {
+        // arrange
         final OpenAiCompatibleProviderSupport support = supportWithKey();
+
+        // act, assert
         assertThat(support.apiKeyFor("http://127.0.0.1:8080/v1/chat/completions"), is("sk-test"));
         assertThat(support.apiKeyFor("http://localhost:8080/v1/chat/completions"), is("sk-test"));
         assertThat(support.apiKeyFor("http://[::1]:8080/v1/chat/completions"), is("sk-test"));
@@ -478,9 +625,14 @@ public class OpenAiCompatibleProviderSupportTest {
 
     @Test
     public void apiKeyFor_plainHttpToAnotherHost_refusesWithoutSendingTheKey() {
+        // arrange
         final OpenAiCompatibleProviderSupport support = supportWithKey();
+
+        // act
         final IOException thrown =
                 assertThrows(IOException.class, () -> support.apiKeyFor("http://example.org/v1/chat/completions"));
+
+        // assert
         assertThat(
                 thrown.getMessage(),
                 is("Refusing to send the API key from OPENROUTER_API_KEY in cleartext to example.org: use an"
@@ -489,13 +641,18 @@ public class OpenAiCompatibleProviderSupportTest {
 
     @Test
     public void apiKeyFor_plainHttpToAnotherHostWithoutKey_isFine() throws Exception {
+        // act, assert
         assertThat(
-                support(LlamaCppJniConfig.builder("").build()).apiKeyFor("http://example.org/v1/chat/completions"),
+                support(ProviderConfig.builder().modelPath("").build())
+                        .apiKeyFor("http://example.org/v1/chat/completions"),
                 is(nullValue()));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="isLoopbackHost">
     @Test
-    public void isLoopbackHost_onlyLoopbackLiteralsAndLocalhost() {
+    public void isLoopbackHost_variousHosts_trueOnlyForLoopbackLiteralsAndLocalhost() {
+        // act, assert
         assertThat(OpenAiCompatibleProviderSupport.isLoopbackHost("localhost"), is(true));
         assertThat(OpenAiCompatibleProviderSupport.isLoopbackHost("LocalHost"), is(true));
         assertThat(OpenAiCompatibleProviderSupport.isLoopbackHost("[0:0:0:0:0:0:0:1]"), is(true));
@@ -516,13 +673,166 @@ public class OpenAiCompatibleProviderSupportTest {
     private static final Function<String, @Nullable String> KEY_SET =
             name -> "OPENROUTER_API_KEY".equals(name) ? "k" : null;
 
+    /** Found before any request, with or without a key variable, and named without the user info. */
+    @Test
+    public void keyProblem_userInfo_isNamedMasked() {
+        // act, assert
+        assertThat(
+                OpenAiCompatibleProviderSupport.keyProblem(" https://u:secret@openrouter.ai/api/v1 ", " ", KEY_SET),
+                is("its baseUrl holds an @ ('https://***@openrouter.ai/api/v1'), read as user info, which"
+                        + " srcmorph never sends: put the key in the variable apiKeyEnv names"));
+    }
+
+    @Test
+    public void keyProblem_query_isNamedWithoutIt() {
+        // act
+        final String problem = OpenAiCompatibleProviderSupport.keyProblem("https://gw/v1?api-key=secret", " ", KEY_SET);
+
+        // assert: the part before the query only
+        assertThat(
+                problem,
+                is("its baseUrl has a query or a fragment ('https://gw/v1' followed by '?...'), which"
+                        + " would stand in front of the path srcmorph appends: give the path only, and the key in the"
+                        + " variable apiKeyEnv names"));
+    }
+
+    @Test
+    public void queryProblem_fragmentBeforeAQuestionMark_namesTheFragment() {
+        // act, assert: the first of the two ends the shown part
+        assertThat(
+                OpenAiCompatibleProviderSupport.queryProblem("https://gw/v1#a?b"),
+                containsString("'https://gw/v1' followed by '#...'"));
+        assertThat(
+                OpenAiCompatibleProviderSupport.queryProblem("https://gw/v1?a#b"),
+                containsString("'https://gw/v1' followed by '?...'"));
+        assertThat(
+                OpenAiCompatibleProviderSupport.queryProblem("https://gw/v1#"), containsString("followed by '#...'"));
+        assertThat(OpenAiCompatibleProviderSupport.queryProblem("https://gw/v1"), is(nullValue()));
+    }
+
+    @Test
+    public void keyProblem_aPasswordWithAQuestionMark_isUserInfoNotAQuery() {
+        // act
+        final String problem =
+                OpenAiCompatibleProviderSupport.keyProblem("https://alice:s3cr?t@gw.example.com/v1", " ", KEY_SET);
+
+        // assert: refused as user info, and nothing of the password shown
+        assertThat(problem, containsString("holds an @ ('https://***@gw.example.com/v1')"));
+    }
+
+    @Test
+    public void keyProblem_aPasswordWithASlash_isRefusedWithoutShowingIt() {
+        // act
+        final String problem =
+                OpenAiCompatibleProviderSupport.keyProblem("https://alice:pa/ss@gw.example.com/v1", " ", KEY_SET);
+
+        // assert
+        assertThat(problem, containsString("its baseUrl holds an @ ('https://***')"));
+        assertThat(problem.contains("alice"), is(false));
+    }
+
+    /** {@code new URL} reads the part before the slash as host {@code u} and port {@code 123}. */
+    @Test
+    public void keyProblem_aPasswordWithASlashThatParsesAsAPort_isRefusedWithoutShowingIt() {
+        // act
+        final String problem = OpenAiCompatibleProviderSupport.keyProblem("https://u:123/abc@host/v1", " ", KEY_SET);
+
+        // assert
+        assertThat(
+                problem,
+                is("its baseUrl holds an @ ('https://***'), read as user info, which srcmorph never sends: put the"
+                        + " key in the variable apiKeyEnv names"));
+    }
+
+    @Test
+    public void keyProblem_anAtInThePath_isRefused() {
+        // act
+        final String problem = OpenAiCompatibleProviderSupport.keyProblem("https://gw/v1/@scope", " ", KEY_SET);
+
+        // assert
+        assertThat(problem, containsString("its baseUrl holds an @ ('https://***')"));
+    }
+
+    @Test
+    public void userInfoProblem_anAtAtTheStart_isNamed() {
+        // act, assert: the bound of the search
+        assertThat(OpenAiCompatibleProviderSupport.userInfoProblem("@x"), containsString("holds an @ ('@x')"));
+        assertThat(OpenAiCompatibleProviderSupport.userInfoProblem("x"), is(nullValue()));
+    }
+
+    @Test
+    public void malformedProblem_aUrl_isNone() {
+        // act, assert
+        assertThat(OpenAiCompatibleProviderSupport.malformedProblem("https://gw:8443/v1"), is(nullValue()));
+        assertThat(
+                OpenAiCompatibleProviderSupport.malformedProblem("no url"), is("its baseUrl is not a URL: 'no url'"));
+        assertThat(
+                OpenAiCompatibleProviderSupport.malformedProblem("https:///v1"),
+                is("its baseUrl is not a URL: 'https:///v1'"));
+    }
+
+    @Test
+    public void endpoint_aPasswordWithASlash_isRefused() {
+        // arrange
+        final OpenAiCompatibleProviderSupport support = support(ProviderConfig.builder()
+                .modelPath("m")
+                .baseUrl("https://alice:pa/ss@gw/v1")
+                .build());
+
+        // act
+        final IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, support::endpoint);
+
+        // assert
+        assertThat(thrown.getMessage(), containsString("holds an @ ('https://***')"));
+    }
+
+    @Test
+    public void modelsEndpoint_aPasswordWithASlashThatParsesAsAPort_isRefusedWithoutShowingIt() {
+        // arrange: new URL reads it as host u, port 123
+        final OpenAiCompatibleProviderSupport support = support(ProviderConfig.builder()
+                .modelPath("m")
+                .baseUrl("https://u:123/abc@host/v1")
+                .build());
+
+        // act
+        final IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, support::modelsEndpoint);
+
+        // assert
+        assertThat(thrown.getMessage(), containsString("holds an @ ('https://***')"));
+        assertThat(thrown.getMessage().contains("123"), is(false));
+    }
+
+    @Test
+    public void queryProblem_markAtTheStart_showsNothingBeforeIt() {
+        // act, assert: the first character is a mark, of either kind
+        assertThat(OpenAiCompatibleProviderSupport.queryProblem("?x"), containsString("('' followed by '?...')"));
+        assertThat(OpenAiCompatibleProviderSupport.queryProblem("#x?y"), containsString("('' followed by '#...')"));
+    }
+
+    @Test
+    public void endpoint_baseUrlWithAQuery_isRefused() {
+        // arrange
+        final OpenAiCompatibleProviderSupport support = support(ProviderConfig.builder()
+                .modelPath("m")
+                .baseUrl("https://gw/v1?api-version=1")
+                .build());
+
+        // act
+        final IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, support::endpoint);
+
+        // assert
+        assertThat(thrown.getMessage(), containsString("query or a fragment"));
+    }
+
     @Test
     public void keyProblem_noApiKeyEnv_isNone() {
+        // act, assert
         assertThat(OpenAiCompatibleProviderSupport.keyProblem("http://example.org/v1", " ", KEY_SET), is(nullValue()));
     }
 
     @Test
     public void keyProblem_unsetOrBlankVariable_isNamed() {
+        // act, assert
         assertThat(
                 OpenAiCompatibleProviderSupport.keyProblem("https://openrouter.ai/api/v1", " OTHER_KEY ", KEY_SET),
                 is("its apiKeyEnv names OTHER_KEY, which is not set in this process's environment"));
@@ -533,6 +843,7 @@ public class OpenAiCompatibleProviderSupportTest {
 
     @Test
     public void keyProblem_setKeyOverHttpsOrToLoopback_isNone() {
+        // act, assert
         assertThat(
                 OpenAiCompatibleProviderSupport.keyProblem(
                         "https://openrouter.ai/api/v1", "OPENROUTER_API_KEY", KEY_SET),
@@ -544,6 +855,7 @@ public class OpenAiCompatibleProviderSupportTest {
 
     @Test
     public void keyProblem_setKeyInCleartextToAnotherHost_isNamed() {
+        // act, assert
         assertThat(
                 OpenAiCompatibleProviderSupport.keyProblem("http://example.org:8080/v1", "OPENROUTER_API_KEY", KEY_SET),
                 is("its key from OPENROUTER_API_KEY would go in cleartext to example.org; use an https baseUrl,"
@@ -552,15 +864,17 @@ public class OpenAiCompatibleProviderSupportTest {
 
     @Test
     public void keyProblem_httpBaseUrlThatIsNoUrl_isNamed() {
+        // act, assert
         assertThat(
                 OpenAiCompatibleProviderSupport.keyProblem("http://[bad/v1", "OPENROUTER_API_KEY", KEY_SET),
                 is("its baseUrl is not a URL: 'http://[bad/v1'"));
     }
     // </editor-fold>
 
-    // <editor-fold defaultstate="collapsed" desc="retries and context overflow">
+    // <editor-fold defaultstate="collapsed" desc="isRetryable">
     @Test
-    public void isRetryable_timeoutRateLimitAndServerErrors() {
+    public void isRetryable_statusCodes_trueForTimeoutRateLimitAndServerErrors() {
+        // act, assert
         assertThat(OpenAiCompatibleProviderSupport.isRetryable(408, ""), is(true));
         assertThat(OpenAiCompatibleProviderSupport.isRetryable(429, "{\"error\":\"rate limited\"}"), is(true));
         assertThat(OpenAiCompatibleProviderSupport.isRetryable(500, ""), is(true));
@@ -575,7 +889,8 @@ public class OpenAiCompatibleProviderSupportTest {
     }
 
     @Test
-    public void isRetryable_notWhatNoRetryChanges() {
+    public void isRetryable_errorsARetryCannotChange_returnsFalse() {
+        // act, assert
         assertThat(OpenAiCompatibleProviderSupport.isRetryable(501, ""), is(false));
         assertThat(OpenAiCompatibleProviderSupport.isRetryable(505, ""), is(false));
         assertThat(
@@ -592,18 +907,23 @@ public class OpenAiCompatibleProviderSupportTest {
     }
 
     @Test
-    public void isRetryable_geminisQuota_perMinuteWaits_perDayDoesNot() {
+    public void isRetryable_geminisQuota_perMinuteWaitsPerDayDoesNot() {
+        // arrange
         final String perMinute = "You exceeded your current quota, please check your plan. quotaId:"
                 + " GenerateRequestsPerMinutePerProjectPerModel";
         final String perDay = "You exceeded your current quota, please check your plan. quotaId:"
                 + " GenerateRequestsPerDayPerProjectPerModel";
 
+        // act, assert
         assertThat(OpenAiCompatibleProviderSupport.isRetryable(429, perMinute), is(true));
         assertThat(OpenAiCompatibleProviderSupport.isRetryable(429, perDay), is(false));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="isContextOverflow">
     @Test
-    public void isContextOverflow_payloadTooLargeOrABadRequestThatSaysSo() {
+    public void isContextOverflow_statusAndBody_trueForPayloadTooLargeOrABadRequestThatSaysSo() {
+        // act, assert
         assertThat(OpenAiCompatibleProviderSupport.isContextOverflow(413, ""), is(true));
         assertThat(
                 OpenAiCompatibleProviderSupport.isContextOverflow(
@@ -621,9 +941,12 @@ public class OpenAiCompatibleProviderSupportTest {
         assertThat(OpenAiCompatibleProviderSupport.isContextOverflow(400, "unknown model"), is(false));
         assertThat(OpenAiCompatibleProviderSupport.isContextOverflow(500, "context length"), is(false));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="retryDelayMillis">
     @Test
-    public void retryDelayMillis_retryAfterSecondsIsHonouredUpToItsCap() {
+    public void retryDelayMillis_retryAfterSeconds_isHonouredUpToItsCap() {
+        // act, assert
         assertThat(OpenAiCompatibleProviderSupport.retryDelayMillis(" 2 ", 1, 0.9d, 0L), is(2_000L));
         assertThat(OpenAiCompatibleProviderSupport.retryDelayMillis("0", 3, 0.0d, 0L), is(0L));
         assertThat(
@@ -640,6 +963,7 @@ public class OpenAiCompatibleProviderSupportTest {
 
     @Test
     public void retryDelayMillis_aRetryAfterThatIsNoNumber_takesTheBackoff() {
+        // act, assert
         assertThat(OpenAiCompatibleProviderSupport.retryDelayMillis("", 1, 0.0d, 0L), is(1_000L));
         assertThat(OpenAiCompatibleProviderSupport.retryDelayMillis("-1", 1, 0.0d, 0L), is(1_000L));
         assertThat(OpenAiCompatibleProviderSupport.retryDelayMillis("1.5", 1, 0.0d, 0L), is(1_000L));
@@ -648,6 +972,7 @@ public class OpenAiCompatibleProviderSupportTest {
 
     @Test
     public void retryDelayMillis_withoutRetryAfter_doublesUpToItsCapPlusJitter() {
+        // act, assert
         assertThat(OpenAiCompatibleProviderSupport.retryDelayMillis(null, 1, 0.0d, 0L), is(1_000L));
         assertThat(OpenAiCompatibleProviderSupport.retryDelayMillis(null, 2, 0.0d, 0L), is(2_000L));
         assertThat(OpenAiCompatibleProviderSupport.retryDelayMillis(null, 3, 0.5d, 0L), is(4_500L));
@@ -658,239 +983,15 @@ public class OpenAiCompatibleProviderSupportTest {
                 OpenAiCompatibleProviderSupport.retryDelayMillis(null, 99, 0.0d, 0L),
                 is(OpenAiCompatibleProviderSupport.MAX_RETRY_BACKOFF_MILLIS));
     }
-    // </editor-fold>
-
-    // <editor-fold defaultstate="collapsed" desc="isSuccess">
-    @Test
-    public void isSuccess_onlyTheTwoHundreds() {
-        assertThat(OpenAiCompatibleProviderSupport.isSuccess(199), is(false));
-        assertThat(OpenAiCompatibleProviderSupport.isSuccess(200), is(true));
-        assertThat(OpenAiCompatibleProviderSupport.isSuccess(299), is(true));
-        assertThat(OpenAiCompatibleProviderSupport.isSuccess(300), is(false));
-    }
-    // </editor-fold>
-
-    // <editor-fold defaultstate="collapsed" desc="errorMessage">
-    @Test
-    public void errorMessage_shortBody_isQuotedWhole() {
-        final String body = repeat('x', OpenAiCompatibleProviderSupport.ERROR_BODY_EXCERPT);
-        assertThat(
-                OpenAiCompatibleProviderSupport.errorMessage("http://h/chat/completions", 401, body),
-                is("http://h/chat/completions answered HTTP 401: " + body));
-    }
-
-    @Test
-    public void errorMessage_longBody_isCutAtTheExcerptLength() {
-        final String body = repeat('x', OpenAiCompatibleProviderSupport.ERROR_BODY_EXCERPT + 1);
-        assertThat(
-                OpenAiCompatibleProviderSupport.errorMessage("http://h", 500, body),
-                is("http://h answered HTTP 500: " + repeat('x', OpenAiCompatibleProviderSupport.ERROR_BODY_EXCERPT)
-                        + "..."));
-    }
-
-    @Test
-    public void noChoiceMessage_namesEndpointFileAndTheStartOfTheBody() {
-        final String body = repeat('x', OpenAiCompatibleProviderSupport.ERROR_BODY_EXCERPT + 1);
-        assertThat(
-                OpenAiCompatibleProviderSupport.noChoiceMessage("http://h", java.nio.file.Paths.get("A.java"), body),
-                is("http://h answered without a completion for A.java: "
-                        + repeat('x', OpenAiCompatibleProviderSupport.ERROR_BODY_EXCERPT) + "..."));
-    }
-
-    private static String repeat(final char c, final int count) {
-        final char[] chars = new char[count];
-        Arrays.fill(chars, c);
-        return new String(chars);
-    }
-    // </editor-fold>
-
-    // <editor-fold defaultstate="collapsed" desc="modelsEndpoint">
-    @Test
-    public void modelsEndpoint_isTheTrimmedBaseUrlWithoutTrailingSlashesPlusModels() {
-        assertThat(
-                support(LlamaCppJniConfig.builder("")
-                                .baseUrl(" http://127.0.0.1:3030/v1// ")
-                                .build())
-                        .modelsEndpoint(),
-                is("http://127.0.0.1:3030/v1/models"));
-    }
-
-    @Test
-    public void modelsEndpoint_notHttp_throwsBeforeAnyConnection() {
-        final OpenAiCompatibleProviderSupport support =
-                support(LlamaCppJniConfig.builder("").baseUrl("file:///etc").build());
-        final IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, support::modelsEndpoint);
-        assertThat(thrown.getMessage(), is("baseUrl is not an http(s) URL: 'file:///etc'"));
-    }
-    // </editor-fold>
-
-    // <editor-fold defaultstate="collapsed" desc="serverKey">
-    @Test
-    public void serverKey_isTheBaseUrlWithoutTrailingSlashesAndTheKeyVariable() {
-        assertThat(
-                support(LlamaCppJniConfig.builder("")
-                                .baseUrl(" http://127.0.0.1:3030/v1// ")
-                                .apiKeyEnv(" COPILOT_GATEWAY_API_KEY ")
-                                .build())
-                        .serverKey(),
-                is("http://127.0.0.1:3030/v1 COPILOT_GATEWAY_API_KEY"));
-    }
-
-    @Test
-    public void serverKey_doesNotCheckTheScheme() {
-        assertThat(
-                support(LlamaCppJniConfig.builder("").baseUrl("file:///etc/").build())
-                        .serverKey(),
-                is("file:///etc "));
-    }
-    // </editor-fold>
-
-    // <editor-fold defaultstate="collapsed" desc="parseModels">
-    private static RemoteModel model(final String id, final int contextLength) {
-        return new RemoteModel(id, contextLength, null, null);
-    }
-
-    private static List<RemoteModel> parse(final String entries) throws IOException {
-        return OpenAiCompatibleProviderSupport.parseModels("{\"data\":[" + entries + "]}");
-    }
-
-    @Test
-    public void parseModels_copilotGateway_dropsTheAliasAndTheRepeatedIdAndSortsById() throws Exception {
-        assertThat(
-                OpenAiCompatibleProviderSupport.parseModels(ModelListFixtures.COPILOT_GATEWAY),
-                is(Arrays.asList(
-                        model("auto", 871793),
-                        model("claude-haiku-4.5", 127790),
-                        model("mai-code-1.1-flash", 127790))));
-    }
-
-    @Test
-    public void parseModels_openRouter_readsTheContextAndThePricePerMillionTokens() throws Exception {
-        final List<RemoteModel> models = OpenAiCompatibleProviderSupport.parseModels(ModelListFixtures.OPENROUTER);
-
-        assertThat(models.size(), is(2));
-        assertThat(models.get(0), is(model("openrouter/auto", 2000000)));
-        final RemoteModel grok = models.get(1);
-        assertThat(grok.id(), is("x-ai/grok-4.7"));
-        assertThat(grok.contextLength(), is(500000));
-        assertThat(grok.inputUsdPerMillion(), is(new BigDecimal("2")));
-        assertThat(grok.outputUsdPerMillion(), is(new BigDecimal("6")));
-    }
-
-    @Test
-    public void parseModels_llamaServer_readsTheRunningWindowFromMeta() throws Exception {
-        assertThat(
-                OpenAiCompatibleProviderSupport.parseModels(ModelListFixtures.LLAMA_SERVER),
-                is(Collections.singletonList(model("/models/SmolLM2-135M-Instruct-Q3_K_M.gguf", 8192))));
-    }
-
-    @Test
-    public void parseModels_jllama_namesNoLimit() throws Exception {
-        assertThat(
-                OpenAiCompatibleProviderSupport.parseModels(ModelListFixtures.JLLAMA),
-                is(Collections.singletonList(model("smollm2", RemoteModel.UNKNOWN_CONTEXT_LENGTH))));
-    }
-
-    @Test
-    public void parseModels_theFirstPositiveLimitWins_inTheDocumentedOrder() throws Exception {
-        assertThat(
-                parse("{\"id\":\"a\",\"context_length\":100,\"max_input_tokens\":200}"
-                        + ",{\"id\":\"b\",\"context_length\":0,\"max_input_tokens\":200,\"context_window\":300}"
-                        + ",{\"id\":\"c\",\"context_window\":300,\"max_model_len\":400}"
-                        + ",{\"id\":\"d\",\"max_model_len\":400,\"top_provider\":{\"context_length\":500}}"
-                        + ",{\"id\":\"e\",\"context_length\":-1,\"top_provider\":{\"context_length\":500},"
-                        + "\"meta\":{\"n_ctx\":600}}"
-                        + ",{\"id\":\"f\",\"top_provider\":{\"context_length\":0},\"meta\":{\"n_ctx\":600,"
-                        + "\"n_ctx_train\":700}}"
-                        + ",{\"id\":\"g\",\"meta\":{\"n_ctx\":0,\"n_ctx_train\":700}}"
-                        + ",{\"id\":\"h\",\"meta\":{\"n_ctx_train\":0}}"),
-                is(Arrays.asList(
-                        model("a", 100),
-                        model("b", 200),
-                        model("c", 300),
-                        model("d", 400),
-                        model("e", 500),
-                        model("f", 600),
-                        model("g", 700),
-                        model("h", 0))));
-    }
-
-    @Test
-    public void parseModels_prices_textOrNumber_unknownWhenAbsentNegativeOrNotANumber() throws Exception {
-        final List<RemoteModel> models = parse("{\"id\":\"a\",\"pricing\":{\"prompt\":\" 0.0000005 \","
-                + "\"completion\":0.0000015}}"
-                + ",{\"id\":\"b\",\"pricing\":{\"prompt\":\"0\",\"completion\":\"-1\"}}"
-                + ",{\"id\":\"c\",\"pricing\":{\"prompt\":\"free\",\"completion\":true}}"
-                + ",{\"id\":\"d\"}");
-
-        assertThat(models.get(0).inputUsdPerMillion(), is(new BigDecimal("0.5")));
-        assertThat(models.get(0).outputUsdPerMillion(), is(new BigDecimal("1.5")));
-        assertThat(models.get(1).inputUsdPerMillion(), is(BigDecimal.ZERO));
-        assertThat(models.get(1).outputUsdPerMillion(), is(nullValue()));
-        assertThat(models.get(2).inputUsdPerMillion(), is(nullValue()));
-        assertThat(models.get(2).outputUsdPerMillion(), is(nullValue()));
-        assertThat(models.get(3).inputUsdPerMillion(), is(nullValue()));
-        assertThat(models.get(3).outputUsdPerMillion(), is(nullValue()));
-    }
-
-    @Test
-    public void parseModels_anEntryWithoutATextualId_isLeftOut() throws Exception {
-        assertThat(
-                parse("{\"object\":\"model\"},{\"id\":7},{\"id\":\"kept\"}"),
-                is(Collections.singletonList(model("kept", 0))));
-    }
-
-    @Test
-    public void parseModels_noDataArray_failsWithTheStartOfTheAnswer() {
-        final IOException thrown = assertThrows(
-                IOException.class, () -> OpenAiCompatibleProviderSupport.parseModels("{\"data\":{\"id\":\"a\"}}"));
-        assertThat(
-                thrown.getMessage(),
-                is("The answer is not an OpenAI model list (no 'data' array): {\"data\":{\"id\":\"a\"}}"));
-    }
-
-    @Test
-    public void parseModels_notJson_fails() {
-        assertThrows(IOException.class, () -> OpenAiCompatibleProviderSupport.parseModels("<html>502</html>"));
-    }
-    // </editor-fold>
-
-    // <editor-fold defaultstate="collapsed" desc="timings">
-    private static ChatResponse responseWith(final Usage usage) {
-        final ChatChoice choice = new ChatChoice(0, new ChatMessage("assistant", "body"), "stop");
-        return new ChatResponse("id", Collections.singletonList(choice), usage, null, "{}");
-    }
-
-    @Test
-    public void timings_reportUsageAndTheWallClockDecodeRate() {
-        // act
-        final AiGenerationTimings timings =
-                OpenAiCompatibleProviderSupport.timings("text", responseWith(new Usage(100, 50, 30)), 2.0d);
-
-        // assert
-        assertThat(timings.text(), is("text"));
-        assertThat(timings.promptTokens(), is(100));
-        assertThat(timings.cachedPromptTokens(), is(30));
-        assertThat(timings.prefillTokensPerSecond(), is(0.0d));
-        assertThat(timings.predictedTokens(), is(50));
-        assertThat(timings.decodeTokensPerSecond(), is(25.0d));
-    }
-
-    @Test
-    public void timings_zeroSeconds_reportNoRate() {
-        final AiGenerationTimings timings =
-                OpenAiCompatibleProviderSupport.timings("text", responseWith(new Usage(1, 5)), 0.0d);
-        assertThat(timings.decodeTokensPerSecond(), is(0.0d));
-    }
-    // </editor-fold>
 
     @Test
     public void retryDelayMillis_aRetryAfterDate_waitsUntilThen() {
-        final long at = java.time.ZonedDateTime.parse(
-                        "Wed, 21 Oct 2026 07:28:00 GMT", java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME)
+        // arrange
+        final long at = ZonedDateTime.parse("Wed, 21 Oct 2026 07:28:00 GMT", DateTimeFormatter.RFC_1123_DATE_TIME)
                 .toInstant()
                 .toEpochMilli();
 
+        // act, assert
         assertThat(
                 OpenAiCompatibleProviderSupport.retryDelayMillis(
                         "Wed, 21 Oct 2026 07:28:00 GMT", 1, 0.0d, at - 30_000L),
@@ -914,12 +1015,11 @@ public class OpenAiCompatibleProviderSupportTest {
     @Test
     public void retryDelayMillis_theObsoleteHttpDateForms_areRead() {
         // arrange: the same instant as an rfc850-date and an asctime-date
-        final long at = java.time.ZonedDateTime.parse(
-                        "Wed, 21 Oct 2026 07:28:00 GMT", java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME)
+        final long at = ZonedDateTime.parse("Wed, 21 Oct 2026 07:28:00 GMT", DateTimeFormatter.RFC_1123_DATE_TIME)
                 .toInstant()
                 .toEpochMilli();
 
-        // act / assert
+        // act, assert
         assertThat(
                 OpenAiCompatibleProviderSupport.retryDelayMillis(
                         "Wednesday, 21-Oct-26 07:28:00 GMT", 1, 0.0d, at - 30_000L),
@@ -937,12 +1037,11 @@ public class OpenAiCompatibleProviderSupportTest {
     @Test
     public void retryDelayMillis_anRfc850YearMoreThanFiftyYearsAhead_isOfThePastCentury() {
         // arrange: now is 2026-10-21 07:28:00 UTC
-        final long now = java.time.ZonedDateTime.parse(
-                        "Wed, 21 Oct 2026 07:28:00 GMT", java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME)
+        final long now = ZonedDateTime.parse("Wed, 21 Oct 2026 07:28:00 GMT", DateTimeFormatter.RFC_1123_DATE_TIME)
                 .toInstant()
                 .toEpochMilli();
 
-        // act / assert: 94 is 1994, in the past, so the retry waits nothing
+        // act, assert: 94 is 1994, in the past, so the retry waits nothing
         assertThat(
                 OpenAiCompatibleProviderSupport.retryDelayMillis("Sunday, 06-Nov-94 08:49:37 GMT", 1, 0.0d, now),
                 is(0L));
@@ -962,6 +1061,7 @@ public class OpenAiCompatibleProviderSupportTest {
     @Test
     public void retryDelayMillis_aDateOfNoForm_isTheBackoff() {
         // a wrong weekday or a two-digit year in the asctime form is no HTTP date
+        // act, assert
         assertThat(
                 OpenAiCompatibleProviderSupport.retryDelayMillis("Monday, 21-Oct-26 07:28:00 GMT", 1, 0.0d, 0L),
                 is(OpenAiCompatibleProviderSupport.RETRY_BASE_DELAY_MILLIS));
@@ -969,4 +1069,301 @@ public class OpenAiCompatibleProviderSupportTest {
                 OpenAiCompatibleProviderSupport.retryDelayMillis("Wed Oct 21 07:28:00 26", 1, 0.0d, 0L),
                 is(OpenAiCompatibleProviderSupport.RETRY_BASE_DELAY_MILLIS));
     }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="isSuccess">
+    @Test
+    public void isSuccess_statusCodes_trueOnlyForTheTwoHundreds() {
+        // act, assert
+        assertThat(OpenAiCompatibleProviderSupport.isSuccess(199), is(false));
+        assertThat(OpenAiCompatibleProviderSupport.isSuccess(200), is(true));
+        assertThat(OpenAiCompatibleProviderSupport.isSuccess(299), is(true));
+        assertThat(OpenAiCompatibleProviderSupport.isSuccess(300), is(false));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="isRedirect">
+    @Test
+    public void isRedirect_statusCodes_trueOnlyForTheThreeHundreds() {
+        // act, assert
+        assertThat(OpenAiCompatibleProviderSupport.isRedirect(299), is(false));
+        assertThat(OpenAiCompatibleProviderSupport.isRedirect(300), is(true));
+        assertThat(OpenAiCompatibleProviderSupport.isRedirect(399), is(true));
+        assertThat(OpenAiCompatibleProviderSupport.isRedirect(400), is(false));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="redirectMessage">
+    @Test
+    public void redirectMessage_aLocation_isNamedMasked() {
+        // act, assert
+        assertThat(
+                OpenAiCompatibleProviderSupport.redirectMessage(
+                        "https://h/v1/models", 302, "https://other/v1/models?key=secret"),
+                is("https://h/v1/models answered HTTP 302, a redirect to https://other/v1/models?***, which srcmorph"
+                        + " does not follow (the key would go along): point baseUrl at the server it redirects to"));
+    }
+
+    @Test
+    public void redirectMessage_noLocation_saysSo() {
+        // act, assert
+        assertThat(
+                OpenAiCompatibleProviderSupport.redirectMessage("https://h/v1/models", 301, null),
+                containsString("answered HTTP 301, a redirect to no Location, which srcmorph does not follow"));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="errorMessage">
+    @Test
+    public void errorMessage_shortBody_isQuotedWhole() {
+        // arrange
+        final String body = repeat('x', OpenAiCompatibleProviderSupport.ERROR_BODY_EXCERPT);
+
+        // act, assert
+        assertThat(
+                OpenAiCompatibleProviderSupport.errorMessage("http://h/chat/completions", 401, body),
+                is("http://h/chat/completions answered HTTP 401: " + body));
+    }
+
+    @Test
+    public void errorMessage_longBody_isCutAtTheExcerptLength() {
+        // arrange
+        final String body = repeat('x', OpenAiCompatibleProviderSupport.ERROR_BODY_EXCERPT + 1);
+
+        // act, assert
+        assertThat(
+                OpenAiCompatibleProviderSupport.errorMessage("http://h", 500, body),
+                is("http://h answered HTTP 500: " + repeat('x', OpenAiCompatibleProviderSupport.ERROR_BODY_EXCERPT)
+                        + "..."));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="noChoiceMessage">
+    @Test
+    public void noChoiceMessage_longBody_namesEndpointFileAndTheStartOfTheBody() {
+        // arrange
+        final String body = repeat('x', OpenAiCompatibleProviderSupport.ERROR_BODY_EXCERPT + 1);
+
+        // act, assert
+        assertThat(
+                OpenAiCompatibleProviderSupport.noChoiceMessage("http://h", Paths.get("A.java"), body),
+                is("http://h answered without a completion for A.java: "
+                        + repeat('x', OpenAiCompatibleProviderSupport.ERROR_BODY_EXCERPT) + "..."));
+    }
+
+    private static String repeat(final char c, final int count) {
+        final char[] chars = new char[count];
+        Arrays.fill(chars, c);
+        return new String(chars);
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="modelsEndpoint">
+    @Test
+    public void modelsEndpoint_baseUrlWithBlanksAndTrailingSlashes_isTheTrimmedBaseUrlPlusModels() {
+        // act, assert
+        assertThat(
+                support(ProviderConfig.builder()
+                                .modelPath("")
+                                .baseUrl(" http://127.0.0.1:3030/v1// ")
+                                .build())
+                        .modelsEndpoint(),
+                is("http://127.0.0.1:3030/v1/models"));
+    }
+
+    @Test
+    public void modelsEndpoint_notHttp_throwsBeforeAnyConnection() {
+        // arrange
+        final OpenAiCompatibleProviderSupport support = support(
+                ProviderConfig.builder().modelPath("").baseUrl("file:///etc").build());
+
+        // act
+        final IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, support::modelsEndpoint);
+
+        // assert
+        assertThat(thrown.getMessage(), is("baseUrl is not an http(s) URL: 'file:///etc'"));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="serverKey">
+    @Test
+    public void serverKey_baseUrlAndKeyVariable_isTheBaseUrlWithoutTrailingSlashesAndTheKeyVariable() {
+        // act, assert
+        assertThat(
+                support(ProviderConfig.builder()
+                                .modelPath("")
+                                .baseUrl(" http://127.0.0.1:3030/v1// ")
+                                .apiKeyEnv(" COPILOT_GATEWAY_API_KEY ")
+                                .build())
+                        .serverKey(),
+                is("http://127.0.0.1:3030/v1 COPILOT_GATEWAY_API_KEY"));
+    }
+
+    @Test
+    public void serverKey_nonHttpScheme_doesNotCheckTheScheme() {
+        // act, assert
+        assertThat(
+                support(ProviderConfig.builder()
+                                .modelPath("")
+                                .baseUrl("file:///etc/")
+                                .build())
+                        .serverKey(),
+                is("file:///etc "));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="parseModels">
+    private static RemoteModel model(final String id, final int contextLength) {
+        return new RemoteModel(id, contextLength, null, null);
+    }
+
+    private static List<RemoteModel> parse(final String entries) throws IOException {
+        return OpenAiCompatibleProviderSupport.parseModels("{\"data\":[" + entries + "]}");
+    }
+
+    @Test
+    public void parseModels_copilotGateway_dropsTheAliasAndTheRepeatedIdAndSortsById() throws Exception {
+        // act, assert
+        assertThat(
+                OpenAiCompatibleProviderSupport.parseModels(ModelListFixtures.COPILOT_GATEWAY),
+                is(Arrays.asList(
+                        model("auto", 871793),
+                        model("claude-haiku-4.5", 127790),
+                        model("mai-code-1.1-flash", 127790))));
+    }
+
+    @Test
+    public void parseModels_openRouter_readsTheContextAndThePricePerMillionTokens() throws Exception {
+        // act
+        final List<RemoteModel> models = OpenAiCompatibleProviderSupport.parseModels(ModelListFixtures.OPENROUTER);
+
+        // assert
+        assertThat(models.size(), is(2));
+        assertThat(models.get(0), is(model("openrouter/auto", 2000000)));
+        final RemoteModel grok = models.get(1);
+        assertThat(grok.id(), is("x-ai/grok-4.7"));
+        assertThat(grok.contextLength(), is(500000));
+        assertThat(grok.inputUsdPerMillion(), is(new BigDecimal("2")));
+        assertThat(grok.outputUsdPerMillion(), is(new BigDecimal("6")));
+    }
+
+    @Test
+    public void parseModels_llamaServer_readsTheRunningWindowFromMeta() throws Exception {
+        // act, assert
+        assertThat(
+                OpenAiCompatibleProviderSupport.parseModels(ModelListFixtures.LLAMA_SERVER),
+                is(Collections.singletonList(model("/models/SmolLM2-135M-Instruct-Q3_K_M.gguf", 8192))));
+    }
+
+    @Test
+    public void parseModels_jllama_namesNoLimit() throws Exception {
+        // act, assert
+        assertThat(
+                OpenAiCompatibleProviderSupport.parseModels(ModelListFixtures.JLLAMA),
+                is(Collections.singletonList(model("smollm2", RemoteModel.UNKNOWN_CONTEXT_LENGTH))));
+    }
+
+    @Test
+    public void parseModels_theFirstPositiveLimitWins_inTheDocumentedOrder() throws Exception {
+        // act, assert
+        assertThat(
+                parse("{\"id\":\"a\",\"context_length\":100,\"max_input_tokens\":200}"
+                        + ",{\"id\":\"b\",\"context_length\":0,\"max_input_tokens\":200,\"context_window\":300}"
+                        + ",{\"id\":\"c\",\"context_window\":300,\"max_model_len\":400}"
+                        + ",{\"id\":\"d\",\"max_model_len\":400,\"top_provider\":{\"context_length\":500}}"
+                        + ",{\"id\":\"e\",\"context_length\":-1,\"top_provider\":{\"context_length\":500},"
+                        + "\"meta\":{\"n_ctx\":600}}"
+                        + ",{\"id\":\"f\",\"top_provider\":{\"context_length\":0},\"meta\":{\"n_ctx\":600,"
+                        + "\"n_ctx_train\":700}}"
+                        + ",{\"id\":\"g\",\"meta\":{\"n_ctx\":0,\"n_ctx_train\":700}}"
+                        + ",{\"id\":\"h\",\"meta\":{\"n_ctx_train\":0}}"),
+                is(Arrays.asList(
+                        model("a", 100),
+                        model("b", 200),
+                        model("c", 300),
+                        model("d", 400),
+                        model("e", 500),
+                        model("f", 600),
+                        model("g", 700),
+                        model("h", RemoteModel.UNKNOWN_CONTEXT_LENGTH))));
+    }
+
+    @Test
+    public void parseModels_pricesAsTextOrNumber_unknownWhenAbsentNegativeOrNotANumber() throws Exception {
+        // act
+        final List<RemoteModel> models = parse("{\"id\":\"a\",\"pricing\":{\"prompt\":\" 0.0000005 \","
+                + "\"completion\":0.0000015}}"
+                + ",{\"id\":\"b\",\"pricing\":{\"prompt\":\"0\",\"completion\":\"-1\"}}"
+                + ",{\"id\":\"c\",\"pricing\":{\"prompt\":\"free\",\"completion\":true}}"
+                + ",{\"id\":\"d\"}");
+
+        // assert
+        assertThat(models.get(0).inputUsdPerMillion(), is(new BigDecimal("0.5")));
+        assertThat(models.get(0).outputUsdPerMillion(), is(new BigDecimal("1.5")));
+        assertThat(models.get(1).inputUsdPerMillion(), is(BigDecimal.ZERO));
+        assertThat(models.get(1).outputUsdPerMillion(), is(nullValue()));
+        assertThat(models.get(2).inputUsdPerMillion(), is(nullValue()));
+        assertThat(models.get(2).outputUsdPerMillion(), is(nullValue()));
+        assertThat(models.get(3).inputUsdPerMillion(), is(nullValue()));
+        assertThat(models.get(3).outputUsdPerMillion(), is(nullValue()));
+    }
+
+    @Test
+    public void parseModels_anEntryWithoutATextualId_isLeftOut() throws Exception {
+        // act, assert
+        assertThat(
+                parse("{\"object\":\"model\"},{\"id\":7},{\"id\":\"kept\"}"),
+                is(Collections.singletonList(model("kept", RemoteModel.UNKNOWN_CONTEXT_LENGTH))));
+    }
+
+    @Test
+    public void parseModels_noDataArray_failsWithTheStartOfTheAnswer() {
+        // act
+        final IOException thrown = assertThrows(
+                IOException.class, () -> OpenAiCompatibleProviderSupport.parseModels("{\"data\":{\"id\":\"a\"}}"));
+
+        // assert
+        assertThat(
+                thrown.getMessage(),
+                is("The answer is not an OpenAI model list (no 'data' array): {\"data\":{\"id\":\"a\"}}"));
+    }
+
+    @Test
+    public void parseModels_notJson_fails() {
+        // act, assert
+        assertThrows(IOException.class, () -> OpenAiCompatibleProviderSupport.parseModels("<html>502</html>"));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="timings">
+    private static ChatResponse responseWith(final Usage usage) {
+        final ChatChoice choice = new ChatChoice(0, new ChatMessage("assistant", "body"), "stop");
+        return new ChatResponse("id", Collections.singletonList(choice), usage, null, "{}");
+    }
+
+    @Test
+    public void timings_usageAndSeconds_reportUsageAndTheWallClockDecodeRate() {
+        // act
+        final TimedGeneration timings =
+                OpenAiCompatibleProviderSupport.timings("text", responseWith(new Usage(100, 50, 30)), 2.0d);
+
+        // assert
+        assertThat(timings.text(), is("text"));
+        assertThat(timings.promptTokens(), is(100));
+        assertThat(timings.cachedPromptTokens(), is(30));
+        assertThat(timings.prefillTokensPerSecond(), is(0.0d));
+        assertThat(timings.predictedTokens(), is(50));
+        assertThat(timings.decodeTokensPerSecond(), is(25.0d));
+    }
+
+    @Test
+    public void timings_zeroSeconds_reportNoRate() {
+        // act
+        final TimedGeneration timings =
+                OpenAiCompatibleProviderSupport.timings("text", responseWith(new Usage(1, 5)), 0.0d);
+
+        // assert
+        assertThat(timings.decodeTokensPerSecond(), is(0.0d));
+    }
+    // </editor-fold>
 }

@@ -9,11 +9,12 @@ import java.util.List;
 import java.util.Locale;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
-import net.ladenthin.srcmorph.indexer.AiCalibrationMeasurement;
+import net.ladenthin.srcmorph.indexer.CalibrationMeasurement;
 
 /**
- * The outcome of one {@link CalibrateEngine#execute()} run: one {@link ModelMeasurement} per distinct
- * routed model, in calibration order.
+ * The outcome of one {@link CalibrateEngine#execute()} run: one measurement per distinct routed model,
+ * in calibration order, read through the three renderings (the measurement type is {@code indexer}'s,
+ * which {@code module-info.java} does not export).
  *
  * <p>{@link #renderPasteBlock()} renders the paste-ready YAML {@code calibration:} block of each model,
  * which the {@code srcmorph:calibrate} goal and the CLI's {@code Calibrate} print for the model's entry
@@ -48,7 +49,7 @@ public final class CalibrationReport {
      *
      * @param measurements one measurement per distinct routed model, in calibration order
      */
-    public CalibrationReport(final List<ModelMeasurement> measurements) {
+    CalibrationReport(final List<ModelMeasurement> measurements) {
         this.measurements = new ArrayList<>(measurements);
     }
 
@@ -57,7 +58,7 @@ public final class CalibrationReport {
      *
      * @return the measurements
      */
-    public List<ModelMeasurement> measurements() {
+    List<ModelMeasurement> measurements() {
         return Collections.unmodifiableList(measurements);
     }
 
@@ -95,7 +96,7 @@ public final class CalibrationReport {
         final StringBuilder out = new StringBuilder("{\n  \"models\": [\n");
         for (int i = 0; i < measurements.size(); i++) {
             final ModelMeasurement entry = measurements.get(i);
-            final AiCalibrationMeasurement m = entry.measurement();
+            final CalibrationMeasurement m = entry.measurement();
             out.append("    {\n");
             out.append("      \"modelKey\": ").append(quote(entry.modelKey())).append(",\n");
             appendJsonNumber(out, "loadSeconds", String.format(Locale.ROOT, FORMAT_LOAD_SECONDS, m.loadSeconds()));
@@ -139,7 +140,7 @@ public final class CalibrationReport {
         }
         final StringBuilder out = new StringBuilder("models:\n");
         for (final ModelMeasurement entry : measurements) {
-            final AiCalibrationMeasurement m = entry.measurement();
+            final CalibrationMeasurement m = entry.measurement();
             out.append("  - modelKey: ").append(quote(entry.modelKey())).append('\n');
             appendYamlNumber(out, "loadSeconds", String.format(Locale.ROOT, FORMAT_LOAD_SECONDS, m.loadSeconds()));
             appendYamlNumber(
@@ -236,7 +237,7 @@ public final class CalibrationReport {
      * @param m        the measurement
      */
     private static void appendPasteBlock(
-            final StringBuilder out, final String modelKey, final AiCalibrationMeasurement m) {
+            final StringBuilder out, final String modelKey, final CalibrationMeasurement m) {
         out.append("# calibration of the aiDefinitions entry ")
                 .append(quote(modelKey))
                 .append(" (this machine)\n");
@@ -270,13 +271,13 @@ public final class CalibrationReport {
         out.append("  ").append(key).append(": ").append(value).append('\n');
     }
 
-    /** One model's key paired with its {@link AiCalibrationMeasurement}. */
+    /** One model's key paired with its {@link CalibrationMeasurement}. */
     @ToString
     @EqualsAndHashCode
-    public static final class ModelMeasurement {
+    static final class ModelMeasurement {
 
         private final String modelKey;
-        private final AiCalibrationMeasurement measurement;
+        private final CalibrationMeasurement measurement;
 
         /**
          * Creates a new {@link ModelMeasurement}.
@@ -284,7 +285,7 @@ public final class CalibrationReport {
          * @param modelKey    the {@code aiDefinitionKey} that was calibrated
          * @param measurement the measurement
          */
-        public ModelMeasurement(final String modelKey, final AiCalibrationMeasurement measurement) {
+        ModelMeasurement(final String modelKey, final CalibrationMeasurement measurement) {
             this.modelKey = modelKey;
             this.measurement = measurement;
         }
@@ -294,7 +295,7 @@ public final class CalibrationReport {
          *
          * @return the {@code aiDefinitionKey}
          */
-        public String modelKey() {
+        String modelKey() {
             return modelKey;
         }
 
@@ -303,7 +304,7 @@ public final class CalibrationReport {
          *
          * @return the calibration measurement
          */
-        public AiCalibrationMeasurement measurement() {
+        CalibrationMeasurement measurement() {
             return measurement;
         }
     }

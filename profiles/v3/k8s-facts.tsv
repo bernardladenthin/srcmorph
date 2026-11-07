@@ -1,0 +1,26 @@
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# Kubernetes manifest and Helm template counters, for a rule with the prompt file-body-ops: one per
+# line, label TAB pattern (Java regex). The [ignore] line blanks YAML comments, Helm comments
+# ({{/* */}}, also with the - trim markers; one never closed runs to the end of the file) and the
+# body of a block scalar (the lines below a | or > that are deeper than its key, past a list item's
+# dash, as deep as the first of them; the key stays), so the image, ports and probes of a manifest
+# a ConfigMap embeds do not count. "resources" counts a kind: at column 0 only. Helm renders a block
+# scalar too, so "Helm control actions (approx)" (every if, else if, range, with, define, template,
+# include and block action) and ".Values references" read the file as written ([raw]) and leave out
+# only one in a comment: after a # at a line start or after a blank, or after a {{/* on its line,
+# at most 200 and 300 characters before it. OpsFactPatternsTest pins every case;
+# ProfileFactPatternsLinearityTest measures that every pattern reads linearly.
+[ignore] YAML and template comments, block scalars	(?ms)\{\{-?[ \t]*+/\*(?:.*?\*/[ \t]*+-?\}\}|.*+)|[|>](?<=^([ \t]{0,40})-([ \t]{1,4})[^\s#:][^\n#:]{0,99}:[ \t]{1,16}[|>])[-+1-9]{0,2}[ \t]*+(?:#[^\n]*+)?\n(?:[ \t]*+\n)*+(\1[ \t]\2[ \t]++)[^ \t\n][^\n]*+(?:\n(?:\3[^\n]*+|[ \t]*+)(?=\n|\z))*+|[|>](?<=^([ \t]{0,40})(?![ \t]|-[ \t]{1,4}[^\s|>])[^\n#:]{0,100}[:-][ \t]{1,16}[|>])[-+1-9]{0,2}[ \t]*+(?:#[^\n]*+)?\n(?:[ \t]*+\n)*+(\4[ \t]++)[^ \t\n][^\n]*+(?:\n(?:\5[^\n]*+|[ \t]*+)(?=\n|\z))*+|^[ \t]*#[^\n]*+|(?<=[ \t])#[^\n]*+
+resources	(?m)^kind:[ \t]*+["']?[A-Z]
+workloads	(?m)^kind:[ \t]*+["']?(?:Deployment|StatefulSet|DaemonSet|Job|CronJob|Pod|ReplicaSet|DeploymentConfig)\b
+Services, Ingresses and Routes	(?m)^kind:[ \t]*+["']?(?:Service|Ingress|Route|HTTPRoute|Gateway|VirtualService)\b
+ConfigMaps and Secrets	(?m)^kind:[ \t]*+["']?(?:ConfigMap|Secret|SealedSecret|ExternalSecret)\b
+container images	(?m)^[ \t]*(?:-[ \t]+)?image:[ \t]*+[^\s#]
+container ports	(?m)^[ \t]*(?:-[ \t]+)?containerPort:
+probes	(?m)^[ \t]*(?:liveness|readiness|startup)Probe:
+secret references	(?m)^[ \t]*(?:-[ \t]+)?(?:secretKeyRef|secretRef|secretName):
+[raw] Helm control actions (approx)	(?m)\{\{-?[ \t]*+(?:if|else[ \t]+if|range|with|define|template|include|block)\b(?<!(?:^|[ \t])#[^\n]{0,200})(?<!\{\{-?[ \t]{0,8}/\*(?:(?!\*/)[^\n]){0,300})
+[raw] .Values references	(?m)\.Values\.[A-Za-z_][\w.]*+(?<!(?:^|[ \t])#[^\n]{0,200})(?<!\{\{-?[ \t]{0,8}/\*(?:(?!\*/)[^\n]){0,300})

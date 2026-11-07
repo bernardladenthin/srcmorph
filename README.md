@@ -33,7 +33,7 @@
 [![Coverage Status](https://coveralls.io/repos/github/bernardladenthin/srcmorph/badge.svg?branch=main)](https://coveralls.io/github/bernardladenthin/srcmorph?branch=main)  
 [![codecov](https://codecov.io/gh/bernardladenthin/srcmorph/graph/badge.svg)](https://codecov.io/gh/bernardladenthin/srcmorph)  
 [![JaCoCo](https://img.shields.io/codecov/c/github/bernardladenthin/srcmorph?label=JaCoCo&logo=java)](https://codecov.io/gh/bernardladenthin/srcmorph)  
-[![PIT Mutation](https://img.shields.io/badge/PIT%20mutation-100%25%20(78%20classes)-brightgreen)](https://github.com/bernardladenthin/srcmorph/actions/workflows/publish.yml)  
+[![PIT Mutation](https://img.shields.io/badge/PIT%20mutation-100%25%20(90%20classes)-brightgreen)](https://github.com/bernardladenthin/srcmorph/actions/workflows/publish.yml)  
 
 **Quality:**  
 [![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=bernardladenthin_srcmorph&metric=alert_status)](https://sonarcloud.io/dashboard?id=bernardladenthin_srcmorph)  
@@ -139,7 +139,7 @@ srcMorph:
   aiDefinitions:
     - key: coder
       modelPath: /path/to/model.gguf
-  fieldGenerations:
+  rules:
     - promptKey: file-body-fallback
       aiDefinitionKey: coder
       fallback: true
@@ -180,8 +180,10 @@ cd examples/build-your-own-jar
 java -jar target/srcmorph.jar ../config_All.json
 ```
 
-The examples follow this repository and need srcmorph 1.4.0 (for 1.3.0, take the examples of the
-`v1.3.0` tag); against a reactor build, `mvn install` it and pass its version as `-Dsrcmorph.version`. Every `examples/config_*.json`/`.yaml` file works out of the box with the `mock` provider
+The examples follow this repository: on `main` they need the next release (keys and facts markers
+1.4.0 rejects); until it is out, `mvn install` the reactor and pass its version as
+`-Dsrcmorph.version` (`1.5.0-SNAPSHOT`). For 1.4.0 or 1.3.0, take the examples of the `v1.4.0` or
+`v1.3.0` tag. Every `examples/config_*.json`/`.yaml` file works out of the box with the `mock` provider
 (no GGUF model required) — see [`examples/`](examples/) for the full set plus paired `run_*.sh`/`run_*.bat`
 launcher scripts, and [`srcmorph-cli/README.md`](srcmorph-cli/README.md) for the config-file
 reference. A walkthrough for a Windows laptop with Vulkan is in
@@ -206,7 +208,7 @@ Maven is the supported path; JBang is a shortcut.
 ```java
 SrcMorphConfiguration config = new SrcMorphConfiguration();
 config.setBaseDirectory(new File("."));
-// ... set outputDirectory, promptDefinitions, aiDefinitions, fieldGenerations ...
+// ... set outputDirectory, promptDefinitions, aiDefinitions, rules ...
 new GenerateEngine(config).execute();
 ```
 
@@ -220,7 +222,11 @@ README for the full details (routing rules, oversize strategies, exact-count fac
 overview) and [`CLAUDE.md`](CLAUDE.md) for the architecture.
 
 1. **File generation** — scans configured source directories, writes one `.ai.md` file per source
-   file (deterministic metadata header + AI-generated Markdown body).
+   file (deterministic metadata header + AI-generated Markdown body), at the file's path below the
+   base directory with a leading `src/` dropped: `src/main/java/a/B.java` becomes
+   `main/java/a/B.java.ai.md`. A repository whose code sits in `src/` therefore shares its top
+   package with the files of its root (`src/extension.ts` next to `package.json`); two sources that
+   would get one summary (`src/a/X.ts` and `a/X.ts`) fail the run.
 2. **Package aggregation** — traverses the generated `.ai.md` files, writes one `package.ai.md` per
    directory with a deterministic child-link list plus an AI-generated summary.
 3. **Project index** — harvests the one-line lead from every `package.ai.md` into a single

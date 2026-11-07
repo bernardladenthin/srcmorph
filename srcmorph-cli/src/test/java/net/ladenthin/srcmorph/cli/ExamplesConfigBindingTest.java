@@ -23,11 +23,13 @@ import java.util.List;
 import java.util.Objects;
 import net.ladenthin.srcmorph.cli.configuration.CCommand;
 import net.ladenthin.srcmorph.cli.configuration.CConfiguration;
-import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
-import net.ladenthin.srcmorph.config.AiModelDefinition;
+import net.ladenthin.srcmorph.config.ModelDefinition;
+import net.ladenthin.srcmorph.config.PromptDefinition;
+import net.ladenthin.srcmorph.config.RoutingRule;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
-import net.ladenthin.srcmorph.prompt.AiPromptDefinition;
-import net.ladenthin.srcmorph.prompt.AiPromptTemplateLoader;
+import net.ladenthin.srcmorph.prompt.PromptTemplateLoader;
+import net.ladenthin.srcmorph.routing.FileContext;
+import net.ladenthin.srcmorph.routing.RuleSelector;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
@@ -56,6 +58,7 @@ public class ExamplesConfigBindingTest {
      */
     private static final Path EXAMPLES_DIRECTORY = Path.of("../examples");
 
+    // <editor-fold defaultstate="collapsed" desc="fromJsonOrFromYaml">
     /**
      * Builds one {@link DynamicTest} per {@code config_*.json}/{@code config_*.yaml} file found under
      * {@link #EXAMPLES_DIRECTORY}, each asserting that the file parses cleanly and yields a sane
@@ -65,13 +68,17 @@ public class ExamplesConfigBindingTest {
      * @throws IOException if {@link #EXAMPLES_DIRECTORY} cannot be listed
      */
     @TestFactory
-    public List<DynamicTest> everyExampleConfig_bindsSuccessfully() throws IOException {
+    public List<DynamicTest> fromJsonOrFromYaml_everyExampleConfig_bindsSuccessfully() throws IOException {
+        // arrange
         final List<Path> exampleConfigs = listExampleConfigFiles();
+
+        // pre-assert
         assertThat(
                 "expected at least one example config fixture under " + EXAMPLES_DIRECTORY,
                 exampleConfigs.size(),
                 greaterThan(0));
 
+        // act, assert
         final List<DynamicTest> tests = new ArrayList<>(exampleConfigs.size());
         for (final Path exampleConfig : exampleConfigs) {
             tests.add(DynamicTest.dynamicTest(
@@ -79,6 +86,7 @@ public class ExamplesConfigBindingTest {
         }
         return tests;
     }
+    // </editor-fold>
 
     private static List<Path> listExampleConfigFiles() throws IOException {
         final List<Path> found = new ArrayList<>();
@@ -90,6 +98,7 @@ public class ExamplesConfigBindingTest {
         return found;
     }
 
+    // <editor-fold defaultstate="collapsed" desc="fromYaml">
     /**
      * {@code examples/build-your-own-jar/} is how a user builds the runnable jar (docs/windows-intel-core-ultra.md):
      * its {@code srcmorph.yaml} is meant for a real model, so it is not one of the mock fixtures above,
@@ -101,10 +110,14 @@ public class ExamplesConfigBindingTest {
      * @throws IOException if an example file cannot be read
      */
     @Test
-    public void buildYourOwnJarExample_bindsAndNamesTheMainClass() throws IOException {
+    public void fromYaml_buildYourOwnJarExample_bindsAndNamesTheMainClass() throws IOException {
+        // arrange
         final Path directory = EXAMPLES_DIRECTORY.resolve("build-your-own-jar");
+
+        // act
         final CConfiguration configuration = Main.fromYaml(Main.readString(directory.resolve("srcmorph.yaml")));
 
+        // assert
         assertThat(configuration.command, is(CCommand.Plan));
         final SrcMorphConfiguration srcMorph = configuration.srcMorph;
         assertThat(srcMorph.getGenerationProvider(), is(equalTo("llamacpp-jni")));
@@ -125,22 +138,26 @@ public class ExamplesConfigBindingTest {
      * @throws IOException if the example file cannot be read
      */
     @Test
-    public void copilotApiGatewayExample_bindsAndStreamsFromLoopback() throws IOException {
+    public void fromYaml_copilotApiGatewayExample_bindsAndStreamsFromLoopback() throws IOException {
+        // arrange
         final Path directory = EXAMPLES_DIRECTORY.resolve("copilot-api-gateway");
+
+        // act
         final CConfiguration configuration = Main.fromYaml(Main.readString(directory.resolve("srcmorph.yaml")));
 
+        // assert
         assertThat(configuration.command, is(CCommand.Plan));
         final SrcMorphConfiguration srcMorph = configuration.srcMorph;
         assertThat(srcMorph.getGenerationProvider(), is(equalTo("openai-compatible")));
         assertThat(srcMorph.getAiDefinitions().size(), is(1));
-        final AiModelDefinition model = srcMorph.getAiDefinitions().get(0);
+        final ModelDefinition model = srcMorph.getAiDefinitions().get(0);
         assertThat(model.getProvider(), is(equalTo("openai-compatible")));
         assertThat(model.getBaseUrl(), is(equalTo("http://127.0.0.1:3030/v1")));
         assertThat(model.getApiKeyEnv(), is(equalTo("COPILOT_GATEWAY_API_KEY")));
         assertThat(model.isStream(), is(true));
         assertThat(model.getRequestsPerMinute(), is(25));
-        assertThat(srcMorph.getFieldGenerations().size(), is(1));
-        assertThat(srcMorph.getFieldGenerations().get(0).isFallback(), is(true));
+        assertThat(srcMorph.getRules().size(), is(1));
+        assertThat(srcMorph.getRules().get(0).isFallback(), is(true));
         assertPromptFilesResolve(directory, configuration, "copilot-api-gateway/srcmorph.yaml");
     }
 
@@ -154,42 +171,229 @@ public class ExamplesConfigBindingTest {
      * @throws IOException if the example file cannot be read
      */
     @Test
-    public void copilotApiGatewayLunaExample_routesEveryRuleToLunaWithFacts() throws IOException {
+    public void fromYaml_copilotApiGatewayLunaExample_routesEveryRuleToLunaWithFacts() throws IOException {
+        // arrange
         final Path directory = EXAMPLES_DIRECTORY.resolve("copilot-api-gateway");
+
+        // act
         final CConfiguration configuration = Main.fromYaml(Main.readString(directory.resolve("srcmorph-luna.yaml")));
 
+        // assert
         assertThat(configuration.command, is(CCommand.Plan));
         final SrcMorphConfiguration srcMorph = configuration.srcMorph;
         assertThat(srcMorph.getAiDefinitions().size(), is(1));
-        final AiModelDefinition model = srcMorph.getAiDefinitions().get(0);
+        final ModelDefinition model = srcMorph.getAiDefinitions().get(0);
         assertThat(model.getRemoteModel(), is(equalTo("gpt-6-luna")));
         assertThat(model.getBaseUrl(), is(equalTo("http://127.0.0.1:3030/v1")));
         assertThat(model.getApiKeyEnv(), is(equalTo("COPILOT_GATEWAY_API_KEY")));
         assertThat(model.isStream(), is(true));
+        assertThat(srcMorph.isForce(), is(false));
+        assertThat(srcMorph.getRegenerateOn().isSource(), is(true));
+        assertThat(srcMorph.getRegenerateOn().isPrompt(), is(true));
+        assertThat(srcMorph.getRegenerateOn().isFacts(), is(true));
+        assertThat(srcMorph.getRegenerateOn().isModel(), is(true));
+        assertThat(srcMorph.getRegenerateOn().isChildren(), is(true));
 
         final Path profileDirectory = directory.resolve(
                 Objects.requireNonNull(srcMorph.getProfileDirectory()).getPath());
-        final List<AiFieldGenerationConfig> rules = new ArrayList<>(srcMorph.getFieldGenerations());
-        rules.addAll(Objects.requireNonNull(configuration.packageFieldGenerations));
-        rules.addAll(Objects.requireNonNull(configuration.projectFieldGenerations));
-        for (final AiFieldGenerationConfig rule : rules) {
+        final List<RoutingRule> rules = new ArrayList<>();
+        final List<RoutingRule> skipped = new ArrayList<>();
+        for (final RoutingRule rule : srcMorph.getRules()) {
+            (rule.isSkip() ? skipped : rules).add(rule);
+        }
+        assertThat("the credentials rule", skipped.size(), is(1));
+        assertThat(skipped.get(0).getId(), is(equalTo("secrets")));
+        rules.addAll(Objects.requireNonNull(configuration.packageRules));
+        rules.addAll(Objects.requireNonNull(configuration.projectRules));
+        for (final RoutingRule rule : rules) {
             final String label = "rule " + rule.getPromptKey();
             assertThat(label, rule.getAiDefinitionKey(), is(equalTo(model.getKey())));
             assertThat(label + " reads every chunk", rule.getOnOversize(), is(equalTo("mapReduce")));
+            assertThat(label + " asks once more", rule.getOnIncomplete(), is(equalTo("retryOnce")));
             assertThat(label, Files.isRegularFile(profileDirectory.resolve(rule.getMapPromptKey() + ".md")), is(true));
             assertThat(
                     label, Files.isRegularFile(profileDirectory.resolve(rule.getReducePromptKey() + ".md")), is(true));
         }
-        for (final AiFieldGenerationConfig rule : srcMorph.getFieldGenerations()) {
+        final List<String> withoutFacts = new ArrayList<>();
+        for (final RoutingRule rule : srcMorph.getRules()) {
             final String label = "rule " + rule.getId();
-            if (!rule.isFallback()) {
+            if (rule.isSkip()) {
+                continue;
+            }
+            if (rule.getFactsKey() == null) {
+                withoutFacts.add(rule.getId());
+            } else {
                 assertThat(
                         label + " counts the facts of its kind",
                         Files.isRegularFile(profileDirectory.resolve(rule.getFactsKey() + ".tsv")),
                         is(true));
             }
         }
+        // the kinds profile v3 has no counters for
+        assertThat(withoutFacts, is(List.of("typescript", "pyproject", "ops", "fallback")));
         assertPromptFilesResolve(directory, configuration, "copilot-api-gateway/srcmorph-luna.yaml");
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="select">
+    @Test
+    public void select_credentialsRuleOfEveryProfileConfig_skipsFilesWithSecretsAndNoSource() throws Exception {
+        // arrange
+        final String[][] secrets = {
+            {".env", "TOKEN=x\n"},
+            {".env.production", "TOKEN=x\n"},
+            {"prod.tfvars", "password = \"x\"\n"},
+            {"prod.pkrvars.hcl", "password = \"x\"\n"},
+            {"terraform.tfstate", "{}\n"},
+            {"settings.xml", "<settings xmlns=\"http://maven.apache.org/SETTINGS/1.0.0\">\n"},
+            {".m2/settings.xml", "<?xml version=\"1.0\"?>\n<settings>\n"},
+            {"settings-security.xml", "<settingsSecurity/>\n"},
+            {"server.pem", "-----BEGIN PRIVATE KEY-----\n"},
+            {"tls.key", "x\n"},
+            {"id_rsa", "x\n"},
+            {"vault.yml", "vault_db_password: x\n"},
+            {"group_vars/all/vault.yaml", "$ANSIBLE_VAULT;1.1;AES256\n"},
+            {"db-credentials.yaml", "password: x\n"},
+            {"app-secrets.properties", "password=x\n"},
+            {"Secrets.JSON", "{}\n"},
+            {"vault/secrets.hcl", "token = \"x\"\n"},
+            {"k8s/secret.yaml", "apiVersion: v1\nkind: Secret\ndata:\n  password: eA==\n"},
+            {"charts/shop/templates/db-secret.yaml", "apiVersion: v1\nkind: Secret\ndata:\n  password: eA==\n"},
+        };
+        final String[][] sources = {
+            {"SecretManager.java", "class SecretManager {}\n"},
+            {"CredentialsProvider.java", "class CredentialsProvider {}\n"},
+            {"PasswordEncoder.java", "class PasswordEncoder {}\n"},
+            {"pom.xml", "<project/>\n"},
+            {"web.xml", "<web-app/>\n"},
+            {"secrets.sh", "#!/bin/sh\n"},
+            {"keys.sql", "SELECT 1;\n"},
+            {"Settings.java", "class Settings {}\n"},
+            // a CI workflow or action that scans for secrets or logs in to a vault holds none
+            {".github/workflows/secret-scan.yml", "on: push\n"},
+            {".github/workflows/vault.yml", "on: push\n"},
+            // a Helm chart's template names the values it renders
+            {"charts/shop/templates/secret.yaml", "kind: Secret\ndata:\n  password: {{ .Values.password | b64enc }}\n"},
+            // a Kubernetes manifest of another kind
+            {"k8s/vault-deployment.yaml", "apiVersion: apps/v1\nkind: Deployment\n"},
+            // an Android preference screen
+            {"app/src/main/res/xml/settings.xml", "<PreferenceScreen xmlns:android=\"x\"/>\n"},
+        };
+
+        // act, assert
+        for (final Path config : List.of(
+                EXAMPLES_DIRECTORY.resolve("copilot-api-gateway/srcmorph-luna.yaml"),
+                EXAMPLES_DIRECTORY.resolve("build-your-own-jar/srcmorph.yaml"))) {
+            final List<RoutingRule> rules =
+                    Main.fromYaml(Main.readString(config)).srcMorph.getRules();
+            final RuleSelector selector = new RuleSelector();
+            selector.validate(rules);
+            for (final String[] secret : secrets) {
+                final RoutingRule rule = selector.select(rules, context(secret[0], secret[1]));
+                assertThat(config + ": " + secret[0], rule != null && rule.isSkip(), is(true));
+            }
+            for (final String[] source : sources) {
+                final RoutingRule rule = selector.select(rules, context(source[0], source[1]));
+                assertThat(config + ": " + source[0], rule != null && !rule.isSkip(), is(true));
+            }
+        }
+    }
+
+    @Test
+    public void select_lunaExample_routesEveryKindToItsRule() throws Exception {
+        // arrange
+        final List<RoutingRule> rules = Main.fromYaml(
+                        Main.readString(EXAMPLES_DIRECTORY.resolve("copilot-api-gateway/srcmorph-luna.yaml")))
+                .srcMorph
+                .getRules();
+        final RuleSelector selector = new RuleSelector();
+        selector.validate(rules);
+        final String[][] cases = {
+            {"src/main/java/shop/Order.java", "package shop;\nclass Order {}\n", "java"},
+            {"src/main/java/shop/OrderBean.java", "package shop;\nimport jakarta.ejb.Stateless;\n", "java-ee"},
+            {"src/main/java/shop/Legacy.java", "import javax.persistence.Entity;\n", "java-ee"},
+            {"src/main/java/shop/Audit.java", "import static jakarta.transaction.Transactional.TxType.*;\n", "java-ee"},
+            {"src/main/java/shop/Timer.java", "package shop;\n@jakarta.ejb.Singleton\nclass Timer {}\n", "java-ee"},
+            {"src/main/java/shop/Notes.java", "// see jakarta.ejb.Stateless\nclass Notes {}\n", "java"},
+            {"src/main/kotlin/Invoice.kt", "class Invoice\n", "kotlin"},
+            {"build.gradle.kts", "plugins {}\n", "gradle"},
+            {"src/main/kotlin/Build.kts", "println(1)\n", "kotlin"},
+            {"src/test/groovy/OrderSpec.groovy", "class OrderSpec {}\n", "groovy"},
+            {"src/main/scala/Order.scala", "case class Order()\n", "scala"},
+            {"src/extension.ts", "export function activate() {}\n", "typescript"},
+            {"scripts/release.mts", "export {};\n", "typescript"},
+            {"esbuild.js", "require('esbuild');\n", "fallback"},
+            {"src/main/webapp/WEB-INF/web.xml", "<web-app/>\n", "jee"},
+            {"META-INF/ejb-jar.xml", "<ejb-jar/>\n", "jee"},
+            {"META-INF/persistence.xml", "<persistence/>\n", "persistence"},
+            {"mapping/Shipment.hbm.xml", "<hibernate-mapping/>\n", "persistence"},
+            {"mapper/CustomerMapper.xml", "<!DOCTYPE mapper PUBLIC \"-//mybatis.org//DTD Mapper 3.0//EN\">\n", "mybatis"
+            },
+            {
+                "camel/routes.xml",
+                "<beans><camelContext xmlns=\"http://camel.apache.org/schema/spring\"/></beans>\n",
+                "integration"
+            },
+            {"process/order.bpmn", "<definitions/>\n", "bpmn"},
+            {"rules/discount.dmn", "<definitions/>\n", "dmn"},
+            {"wsdl/Stock.wsdl", "<definitions/>\n", "wsdl"},
+            {"pom.xml", "<project/>\n", "pom"},
+            {"conf/context.xml", "<beans/>\n", "xml"},
+            {"webapp/list.jsp", "<%@ page %>\n", "jsp"},
+            {"webapp/order.jspx", "<jsp:root/>\n", "jspx"},
+            {"WEB-INF/tags/total.tagx", "<jsp:root/>\n", "jspx"},
+            {"webapp/checkout.xhtml", "<ui:composition/>\n", "facelets"},
+            {"api/orders.yaml", "openapi: 3.0.3\n", "openapi"},
+            {"api/openapi.json", "{\"openapi\":\"3.0.3\"}", "openapi"},
+            {"proto/order.proto", "syntax = \"proto3\";\n", "proto"},
+            {"avro/order.avsc", "{\"type\": \"record\"}\n", "avro"},
+            {"graphql/schema.graphqls", "type Query { x: Int }\n", "graphql"},
+            {"api/events.yaml", "asyncapi: 3.0.0\n", "asyncapi"},
+            {"api/asyncapi.json", "{\"asyncapi\":\"3.0.0\"}", "asyncapi"},
+            {"docker-compose.yml", "services:\n  db:\n    image: postgres\n", "compose"},
+            {"deploy/compose.override.yaml", "services: {}\n", "compose"},
+            {"ansible/site.yml", "- name: Shop\n  hosts: web\n", "ansible"},
+            {"ansible/roles/web/tasks/main.yml", "- name: Copy\n  copy: {}\n", "ansible"},
+            {"infra/terragrunt.hcl", "include \"root\" {}\n", "terraform"},
+            {"settings.gradle", "include 'core'\n", "gradle"},
+            {"src/main/resources/application.properties", "server.port=8080\n", "properties"},
+            {"tools/deploy.ps1", "param()\n", "powershell"},
+            {"tools/build.cmd", "@echo off\n", "batch"},
+            {"bin/deploy", "#!/usr/bin/env bash\nset -e\n", "shell"},
+            {"bin/report", "#!/usr/bin/perl -w\n", "perl"},
+            {"bin/tool", "#!/usr/bin/env python3\n", "fallback"},
+            {".github/workflows/ci.yml", "on: push\n", "actions"},
+            {"k8s/deployment.yaml", "apiVersion: apps/v1\nkind: Deployment\n", "k8s"},
+            {"camel/orders.yaml", "- route:\n    id: orders\n    from:\n      uri: jms:queue:orders\n", "camel-yaml"},
+            {"camel/timer.yaml", "- from:\n    uri: timer:tick\n", "camel-yaml"},
+            {"build.gradle", "plugins { id 'java' }\n", "gradle"},
+            {"docker/Dockerfile", "FROM alpine\n", "dockerfile"},
+            {"Jenkinsfile", "pipeline {}\n", "ops"},
+            {"config/application.yml", "server:\n  port: 8080\n", "ops"},
+            {"infra/main.tf", "resource \"x\" \"y\" {}\n", "terraform"},
+            {"scripts/tool.py", "print(1)\n", "fallback"},
+            {"config/.env", "TOKEN=x\n", "secrets"},
+        };
+
+        // act, assert
+        for (final String[] c : cases) {
+            final String path = c[0];
+            final String name = path.substring(path.lastIndexOf('/') + 1);
+            final RoutingRule rule = selector.select(rules, new FileContext(name, path, 100L, 3, 0L, c[1]));
+            assertThat(path, rule == null ? null : rule.getId(), is(equalTo(c[2])));
+        }
+    }
+    // </editor-fold>
+
+    /**
+     * A file at a path below the base directory, with its text.
+     *
+     * @param path    the base-relative path
+     * @param content the file's text
+     * @return the context a rule reads
+     */
+    private static FileContext context(final String path, final String content) {
+        return new FileContext(path.substring(path.lastIndexOf('/') + 1), path, 100L, 3, 0L, content);
     }
 
     private static void assertBindsSuccessfully(final Path exampleConfig) throws IOException {
@@ -210,14 +414,10 @@ public class ExamplesConfigBindingTest {
                 is(equalTo("mock")));
 
         // Every shipped example configures at least the fallback routing rule, so the run has
-        // something to do (a config with an empty <fieldGenerations> fails GenerateEngine/
+        // something to do (a config with an empty <rules> fails GenerateEngine/
         // CalibrateEngine at run time, so an example silently missing it would be useless).
-        assertThat(
-                fileName + ": fieldGenerations must be configured", srcMorph.getFieldGenerations(), is(notNullValue()));
-        assertThat(
-                fileName + ": fieldGenerations must not be empty",
-                srcMorph.getFieldGenerations().size(),
-                greaterThan(0));
+        assertThat(fileName + ": rules must be configured", srcMorph.getRules(), is(notNullValue()));
+        assertThat(fileName + ": rules must not be empty", srcMorph.getRules().size(), greaterThan(0));
         assertPromptFilesResolve(EXAMPLES_DIRECTORY, configuration, fileName);
     }
 
@@ -242,23 +442,19 @@ public class ExamplesConfigBindingTest {
                 is(nullValue()));
         assertThat(label + ": profileDirectory must be set", srcMorph.getProfileDirectory(), is(notNullValue()));
         final List<@Nullable String> usedKeys = new ArrayList<>();
-        for (final @Nullable List<AiFieldGenerationConfig> rules :
-                Arrays.<@Nullable List<AiFieldGenerationConfig>>asList(
-                        srcMorph.getFieldGenerations(),
-                        configuration.packageFieldGenerations,
-                        configuration.projectFieldGenerations)) {
+        for (final @Nullable List<RoutingRule> rules : Arrays.<@Nullable List<RoutingRule>>asList(
+                srcMorph.getRules(), configuration.packageRules, configuration.projectRules)) {
             if (rules != null) {
-                for (final AiFieldGenerationConfig rule : rules) {
+                for (final RoutingRule rule : rules) {
                     usedKeys.add(rule.getPromptKey());
                 }
             }
         }
         final Path profileDirectory = runDirectory.resolve(
                 Objects.requireNonNull(srcMorph.getProfileDirectory()).getPath());
-        final List<AiPromptDefinition> loaded =
-                new AiPromptTemplateLoader(profileDirectory.toFile()).load(null, usedKeys);
+        final List<PromptDefinition> loaded = new PromptTemplateLoader(profileDirectory.toFile()).load(null, usedKeys);
         assertThat(label + ": the rules must use at least one prompt", loaded, is(not(empty())));
-        for (final AiPromptDefinition definition : loaded) {
+        for (final PromptDefinition definition : loaded) {
             assertThat(
                     label + ": " + definition.getKey() + " must load one of the measured prompts",
                     definition.getTemplate(),

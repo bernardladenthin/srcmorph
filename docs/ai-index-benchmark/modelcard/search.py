@@ -5,9 +5,11 @@
 
 Every question of search-questions.json names the corpus files that answer it. For each model's
 output tree (one directory per model key under <out>) the 24 file summaries are searched two ways:
-- bm25: BM25 over the summary bodies (the header, which names the file, is left out), with
-  camelCase and snake_case identifiers split into words; deterministic and free;
-- reader: one LLM call per question that sees every summary under its path, as an agent browsing
+- bm25: BM25 over the model's answer in each summary (the header, which names the file, the facts
+  and coverage lines srcmorph writes in front of the body and a reasoning block in front of the
+  answer are left out, as score.py measures it: score.answer_of),
+  with camelCase and snake_case identifiers split into words; deterministic and free;
+- reader: one LLM call per question that sees the same text of every summary under its path, as an agent browsing
   the index would, and names the three files most likely to answer (OpenRouter, the key from
   OPENROUTER_API_KEY; answers are cached by model, system prompt, parameters, context and question,
   so a rerun only pays for what is new, and a changed prompt is never answered from the cache).
@@ -15,15 +17,19 @@ Two baselines go through the same retrievers: "source" (the source files themsel
 (nothing but the paths). hit@1 / hit@3 count a question as found when an answer file is ranked
 first / among the first three; MRR is the mean reciprocal rank of the first answer file (0 when
 the reader does not name one). BM25 ranks only the files that share a word with the question, so an
-empty index finds nothing instead of the alphabetically first file.
+empty index finds nothing instead of the alphabetically first file. The files are the sources the
+runs index (run.indexes: by extension or by a name such as Dockerfile, in any case).
 
-Writes <scores>/search.json (per run and retriever) and <scores>/search.tsv (per question).
+Writes <scores>/search.json (per run and retriever) and <scores>/search.tsv (per question). The card's
+scores/ holds both retrievers over the card's runs, so --no-reader or another --out needs a --scores
+directory of its own.
 
 Usage: python search.py --work <prepared corpus dir> [--reader <model>] [--no-reader]
        [--cache <jsonl>] [--out ...] [--scores ...]
 """
 import argparse
 import hashlib
+import http.client
 import json
 import math
 import os
@@ -36,10 +42,12 @@ from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from run import EXTENSIONS
-from score import body_of
+from run import indexes
+from score import answer_of, body_of, model_text
 
 HERE = Path(__file__).resolve().parent
+DEFAULT_OUT = HERE.parent / "outputs-2026-10"
+DEFAULT_SCORES = HERE / "scores"
 READER = "mistralai/mistral-small-3.2-24b-instruct"
 BASELINES = ("source", "paths")
 STOP = set("""a an and are as at be by can do does for from has have how in into is it its of on or
@@ -81,6 +89,11 @@ def bm25_rank(docs, query, k1=1.5, b=0.75):
     return [k for k in sorted(scores, key=lambda k: -scores[k]) if scores[k] > 0]
 
 
+def corpus_files(work):
+    """The corpus's sources as the runs index them (by extension or name), relative, in path order."""
+    return sorted(p.relative_to(work).as_posix() for p in work.rglob("*") if p.is_file() and indexes(p.name))
+
+
 def documents(run, out, work, files):
     """Path -> searchable text of one run (or baseline)."""
     if run == "source":
@@ -90,13 +103,13 @@ def documents(run, out, work, files):
     docs = {}
     for f in files:
         md = out / run / (f + ".ai.md")
-        docs[f] = body_of(md.read_text(encoding="utf-8")).strip() if md.exists() else ""
+        docs[f] = answer_of(model_text(body_of(md.read_text(encoding="utf-8")))).strip() if md.exists() else ""
     return docs
 
 
 class Reader:
     """The LLM retriever with a JSONL answer cache keyed by model, system prompt, parameters, context
-    and question."""
+    and question. An empty answer an earlier version cached is no answer: it is asked again."""
 
     def __init__(self, model, cache_path):
         self.model = model
@@ -107,9 +120,12 @@ class Reader:
         if self.cache_path.exists():
             for line in self.cache_path.read_text(encoding="utf-8").splitlines():
                 entry = json.loads(line)
-                self.cache[entry["id"]] = entry
+                if entry["answer"].strip():
+                    self.cache[entry["id"]] = entry
 
     def ask(self, context, question):
+        """The reader's answer; an empty one is asked again, up to RETRIES times, and never cached, so a
+        transient empty reply is no permanent miss (the question scores a miss in this run only)."""
         key = cache_key(self.model, context, question)
         if key in self.cache:
             return self.cache[key]["answer"]
@@ -121,15 +137,31 @@ class Reader:
                                          data=json.dumps(body).encode("utf-8"),
                                          headers={"Authorization": "Bearer " + os.environ["OPENROUTER_API_KEY"],
                                                   "Content-Type": "application/json"})
-        data = post_with_backoff(request)
-        answer = data["choices"][0]["message"].get("content") or ""
-        with self.lock:
-            self.cost += data.get("usage", {}).get("cost", 0.0)
-            entry = {"id": key, "answer": answer}
-            self.cache[key] = entry
-            with open(self.cache_path, "a", encoding="utf-8") as f:
-                f.write(json.dumps(entry) + "\n")
-        return answer
+        for _ in range(RETRIES):
+            data = post_with_backoff(request)
+            answer = content_of(data)
+            with self.lock:
+                # the paid answer is cached before its cost is booked
+                if answer.strip():
+                    entry = {"id": key, "answer": answer}
+                    self.cache[key] = entry
+                    with open(self.cache_path, "a", encoding="utf-8") as f:
+                        f.write(json.dumps(entry) + "\n")
+                self.cost += cost_of(data)
+            if answer.strip():
+                return answer
+        return ""
+
+
+def content_of(data):
+    """The text of an answer's first choice; "" when it has none."""
+    choices = data.get("choices") or [{}]
+    return (choices[0].get("message") or {}).get("content") or ""
+
+
+def cost_of(data):
+    """What OpenRouter booked for an answer; 0 when it sent no usage or no cost ("usage": null)."""
+    return (data.get("usage") or {}).get("cost") or 0.0
 
 
 def cache_key(model, context, question):
@@ -139,8 +171,9 @@ def cache_key(model, context, question):
 
 
 def post_with_backoff(request, sleep=time.sleep):
-    """The JSON answer of a request; a 429, a 5xx or a broken connection is retried after 2, 4 and 8
-    seconds, another HTTP error and an error object in the answer fail at once."""
+    """The JSON answer of a request; a 429, a 5xx, a broken connection and a 200 whose body is no JSON
+    or is cut off are retried after 2, 4 and 8 seconds, another HTTP error and an error object in the
+    answer fail at once."""
     for attempt in range(RETRIES):
         try:
             with urllib.request.urlopen(request, timeout=180) as response:
@@ -148,7 +181,8 @@ def post_with_backoff(request, sleep=time.sleep):
         except urllib.error.HTTPError as e:
             if (e.code != 429 and e.code < 500) or attempt == RETRIES - 1:
                 raise
-        except OSError:
+        except (OSError, ValueError, http.client.HTTPException):
+            # ValueError: no JSON (a proxy's HTML page, a cut-off body); HTTPException: IncompleteRead
             if attempt == RETRIES - 1:
                 raise
         else:
@@ -167,7 +201,8 @@ def reader_rank(answer, files):
         named = re.findall(r"[\w./-]+\.\w+", answer)
     ranked = []
     for path in named:
-        path = str(path).strip().lstrip("./")
+        path = str(path).strip()
+        path = path[2:] if path.startswith("./") else path
         if path in files and path not in ranked:
             ranked.append(path)
     return ranked
@@ -193,20 +228,32 @@ def metrics(ranks):
             "mrr": round(sum(1 / r for r in ranks if r) / n, 3)}
 
 
+def refuse_replacing_the_cards_scores(parser, args):
+    """The card's scores/ holds both retrievers over the card's runs: --no-reader would replace every
+    reader result there with null, another --out the card's runs with other ones."""
+    if Path(args.scores).resolve() != DEFAULT_SCORES.resolve():
+        return
+    if args.no_reader or Path(args.out).resolve() != DEFAULT_OUT.resolve():
+        parser.error("--no-reader or another --out needs a --scores directory of its own, e.g. --scores "
+                     "search-scores (the card's scores/ holds search.json and search.tsv of the card's runs "
+                     "with the reader)")
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--work", required=True)
-    parser.add_argument("--out", default=str(HERE.parent / "outputs-2026-10"))
-    parser.add_argument("--scores", default=str(HERE / "scores"))
+    parser.add_argument("--out", default=str(DEFAULT_OUT))
+    parser.add_argument("--scores", default=str(DEFAULT_SCORES))
     parser.add_argument("--reader", default=READER)
     parser.add_argument("--no-reader", action="store_true")
     parser.add_argument("--cache", default=str(HERE / "search-cache.jsonl"))
     parser.add_argument("--threads", type=int, default=6)
     args = parser.parse_args()
+    refuse_replacing_the_cards_scores(parser, args)
 
     work, out = Path(args.work), Path(args.out)
     questions = json.loads((HERE / "search-questions.json").read_text(encoding="utf-8"))["questions"]
-    files = sorted(p.relative_to(work).as_posix() for p in work.rglob("*") if p.is_file() and p.suffix in EXTENSIONS)
+    files = corpus_files(work)
     for q in questions:
         missing = [a for a in q["answer"] if a not in files]
         assert not missing, f"{q['id']}: {missing} not in the corpus"

@@ -1,0 +1,23 @@
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# BPMN 2.0 counters (.bpmn, .bpmn20.xml of Camunda 7 and 8, Flowable, Activiti, jBPM; DMN has dmn-facts):
+# the counters of xml-facts, its [ignore] line included, then a second [ignore] line that blanks the
+# diagram interchange (BPMNDiagram: shapes, edges, waypoints), which is layout, not logic, and
+# one counter per process element, with or without a namespace prefix. "tasks" counts every task type;
+# "Java delegate bindings" a class, delegateExpression or expression attribute of Camunda, Flowable or
+# Activiti. A diagram section that is never closed runs to the end of the file.
+# EnterpriseXmlFactPatternsTest pins every case; ProfileFactPatternsLinearityTest measures that every
+# pattern reads linearly.
+[include]	xml-facts
+[ignore] the diagram interchange	(?s)<(?:[\w.-]+:)?BPMNDiagram\b(?:.*?</(?:[\w.-]+:)?BPMNDiagram>|.*+)
+processes	<(?:[\w.-]+:)?process[ \t\r\n/>]
+tasks	<(?:[\w.-]+:)?(?:task|serviceTask|userTask|scriptTask|sendTask|receiveTask|manualTask|businessRuleTask)[ \t\r\n/>]
+call activities and sub-processes	<(?:[\w.-]+:)?(?:callActivity|subProcess|transaction|adHocSubProcess)[ \t\r\n/>]
+gateways	<(?:[\w.-]+:)?(?:exclusive|inclusive|parallel|eventBased|complex)Gateway[ \t\r\n/>]
+events	<(?:[\w.-]+:)?(?:start|end|boundary|intermediateCatch|intermediateThrow)Event[ \t\r\n/>]
+sequence flows	<(?:[\w.-]+:)?sequenceFlow[ \t\r\n/>]
+messages, signals, errors and escalations (named)	<(?:[\w.-]+:)?(?:message|signal|error|escalation)[ \t\r\n][^<>]*?\bname[ \t\r\n]*=
+Java delegate bindings	\b(?:camunda|flowable|activiti):(?:class|delegateExpression|expression)[ \t\r\n]*=
+external task topics, job types and work items	\b(?:camunda|flowable):topic[ \t\r\n]*=|<zeebe:taskDefinition\b|\bdrools:taskName[ \t\r\n]*=

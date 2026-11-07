@@ -34,13 +34,18 @@ public class AtomicCounterLincheckTest {
         return counter.get();
     }
 
+    // <editor-fold defaultstate="collapsed" desc="linearizability">
     @Test
-    public void modelCheckingTest() {
+    public void linearizability_modelCheckingIncrementAndGet_noExceptionThrown() {
+        // arrange
         ModelCheckingOptions options = new ModelCheckingOptions()
                 .iterations(20)
                 .invocationsPerIteration(500)
                 .threads(2)
                 .actorsPerThread(3);
+
+        // act, assert
         LinChecker.check(AtomicCounterLincheckTest.class, options);
     }
+    // </editor-fold>
 }

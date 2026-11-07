@@ -3,8 +3,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * Maven plugin that generates {@code .ai.md} index files alongside Java source
- * trees via llama.cpp.
+ * The srcmorph Maven plugin: its goals run the core's phases (generate,
+ * aggregate-packages, aggregate-project, calibrate, check) inside a build, configured
+ * by the same file as the CLI.
  *
  * <p>JSpecify {@code @NullMarked} is declared at module level in
  * {@code module-info.java} and applies transitively to every package:

@@ -418,16 +418,36 @@ jobs:
           work-dir: examples
           marker: 'Main#run end\.'
           args: config_Plan.json
-      # The same run, asserting what it planned: the one file of the demo tree examples/src/main/java,
-      # so a launch that finds no sources (a wrong base directory, a lost subtree) fails here.
-      - name: Run the jar and count the planned files
+      # The same run from the repository root, asserting what it planned: the one file of the demo
+      # tree examples/src/main/java. The file's relative paths resolve against its own directory, not
+      # the working directory, so a launch that resolves them anywhere else (a wrong base directory,
+      # a lost subtree) fails here; run from examples/, the two would be the same directory.
+      - name: Run the jar from the root and count the planned files
         uses: bernardladenthin/actions/java/smoke-fatjar-cli@44390bd464395f560f4170d2c4bfb7a6348541b3 # v1.1.0
         with:
           jar-dir: smoke-jars
           jar-glob: 'srcmorph.jar'
-          work-dir: examples
+          work-dir: .
           marker: '\*\*Total:\*\* 1 file\(s\) across 1 model\(s\)'
-          args: config_Plan.json
+          args: examples/config_Plan.json
+      # The same plan on the module path, as a JPMS consumer runs the CLI: the module-info.java of the
+      # core and the CLI (what the core exports, and to whom; what the CLI opens to Jackson) is read
+      # only here; every other job and test runs on the classpath. The module path takes modules only: no pom entry, and none of llama's natives
+      # jars, which are no modules either (Plan with the mock provider loads none).
+      - name: Run the CLI on the module path
+        run: |
+          set -euo pipefail
+          version=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version | tail -n1)
+          mvn --batch-mode --no-transfer-progress -q -pl srcmorph-cli dependency:build-classpath \
+            -DincludeScope=runtime -Dmdep.outputFile="$PWD/module-path.txt"
+          modules=$(tr ':' '\n' < module-path.txt | grep -v '\.pom$' | grep -vE '/llama-[0-9][^/-]*-[^/]*\.jar$' | paste -sd:)
+          echo "$modules" | tr ':' '\n'
+          cd examples
+          java -p "$GITHUB_WORKSPACE/srcmorph-cli/target/srcmorph-cli-$version.jar:$modules" \
+            -m net.ladenthin.srcmorph.cli/net.ladenthin.srcmorph.cli.Main config_Plan.json \
+            > "$GITHUB_WORKSPACE/module-path-out.log" 2>&1
+          grep -q 'Main#run end\.' "$GITHUB_WORKSPACE/module-path-out.log"
+          grep -qE '\*\*Total:\*\* 1 file\(s\) across 1 model\(s\)' "$GITHUB_WORKSPACE/module-path-out.log"
       - name: Upload smoke logs
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
@@ -436,13 +456,14 @@ jobs:
           path: |
             smoke-out.log
             smoke-err.log
+            module-path-out.log
           if-no-files-found: warn
 
   # ---------------------------------------------------------------------------
   # Plugin integration test -- the only job that runs srcmorph-maven-plugin AS A PLUGIN.
   #
   # Every other check on that module calls Java methods directly (PluginArchitectureTest,
-  # AbstractAiIndexMojoTest, MojoGoalTest, MojoPhaseSkipTest, PIT at 62/62), so nothing covers what
+  # AbstractSrcMorphMojoTest, MojoGoalTest, MojoPhaseSkipTest, PIT at 79/79), so nothing covers what
   # only Maven does: injecting the srcmorph.* properties and ${project.*} values into the @Parameter
   # fields, goal-prefix resolution, lifecycle-phase binding, and the descriptor maven-plugin-plugin
   # generates. A renamed @Parameter property shipped green before this job.
@@ -496,6 +517,43 @@ jobs:
             .github/plugin-it/target/logs/
             .github/plugin-it/target/ai/
           if-no-files-found: warn
+
+  # ---------------------------------------------------------------------------
+  # The fact counters' time limit (support.ReadBudget) counts the charAt calls of java.util.regex,
+  # and the regex engine differs between JDKs: ProfileFactPatternsLinearityTest measures every pattern
+  # of the profile on the JDK of the build, this job the same measure (FactPatternLinearity, written in
+  # Java 8 and without JUnit) on Java 8, the oldest JDK srcmorph runs on. The test sources are Java 21,
+  # so the one class is compiled on its own with --release 8 against the core's classes.
+  # ---------------------------------------------------------------------------
+  linearity-jdk8:
+    name: Fact counters linear on Java 8
+    needs: startgate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
+        with:
+          java-version-file: .java-version
+          distribution: temurin
+          cache: maven
+      - name: Compile the core and the measure for Java 8
+        run: |
+          set -euo pipefail
+          mvn --batch-mode --no-transfer-progress -pl srcmorph -am compile
+          mvn --batch-mode --no-transfer-progress -pl srcmorph dependency:build-classpath \
+            -DincludeScope=runtime -Dmdep.outputFile="$PWD/runtime.classpath"
+          javac --release 8 -Xlint:-options -cp srcmorph/target/classes -d linearity \
+            srcmorph/src/test/java/net/ladenthin/srcmorph/facts/FactPatternLinearity.java
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
+        with:
+          java-version: '8'
+          distribution: temurin
+      - name: Measure every fact counter of the profile on Java 8
+        run: |
+          set -euo pipefail
+          java -version
+          java -cp "linearity:srcmorph/target/classes:$(cat runtime.classpath)" \
+            net.ladenthin.srcmorph.facts.FactPatternLinearity profiles/v3
 
   report:
     name: Report
@@ -574,6 +632,7 @@ jobs:
       - code-style
       - smoke-jar
       - plugin-it
+      - linearity-jdk8
       - repository-checks
       - vmlens
     if: needs.check-snapshot.result == 'success' && inputs.publish_to_central
@@ -648,6 +707,7 @@ jobs:
       - code-style
       - smoke-jar
       - plugin-it
+      - linearity-jdk8
       - repository-checks
       - vmlens
     if: needs.check-tag.result == 'success' && inputs.publish_to_central

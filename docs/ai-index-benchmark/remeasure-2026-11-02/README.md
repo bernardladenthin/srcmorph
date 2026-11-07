@@ -42,11 +42,14 @@ mean of other-file recall and format.
 |---|---|---|---|---|---|
 | gpt-oss-20b, language corpus | 98.9 / 99.3 / 99.0 % | 99.1 % | – | 3.1 to 4.5 | 0.001 to 0.002 |
 | GPT-6 Luna, language corpus | 100 / 99.3 / 99.3 % | 99.5 % | – | 6.7 to 7.2 | 0.006 to 0.008 |
-| gpt-oss-20b, card corpus | 100 / 99.7 / 100 % | 99.9 % | 93 / 95 / 95 % | 5.3 to 5.6 | 0.002 to 0.003 |
-| GPT-6 Luna, card corpus | 100 / 100 / 100 % | 100 % | 86 / 91 / 86 % | 6.8 to 7.5 | 0.016 to 0.025 |
+| gpt-oss-20b, card corpus | 100 / 99.7 / 100 % | 99.9 % | 95 / 95 / 100 % | 5.3 to 5.6 | 0.002 to 0.003 |
+| GPT-6 Luna, card corpus | 100 / 100 / 100 % | 100 % | 91 / 91 / 88 % | 6.8 to 7.5 | 0.016 to 0.025 |
 | gpt-oss-20b, large corpus | 59.7 / 69.1 / 96.9 % | 75.2 % | – | 30 to 55 | 0.004 to 0.019 |
 | gpt-oss-20b, large corpus, 16384 output tokens | 39.7 / 66.0 / 47.2 % | 51.0 % | – | – | – |
 | GPT-6 Luna, large corpus | 100 / 96.9 / 100 % | 99.0 % | – | 27 to 31 | 0.05 to 0.20 |
+
+The reader's hit@1 is that of the re-run of 2026-11-07, which reads a summary without the facts and
+coverage lines (published: gpt-oss-20b 93 / 95 / 95 %, GPT-6 Luna 86 / 91 / 86 %).
 
 - **The small corpora stay at the ceiling** for both models, with no failed summary and a clean
   format.

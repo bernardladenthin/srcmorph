@@ -1,0 +1,18 @@
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# Jakarta Faces (JSF) Facelets counters (.xhtml views and composite components), for a rule with
+# the prompt file-body-view: the counters of xml-facts, its [ignore] line included, then the view's
+# own. "input fields" counts the input, select, textarea, password and checkbox components, not the
+# f:selectItem and f:selectItems options inside a select. "EL method bindings" counts an action, actionListener, listener or valueChangeListener
+# attribute bound to a #{} expression, the calls a view makes into its beans; "templates and
+# includes" every ui:composition, ui:decorate, ui:include and ui:insert. ViewFactPatternsTest pins
+# every case; ProfileFactPatternsLinearityTest measures that every pattern reads linearly.
+[include]	xml-facts
+EL expressions	[$#]\{
+forms	<(?:[A-Za-z][\w-]*+:)?form[ \t\r\n>]
+input fields	<(?:[A-Za-z][\w-]*+:)?(?:input\w*+|select(?!Items?\b)\w*+|textarea|password|checkbox)[ \t\r\n/>]
+EL method bindings	\b(?:action|actionListener|listener|valueChangeListener)[ \t\r\n]*+=[ \t\r\n]*+["']#\{
+templates and includes	<ui:(?:composition|decorate|include|insert)\b
+composite component interfaces	<(?:cc|composite):interface\b

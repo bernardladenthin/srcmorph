@@ -168,7 +168,7 @@ mvn -o prepare-package -P ai-index-selftest -DskipTests \
 
 Speed (exact prefill/decode tok/s) via a standalone calibrate POM parameterized by
 `bench.model` / `bench.ctx` / `bench.ngl` / `bench.temp` / `bench.effort`, run with
-`mvn ai-index:calibrate -f <pom>`; GPU adds `-Dbench.ngl=<N>
+`mvn ai-index:calibrate -f <pom>` (the plugin of then, `llamacpp-ai-index-maven-plugin` 1.0.x; today the goal is `srcmorph:calibrate`); GPU adds `-Dbench.ngl=<N>
 -Dllama.classifier=cuda13-windows-x86-64` with the CUDA toolkit on `PATH`. The `EXP-Granite-4.0-H-Small`
 `<aiDefinition>` lives in the `ai-index-selftest` profile in `pom.xml`.
 

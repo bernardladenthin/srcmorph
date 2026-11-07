@@ -1,0 +1,33 @@
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# Dockerfile and Containerfile counters, for a rule with the prompt file-body-ops: one per line,
+# label TAB pattern (Java regex). The [ignore] line blanks comment lines (a # at the start of a line,
+# after blanks; a parser directive such as "# syntax=" is a comment too), the body of a BuildKit
+# heredoc (RUN <<EOF, COPY <<-"CONF" /etc/app.conf: the rest of the instruction's line and every line
+# up to the one that holds only the marker, that line too; never closed, it runs to the end of the
+# file) and the lines a backslash at the end of a line continues, with the comment and empty lines
+# among them, as Docker reads them. A heredoc opens only at a word that starts with << (after a
+# blank; not <<<) of a RUN, COPY or ADD instruction, on its line (within its first 1,000
+# characters) or on a line it continues, so a shift (1<<x) or a << in a LABEL or ENV value opens
+# none, and only outside quotes: the rest of its line must pair its quotes, so the <<file of
+# RUN echo "usage: cmd <<file>" opens nothing (on a line a RUN continues, a heredoc after a quoted
+# << on that line is not seen).
+# A second heredoc on the opener line (COPY <<robots.txt <<humans.txt /dst/) is blanked after the
+# first one's body, up to its own marker; a third one on that line is not seen, its body counts.
+# An instruction counts at the start of a line, in any case, so a
+# word in a RUN command continued over lines or in a heredoc does not, not even an env or a from that
+# starts a continued line.
+# "build stages" counts every FROM; "environment entries" an ENV or ARG instruction, not each name
+# of one. OpsFactPatternsTest pins every case; ProfileFactPatternsLinearityTest measures that
+# every pattern reads linearly.
+[ignore] comments and continued lines	(?m)^[ \t]*#[^\n]*+|<<(?=-?["']?[A-Za-z_])(?<=[ \t]<<)(?<=^[ \t]{0,64}(?i:RUN|COPY|ADD)(?:[ \t][^\n]{0,1000})?[ \t]<<)-?(["']?)([A-Za-z_][\w.-]*+)\1(?=(?:[^"'\n<]++|"[^"\n]*+"|'[^'\n]*+'|<(?:(?<![ \t]<)|(?!<-?["']?[A-Za-z_])))*+(?:<<-?(["']?)([A-Za-z_][\w.-]*+)\3()(?:[^"'\n]++|"[^"\n]*+"|'[^'\n]*+')*+)?(?:\n|\z))[^\n]*+(?:\n(?![ \t]*+\2[ \t]*+(?:\r?\n|\z))[^\n]*+)*+(?:\n[ \t]*+\2[ \t]*+(?=\r?\n|\z))?(?:\5(?:\n(?![ \t]*+\4[ \t]*+(?:\r?\n|\z))[^\n]*+)*+(?:\n[ \t]*+\4[ \t]*+(?=\r?\n|\z))?)?|\\(?=[ \t\r]*+\n)(?<=^[ \t]{0,64}(?i:RUN|COPY|ADD)[ \t][^\n]{0,1000}\\)[ \t\r]*+\n(?:[ \t]*+(?:#[^\n]*+)?\r?\n|(?:(?!(?:(?<=\n)|[ \t])<<-?["']?[A-Za-z_])[^\n\\]|\\(?![ \t\r]*+\n))*+\\[ \t\r]*+\n)*+(?:(?!(?:(?<=\n)|[ \t])<<-?["']?[A-Za-z_])[^\n\\]|\\(?![ \t\r]*+\n))*+(?:[ \t]?+<<-?(["']?)([A-Za-z_][\w.-]*+)\6(?=(?:[^"'\n<]++|"[^"\n]*+"|'[^'\n]*+'|<(?:(?<![ \t]<)|(?!<-?["']?[A-Za-z_])))*+(?:<<-?(["']?)([A-Za-z_][\w.-]*+)\8()(?:[^"'\n]++|"[^"\n]*+"|'[^'\n]*+')*+)?(?:\n|\z))[^\n]*+(?:\n(?![ \t]*+\7[ \t]*+(?:\r?\n|\z))[^\n]*+)*+(?:\n[ \t]*+\7[ \t]*+(?=\r?\n|\z))?(?:\10(?:\n(?![ \t]*+\9[ \t]*+(?:\r?\n|\z))[^\n]*+)*+(?:\n[ \t]*+\9[ \t]*+(?=\r?\n|\z))?)?|(?:[^\n\\]|\\(?![ \t\r]*+\n))*+)|\\[ \t\r]*+\n(?:[ \t]*+(?:#[^\n]*+)?\r?\n|(?:[^\n\\]|\\(?![ \t\r]*+\n))*+\\[ \t\r]*+\n)*+[^\n]*+
+build stages	(?im)^[ \t]*FROM[ \t]
+RUN instructions	(?im)^[ \t]*RUN[ \t]
+COPY and ADD instructions	(?im)^[ \t]*(?:COPY|ADD)[ \t]
+environment entries	(?im)^[ \t]*(?:ENV|ARG)[ \t]
+exposed ports	(?im)^[ \t]*EXPOSE[ \t]
+users	(?im)^[ \t]*USER[ \t]
+entrypoints and commands	(?im)^[ \t]*(?:ENTRYPOINT|CMD)[ \t]
+healthchecks	(?im)^[ \t]*HEALTHCHECK[ \t]

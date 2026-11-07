@@ -92,9 +92,9 @@ public class AiMdDocumentCodecTest {
     }
     // </editor-fold>
 
-    // <editor-fold defaultstate="collapsed" desc="roundtrip">
+    // <editor-fold defaultstate="collapsed" desc="write: roundtrip">
     @Test
-    public void write_read_documentRoundtripsCorrectly() {
+    public void write_documentReadBack_roundtripsCorrectly() {
         // arrange
         final AiMdHeader originalHeader = new AiMdHeader(
                 "MyClass.java",
@@ -118,7 +118,9 @@ public class AiMdDocumentCodecTest {
         // Note: read adds trailing newline to body
         assertThat(decoded.body(), is(equalTo(original.body() + "\n")));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="read: separator">
     @Test
     public void read_documentWithSeparator_separatorNotIncludedInBody() {
         // arrange
@@ -168,9 +170,9 @@ public class AiMdDocumentCodecTest {
     }
     // </editor-fold>
 
-    // <editor-fold defaultstate="collapsed" desc="edge cases">
+    // <editor-fold defaultstate="collapsed" desc="write: edge cases">
     @Test
-    public void write_read_documentWithBlankLines_preservesContent() {
+    public void write_documentWithBlankLinesReadBack_preservesContent() {
         // arrange
         final AiMdHeader header = new AiMdHeader(
                 "Test.java",
@@ -192,7 +194,9 @@ public class AiMdDocumentCodecTest {
         // Note: read adds trailing newline to body
         assertThat(decoded.body(), is(equalTo(original.body() + "\n")));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="read: edge cases">
     @Test
     public void read_documentWithEmptyBody_parsesCorrectly() {
         // arrange
@@ -238,7 +242,7 @@ public class AiMdDocumentCodecTest {
     }
     // </editor-fold>
 
-    // <editor-fold defaultstate="collapsed" desc="header/body boundary and trailing newline">
+    // <editor-fold defaultstate="collapsed" desc="read: header/body boundary">
 
     /**
      * A body that starts immediately after the header block, with no blank separator line, must keep
@@ -277,6 +281,9 @@ public class AiMdDocumentCodecTest {
         // assert
         assertThat(document.body(), is(equalTo("First body line.\n")));
     }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="write: trailing newline">
 
     /** A body without a trailing newline gets exactly one appended, so files end cleanly. */
     @Test

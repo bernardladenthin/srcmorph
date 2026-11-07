@@ -18,7 +18,7 @@
         "threads": 2
       }
     ],
-    "fieldGenerations": [
+    "rules": [
       {
         "promptKey": "file-body",
         "aiDefinitionKey": "mock-model",

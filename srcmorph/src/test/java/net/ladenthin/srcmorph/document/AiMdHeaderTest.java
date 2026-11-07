@@ -30,7 +30,7 @@ public class AiMdHeaderTest {
 
     // <editor-fold defaultstate="collapsed" desc="children: canonical constructor">
     @Test
-    public void canonicalConstructor_storesChildrenInOrder() {
+    public void constructor_canonicalWithChildren_storesChildrenInOrder() {
         // act
         final AiMdHeader header =
                 headerWithChildren(Arrays.asList("[Foo.java](Foo.java.ai.md)", "[sub/](sub/package.ai.md)"));
@@ -42,13 +42,13 @@ public class AiMdHeaderTest {
     }
 
     @Test
-    public void canonicalConstructor_nullChildren_throws() {
-        // act + assert
+    public void constructor_canonicalNullChildren_throws() {
+        // act, assert
         assertThrows(NullPointerException.class, () -> headerWithChildren(null));
     }
 
     @Test
-    public void canonicalConstructor_defensivelyCopiesSourceList() {
+    public void constructor_canonicalSourceListMutatedAfterwards_keepsDefensiveCopy() {
         // arrange: a mutable source list passed into the header
         final List<String> source = new ArrayList<>();
         source.add("[Foo.java](Foo.java.ai.md)");
@@ -60,21 +60,23 @@ public class AiMdHeaderTest {
         // assert
         assertThat(header.children(), is(equalTo(Arrays.asList("[Foo.java](Foo.java.ai.md)"))));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="children">
     @Test
-    public void children_returnedListIsUnmodifiable() {
+    public void children_addToReturnedList_throwsException() {
         // arrange
         final AiMdHeader header = headerWithChildren(Arrays.asList("[Foo.java](Foo.java.ai.md)"));
+        final List<String> children = header.children();
 
-        // act + assert
-        assertThrows(
-                UnsupportedOperationException.class, () -> header.children().add("[Bar.java](Bar.java.ai.md)"));
+        // act, assert
+        assertThrows(UnsupportedOperationException.class, () -> children.add("[Bar.java](Bar.java.ai.md)"));
     }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="children: convenience constructor">
     @Test
-    public void convenienceConstructor_hasEmptyChildren() {
+    public void constructor_convenienceEightArgs_hasEmptyChildren() {
         // act: the 8-arg constructor used by file nodes
         final AiMdHeader header = new AiMdHeader(
                 "Foo.java",

@@ -15,16 +15,17 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import lombok.ToString;
-import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
-import net.ladenthin.srcmorph.config.AiGenerationConfig;
-import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
+import net.ladenthin.srcmorph.config.ModelDefinition;
+import net.ladenthin.srcmorph.config.ModelRegistry;
+import net.ladenthin.srcmorph.config.RoutingRule;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
-import net.ladenthin.srcmorph.indexer.AiCalibrationMeasurement;
-import net.ladenthin.srcmorph.indexer.AiCalibrationRunner;
-import net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport;
-import net.ladenthin.srcmorph.prompt.AiPromptSupport;
-import net.ladenthin.srcmorph.provider.AiGenerationProvider;
-import net.ladenthin.srcmorph.provider.AiGenerationProviderFactory;
+import net.ladenthin.srcmorph.indexer.CalibrationMeasurement;
+import net.ladenthin.srcmorph.indexer.CalibrationRunner;
+import net.ladenthin.srcmorph.prompt.PromptCatalog;
+import net.ladenthin.srcmorph.prompt.PromptPreparer;
+import net.ladenthin.srcmorph.provider.GenerationProvider;
+import net.ladenthin.srcmorph.provider.GenerationProviderFactory;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,11 +35,11 @@ import org.slf4j.LoggerFactory;
  *
  * <p>Extracted from what was {@code CalibrateMojo.execute()} in the {@code llamacpp-ai-index-maven-plugin}
  * module. For each distinct model a {@link GenerateEngine} run would load (the {@code aiDefinitionKey}s
- * referenced by {@link SrcMorphConfiguration#getFieldGenerations()}), loads the model once (catching a
+ * referenced by {@link SrcMorphConfiguration#getRules()}), loads the model once (catching a
  * bad path / OOM / wrong native early), runs a couple of representative generations via
- * {@link AiCalibrationRunner}, and reads the model's own measured prefill/decode throughput. The caller
+ * {@link CalibrationRunner}, and reads the model's own measured prefill/decode throughput. The caller
  * pastes {@link CalibrationReport#renderPasteBlock()} into the model's entry under {@code aiDefinitions} so the plan's time
- * estimate reflects <em>this</em> machine instead of the built-in reference-CPU coefficients.</p>
+ * estimate reflects <em>this</em> machine instead of the built-in estimate, which is based on GPT-6 Luna.</p>
  */
 @ToString
 public final class CalibrateEngine {
@@ -46,7 +47,7 @@ public final class CalibrateEngine {
     private static final Logger LOGGER = LoggerFactory.getLogger(CalibrateEngine.class);
 
     private final SrcMorphConfiguration config;
-    private final AiCalibrationRunner calibrationRunner = new AiCalibrationRunner();
+    private final CalibrationRunner calibrationRunner = new CalibrationRunner();
 
     /**
      * Creates a new {@link CalibrateEngine} for the given run configuration.
@@ -66,34 +67,37 @@ public final class CalibrateEngine {
      *                            with the failing model's key)
      */
     public CalibrationReport execute() throws SrcMorphException {
-        final List<AiFieldGenerationConfig> fieldGenerations = config.getFieldGenerations();
-        if (fieldGenerations == null || fieldGenerations.isEmpty()) {
-            throw new SrcMorphException("No fieldGenerations configured (srcMorph.fieldGenerations of the"
-                    + " configuration file); nothing to calibrate.");
+        final List<? extends @Nullable RoutingRule> rules = config.getRules();
+        if (rules == null || rules.isEmpty()) {
+            throw new SrcMorphException(
+                    "No rules configured (srcMorph.rules of the" + " configuration file); nothing to calibrate.");
         }
 
-        final AiPromptSupport promptSupport = EngineSupport.buildPromptSupport(
-                config.getPromptDefinitions(), config.getProfileDirectory(), config.getFieldGenerations());
-        final AiModelDefinitionSupport modelDefinitionSupport =
+        final PromptCatalog promptSupport = EngineSupport.buildPromptSupport(
+                config.getPromptDefinitions(), config.getProfileDirectory(), config.getRules());
+        final ModelRegistry modelDefinitionSupport =
                 EngineSupport.buildAiModelDefinitionSupport(config.getAiDefinitions(), config.getModelDirectory());
-        final AiPromptPreparationSupport promptPreparationSupport = new AiPromptPreparationSupport(promptSupport);
-        final AiGenerationProviderFactory providerFactory = new AiGenerationProviderFactory();
+        final PromptPreparer promptPreparationSupport = new PromptPreparer(promptSupport);
+        final GenerationProviderFactory providerFactory = new GenerationProviderFactory();
 
         // Distinct routed models, each mapped to a representative prompt key (skip rules have none).
         final Map<String, String> modelToPrompt = new LinkedHashMap<>();
-        for (final AiFieldGenerationConfig rule : fieldGenerations) {
-            if (rule == null || rule.getAiDefinitionKey() == null || rule.getPromptKey() == null) {
+        for (final @Nullable RoutingRule rule : rules) {
+            if (rule == null) {
                 continue;
             }
-            modelToPrompt.putIfAbsent(rule.getAiDefinitionKey(), rule.getPromptKey());
+            final String model = rule.getAiDefinitionKey();
+            final String prompt = rule.getPromptKey();
+            if (model != null && prompt != null) {
+                modelToPrompt.putIfAbsent(model, prompt);
+            }
         }
         if (modelToPrompt.isEmpty()) {
             throw new SrcMorphException("No routable (model + prompt) rule found to calibrate.");
         }
 
         // Same fail-fast check as the generate goal: calibrate loads every routed model in turn.
-        EngineSupport.validateRoutedModelPaths(
-                config.getGenerationProvider(), modelDefinitionSupport, fieldGenerations);
+        EngineSupport.validateRoutedModelPaths(config.getGenerationProvider(), modelDefinitionSupport, rules);
 
         LOGGER.info(
                 "AI index calibration: {} model(s). Provider: {}",
@@ -157,7 +161,7 @@ public final class CalibrateEngine {
     }
 
     /**
-     * Loads one model, measures it via {@link AiCalibrationRunner}, and logs the result.
+     * Loads one model, measures it via {@link CalibrationRunner}, and logs the result.
      *
      * @param modelKey                 the aiDefinitionKey to calibrate
      * @param promptKey                a representative prompt key routed to this model
@@ -171,21 +175,21 @@ public final class CalibrateEngine {
     private CalibrationReport.ModelMeasurement calibrateModel(
             final String modelKey,
             final String promptKey,
-            final AiModelDefinitionSupport modelDefinitionSupport,
-            final AiPromptSupport promptSupport,
-            final AiPromptPreparationSupport promptPreparationSupport,
-            final AiGenerationProviderFactory providerFactory)
+            final ModelRegistry modelDefinitionSupport,
+            final PromptCatalog promptSupport,
+            final PromptPreparer promptPreparationSupport,
+            final GenerationProviderFactory providerFactory)
             throws SrcMorphException {
-        final AiGenerationConfig modelConfig = modelDefinitionSupport.getConfig(modelKey);
+        final ModelDefinition modelConfig = modelDefinitionSupport.definition(modelKey);
         final long windowChars = calibrationRunner.windowChars(modelConfig, promptKey, promptPreparationSupport);
 
         LOGGER.info("");
         LOGGER.info("Model '{}': loading (window ~{} source chars)...", modelKey, windowChars);
-        try (AiGenerationProvider provider = providerFactory.create(
+        try (GenerationProvider provider = providerFactory.create(
                 config.getGenerationProvider(),
-                EngineSupport.resolveLlamaCppJniConfig(modelDefinitionSupport, modelKey),
+                EngineSupport.resolveProviderConfig(modelDefinitionSupport, modelKey),
                 promptSupport)) {
-            final AiCalibrationMeasurement m =
+            final CalibrationMeasurement m =
                     calibrationRunner.measure(provider, modelConfig, promptKey, promptPreparationSupport);
 
             LOGGER.info(String.format(

@@ -3,15 +3,28 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.srcmorph;
 
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.fields;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.library.Architectures.layeredArchitecture;
 import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices;
 
+import com.tngtech.archunit.core.domain.JavaClass;
+import com.tngtech.archunit.core.domain.JavaCodeUnit;
+import com.tngtech.archunit.core.domain.JavaField;
+import com.tngtech.archunit.core.domain.JavaMember;
+import com.tngtech.archunit.core.domain.JavaModifier;
+import com.tngtech.archunit.core.domain.JavaType;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
+import com.tngtech.archunit.lang.ArchCondition;
 import com.tngtech.archunit.lang.ArchRule;
+import com.tngtech.archunit.lang.ConditionEvents;
+import com.tngtech.archunit.lang.SimpleConditionEvent;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Random;
 import org.slf4j.Logger;
 
@@ -85,28 +98,16 @@ public class CoreArchitectureTest {
             .allowEmptyShould(true);
 
     /**
-     * Strict layered architecture — <b>one layer per package</b>. Each package's
-     * {@code mayOnlyBeAccessedByLayers} lists the EXACT set of packages that reference it today
-     * (verified against the compiled bytecode graph), so even intra-tier edges are governed
-     * (e.g. {@code provider} may use {@code document}+{@code prompt} but {@code document} and
-     * {@code prompt} may not use each other beyond what is listed). A new dependency between any
-     * two packages fails the build unless this rule is updated to intend it. Mirrors the pre-
-     * extraction {@code PluginArchitectureTest} layering with the {@code Mojo} layer removed (the
-     * mojo package lives in the sibling plugin module and is outside this test's analyzed
-     * classes; consideringOnlyDependenciesInLayers() means its former accesses to Indexer/
-     * Provider/Prompt/Config/Support are simply not part of this in-module rule anymore) — and with
-     * a new {@code Engine} layer on top, added for the per-phase orchestration engines (migration
-     * step 5): {@code engine} depends on {@code indexer} (the file/package/project indexers),
-     * {@code provider} (constructing/closing an {@code AiGenerationProvider} directly),
-     * {@code prompt} ({@code AiPromptSupport}/{@code AiPromptPreparationSupport}), {@code config}
-     * (the shared {@code SrcMorphConfiguration} plus the routing/model-lookup types), and
-     * {@code support} (the progress bar / time estimator / Java 8 compatibility helpers). The new
-     * {@code provider.LlamaCppJniConfigFactory} also introduced a {@code Provider -> Config} edge
-     * (it maps a {@code config.AiGenerationConfig} to a {@code provider.LlamaCppJniConfig}), and the
-     * new root {@code config.SrcMorphConfiguration} introduced a {@code Config -> Prompt} edge (it
-     * holds a {@code List<prompt.AiPromptDefinition>}). Conceptual tiers: {@code Engine} &gt;
-     * {@code Indexer} &gt; {@code Provider} &gt; {@code Document}/{@code Prompt} &gt;
-     * {@code Config}/{@code Support}.
+     * Strict layered architecture, <b>one layer per package</b> ({@code indexer} with its
+     * {@code generation} sub-package). Each layer's {@code mayOnlyBeAccessedByLayers} lists the exact
+     * set of layers that reference it today (checked against the compiled bytecode), so a new
+     * dependency between two packages fails the build unless this rule is updated to intend it. The
+     * mojo package lives in the plugin module and is outside this test's analyzed classes. Tiers:
+     * {@code engine} &gt; {@code indexer} &gt; {@code provider}, {@code document}, {@code routing}
+     * &gt; {@code prompt} &gt; {@code facts} &gt; {@code config} &gt; {@code support}: the beans in
+     * {@code config} depend on nothing but {@code support}, the fact counters and the routing read
+     * the beans, a request ({@code prompt}) is what a provider answers, and the {@code .ai.md}
+     * header reads the facts line's marker.
      */
     @ArchTest
     static final ArchRule layeredArchitecture = layeredArchitecture()
@@ -119,8 +120,12 @@ public class CoreArchitectureTest {
             .definedBy("net.ladenthin.srcmorph.provider..")
             .layer("Document")
             .definedBy("net.ladenthin.srcmorph.document..")
+            .layer("Routing")
+            .definedBy("net.ladenthin.srcmorph.routing..")
             .layer("Prompt")
             .definedBy("net.ladenthin.srcmorph.prompt..")
+            .layer("Facts")
+            .definedBy("net.ladenthin.srcmorph.facts..")
             .layer("Config")
             .definedBy("net.ladenthin.srcmorph.config..")
             .layer("Support")
@@ -132,13 +137,134 @@ public class CoreArchitectureTest {
             .whereLayer("Provider")
             .mayOnlyBeAccessedByLayers("Indexer", "Engine")
             .whereLayer("Document")
-            .mayOnlyBeAccessedByLayers("Indexer", "Prompt", "Provider")
+            .mayOnlyBeAccessedByLayers("Indexer")
+            .whereLayer("Routing")
+            .mayOnlyBeAccessedByLayers("Indexer", "Engine")
             .whereLayer("Prompt")
-            .mayOnlyBeAccessedByLayers("Indexer", "Provider", "Engine", "Config")
+            .mayOnlyBeAccessedByLayers("Indexer", "Provider", "Engine")
+            .whereLayer("Facts")
+            .mayOnlyBeAccessedByLayers("Document", "Routing", "Indexer", "Engine")
             .whereLayer("Config")
-            .mayOnlyBeAccessedByLayers("Indexer", "Engine", "Provider")
+            .mayOnlyBeAccessedByLayers("Facts", "Routing", "Prompt", "Provider", "Indexer", "Engine")
             .whereLayer("Support")
-            .mayOnlyBeAccessedByLayers("Config", "Document", "Indexer", "Prompt", "Provider", "Engine");
+            .mayOnlyBeAccessedByLayers(
+                    "Config", "Facts", "Prompt", "Routing", "Document", "Provider", "Indexer", "Engine");
+
+    /** The root package of this library. */
+    private static final String ROOT_PACKAGE = "net.ladenthin.srcmorph.";
+
+    /**
+     * The packages {@code module-info.java} exports to every module: a module-path consumer sees only
+     * these ({@code support} goes to the CLI alone).
+     */
+    private static final List<String> EXPORTED_PACKAGES =
+            Arrays.asList("net.ladenthin.srcmorph.config", "net.ladenthin.srcmorph.engine");
+
+    /**
+     * The exported packages name no type of a package {@code module-info.java} does not export, in no
+     * public signature: a module-path consumer could not use that type. A type the engines need from
+     * {@code indexer} or {@code provider} gets a view of its own in {@code engine}.
+     */
+    @ArchTest
+    static final ArchRule exportedApiNamesNoInternalType = classes()
+            .that()
+            .resideInAnyPackage(EXPORTED_PACKAGES.toArray(new String[0]))
+            .should(nameNoInternalTypeInTheirApi());
+
+    /**
+     * Checks a class's public signature: its supertypes and every public or protected field,
+     * constructor and method (their types with their type arguments, and the exceptions they throw).
+     *
+     * @return the condition
+     */
+    private static ArchCondition<JavaClass> nameNoInternalTypeInTheirApi() {
+        return new ArchCondition<JavaClass>("name no type of a package module-info.java does not export") {
+            @Override
+            public void check(final JavaClass javaClass, final ConditionEvents events) {
+                if (!isApi(javaClass)) {
+                    return;
+                }
+                final List<JavaType> named = new ArrayList<>();
+                javaClass.getSuperclass().ifPresent(named::add);
+                named.addAll(javaClass.getInterfaces());
+                checkTypes(javaClass.getName(), named, events);
+                for (final JavaMember member : javaClass.getMembers()) {
+                    if (!isApi(member)) {
+                        continue;
+                    }
+                    final List<JavaType> types = new ArrayList<>();
+                    if (member instanceof JavaField) {
+                        types.add(((JavaField) member).getType());
+                    } else if (member instanceof JavaCodeUnit) {
+                        final JavaCodeUnit codeUnit = (JavaCodeUnit) member;
+                        types.add(codeUnit.getReturnType());
+                        types.addAll(codeUnit.getParameterTypes());
+                        types.addAll(codeUnit.getThrowsClause().getTypes());
+                    }
+                    checkTypes(member.getFullName(), types, events);
+                }
+            }
+        };
+    }
+
+    /**
+     * Reports every type of a package not exported that the given types involve.
+     *
+     * @param where the class or member naming them
+     * @param types the types it names
+     * @param events where a violation goes
+     */
+    private static void checkTypes(
+            final String where, final List<? extends JavaType> types, final ConditionEvents events) {
+        for (final JavaType type : types) {
+            for (final JavaClass raw : type.getAllInvolvedRawTypes()) {
+                final String name = raw.getName();
+                if (name.startsWith(ROOT_PACKAGE) && !EXPORTED_PACKAGES.contains(raw.getPackageName())) {
+                    events.add(SimpleConditionEvent.violated(where, where + " names " + name));
+                }
+            }
+        }
+    }
+
+    /**
+     * Whether a class is reachable from outside: public, and every class around it public too.
+     *
+     * @param javaClass the class
+     * @return whether a consumer sees it
+     */
+    private static boolean isApi(final JavaClass javaClass) {
+        if (!javaClass.getModifiers().contains(JavaModifier.PUBLIC)) {
+            return false;
+        }
+        return javaClass.getEnclosingClass().map(CoreArchitectureTest::isApi).orElse(true);
+    }
+
+    /**
+     * Whether a member is part of the signature: public or protected, and written in the source.
+     *
+     * @param member the member
+     * @return whether a consumer sees it
+     */
+    private static boolean isApi(final JavaMember member) {
+        final boolean visible = member.getModifiers().contains(JavaModifier.PUBLIC)
+                || member.getModifiers().contains(JavaModifier.PROTECTED);
+        return visible
+                && !member.getModifiers().contains(JavaModifier.SYNTHETIC)
+                && !member.getModifiers().contains(JavaModifier.BRIDGE);
+    }
+
+    /**
+     * The generation of one summary body ({@code indexer.generation}) does not know the walkers, the plan or
+     * the calibration of {@code indexer} that call it: {@code noPackageCycles} slices at the top level, so it
+     * cannot see a cycle between the two.
+     */
+    @ArchTest
+    static final ArchRule generationDoesNotKnowTheWalkers = noClasses()
+            .that()
+            .resideInAPackage("net.ladenthin.srcmorph.indexer.generation..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAPackage("net.ladenthin.srcmorph.indexer");
 
     /**
      * Public mutable state forbidden: any non-static field declared
@@ -203,10 +329,10 @@ public class CoreArchitectureTest {
 
     /**
      * The llama.cpp JNI binding ({@code net.ladenthin.llama..}) may only be referenced from the
-     * {@code provider} package, where {@code LlamaCppJniAiGenerationProvider} wraps it. Every
-     * other layer talks to the model exclusively through the {@code AiGenerationProvider}
+     * {@code provider} package, where {@code LlamaCppJniGenerationProvider} wraps it. Every
+     * other layer talks to the model exclusively through the {@code GenerationProvider}
      * interface, so the indexers and document/prompt/config code carry no JNI dependency and
-     * stay testable with {@code MockAiGenerationProvider}.
+     * stay testable with {@code MockGenerationProvider}.
      */
     @ArchTest
     static final ArchRule jniConfinedToProvider = noClasses()

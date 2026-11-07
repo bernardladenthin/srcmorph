@@ -5,11 +5,10 @@ package net.ladenthin.srcmorph;
 
 import java.util.Arrays;
 import java.util.List;
-import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
-import net.ladenthin.srcmorph.config.AiGenerationConfig;
-import net.ladenthin.srcmorph.config.AiModelDefinition;
-import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
-import net.ladenthin.srcmorph.prompt.AiPromptDefinition;
+import net.ladenthin.srcmorph.config.ModelDefinition;
+import net.ladenthin.srcmorph.config.ModelRegistry;
+import net.ladenthin.srcmorph.config.PromptDefinition;
+import net.ladenthin.srcmorph.config.RoutingRule;
 
 /**
  * Shared test fixture factory methods used across multiple test classes.
@@ -44,8 +43,8 @@ public class CommonTestFixtures {
      *
      * @return list with one prompt definition for file-level summarization
      */
-    public static List<AiPromptDefinition> createFilePromptDefinitions() {
-        final AiPromptDefinition bodyPrompt = new AiPromptDefinition();
+    public static List<PromptDefinition> createFilePromptDefinitions() {
+        final PromptDefinition bodyPrompt = new PromptDefinition();
         bodyPrompt.setKey(PROMPT_KEY_FILE_BODY);
         bodyPrompt.setTemplate("Summarize this Java file and include relevant keywords in your response.\n" + "\n"
                 + "File: %s\n"
@@ -57,22 +56,22 @@ public class CommonTestFixtures {
     }
 
     /**
-     * Creates the standard file-level field generation configs.
+     * Creates the standard file-level rules.
      *
      * <p>Used in file summarizer and source file indexer tests.</p>
      *
-     * @return list with one field generation config for the body
+     * @return list with one rule for the body
      */
-    public static List<AiFieldGenerationConfig> createFileFieldGenerations() {
+    public static List<RoutingRule> createFileRules() {
         return Arrays.asList(createFileFieldGeneration());
     }
 
     /**
-     * Creates the one file-level rule of {@link #createFileFieldGenerations()}.
+     * Creates the one file-level rule of {@link #createFileRules()}.
      *
      * @return the {@code file-body} rule on the default model
      */
-    public static AiFieldGenerationConfig createFileFieldGeneration() {
+    public static RoutingRule createFileFieldGeneration() {
         return createFieldConfig(PROMPT_KEY_FILE_BODY);
     }
 
@@ -84,8 +83,8 @@ public class CommonTestFixtures {
      *
      * @return list with one prompt definition for package-level summarization
      */
-    public static List<AiPromptDefinition> createPackagePromptDefinitions() {
-        final AiPromptDefinition bodyPrompt = new AiPromptDefinition();
+    public static List<PromptDefinition> createPackagePromptDefinitions() {
+        final PromptDefinition bodyPrompt = new PromptDefinition();
         bodyPrompt.setKey(PROMPT_KEY_PACKAGE_BODY);
         bodyPrompt.setTemplate("Summarize this Java package and include relevant keywords in your response.\n" + "\n"
                 + "File: %s\n"
@@ -97,36 +96,36 @@ public class CommonTestFixtures {
     }
 
     /**
-     * Creates the standard package-level field generation configs.
+     * Creates the standard package-level rules.
      *
      * <p>Used in package indexer and summarizer tests.</p>
      *
-     * @return list with one field generation config for the body
+     * @return list with one rule for the body
      */
-    public static List<AiFieldGenerationConfig> createPackageFieldGenerations() {
+    public static List<RoutingRule> createPackageRules() {
         return Arrays.asList(createPackageFieldGeneration());
     }
 
     /**
-     * Creates the one package-level rule of {@link #createPackageFieldGenerations()}.
+     * Creates the one package-level rule of {@link #createPackageRules()}.
      *
      * @return the {@code package-body} rule on the default model
      */
-    public static AiFieldGenerationConfig createPackageFieldGeneration() {
+    public static RoutingRule createPackageFieldGeneration() {
         return createFieldConfig(PROMPT_KEY_PACKAGE_BODY);
     }
 
     /**
-     * Creates the standard default {@link AiModelDefinition} list for tests.
+     * Creates the standard default {@link ModelDefinition} list for tests.
      *
      * <p>Provides a single definition keyed {@link #AI_DEFINITION_KEY_DEFAULT} that uses
-     * all {@link AiGenerationConfig} default values. Tests that need custom values
+     * all {@link ModelDefinition} default values. Tests that need custom values
      * (e.g. different {@code temperature}) should build their own list.</p>
      *
      * @return list with one default model definition
      */
-    public static List<AiModelDefinition> createDefaultAiModelDefinitions() {
-        final AiModelDefinition definition = new AiModelDefinition();
+    public static List<ModelDefinition> createDefaultAiModelDefinitions() {
+        final ModelDefinition definition = new ModelDefinition();
         definition.setKey(AI_DEFINITION_KEY_DEFAULT);
         // Disable automatic maxInputChars calculation in tests so that test assertions
         // about log message counts and content are not affected by the calculation log output.
@@ -135,24 +134,24 @@ public class CommonTestFixtures {
     }
 
     /**
-     * Creates an {@link AiModelDefinitionSupport} backed by the default definition list.
+     * Creates an {@link ModelRegistry} backed by the default definition list.
      *
      * @return model definition support using the default test definitions
      * @see #createDefaultAiModelDefinitions()
      */
-    public static AiModelDefinitionSupport createDefaultAiModelDefinitionSupport() {
-        return new AiModelDefinitionSupport(createDefaultAiModelDefinitions());
+    public static ModelRegistry createDefaultAiModelDefinitionSupport() {
+        return new ModelRegistry(createDefaultAiModelDefinitions());
     }
 
     /**
-     * Creates a single {@link AiFieldGenerationConfig} with the given prompt key and the
+     * Creates a single {@link RoutingRule} with the given prompt key and the
      * default AI definition key {@link #AI_DEFINITION_KEY_DEFAULT}.
      *
      * @param promptKey key that identifies the prompt template in the prompt support
-     * @return a fully configured {@link AiFieldGenerationConfig}
+     * @return a fully configured {@link RoutingRule}
      */
-    private static AiFieldGenerationConfig createFieldConfig(final String promptKey) {
-        final AiFieldGenerationConfig field = new AiFieldGenerationConfig();
+    private static RoutingRule createFieldConfig(final String promptKey) {
+        final RoutingRule field = new RoutingRule();
         field.setPromptKey(promptKey);
         field.setAiDefinitionKey(AI_DEFINITION_KEY_DEFAULT);
         return field;

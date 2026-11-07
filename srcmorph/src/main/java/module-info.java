@@ -5,16 +5,17 @@
 /**
  * JPMS module descriptor for the srcmorph core library.
  *
- * <p>The module exports the seven framework-free packages extracted from the
- * llamacpp-ai-index-maven-plugin's non-mojo layers: {@code config}, {@code document},
- * {@code engine}, {@code indexer}, {@code prompt}, {@code provider}, and {@code support}. These
- * hold the routing/configuration model (incl. the shared root {@code SrcMorphConfiguration}), the
- * {@code .ai.md} document codec, the per-phase orchestration engines, the file/package/project
- * indexers, the prompt templating support, the AI generation provider abstraction (incl. the
- * llama.cpp JNI binding), and the shared stateless helpers. The Maven plugin module
- * ({@code net.ladenthin.maven.srcmorph}, in its own reactor module {@code srcmorph-maven-plugin})
- * depends on this module and supplies only the {@code mojo} entry points, which now delegate to the
- * {@code engine} package.</p>
+ * <p>The module exports two packages, the API of the CLI, the Maven plugin and any embedder:
+ * {@code config} (the configuration model, incl. the shared root {@code SrcMorphConfiguration}, and
+ * its file loader) and {@code engine} (one engine per phase, their results and
+ * {@code SrcMorphException}). {@code support} goes to the CLI alone, which masks a URL's user info
+ * with it. The other packages are the implementation: the {@code .ai.md} document codec, the fact
+ * counters, the file/package/project indexers, the generation of one summary body, the prompt
+ * templating, the AI generation providers (incl. the llama.cpp JNI binding) and the rule routing.
+ * {@code CoreArchitectureTest#exportedApiNamesNoInternalType} keeps their types out of every public
+ * signature of the two exported packages. The Maven plugin module ({@code net.ladenthin.maven.srcmorph},
+ * in its own reactor module {@code srcmorph-maven-plugin}) depends on this module and supplies only
+ * the {@code mojo} entry points, which delegate to the {@code engine} package.</p>
  *
  * <p>JSpecify {@code @NullMarked} is declared at the module level here so that no source
  * file compiled at {@code --release 8} references the JSpecify annotation type directly.
@@ -38,8 +39,8 @@
  * path, including the plan-time {@code GgufModelInspector}, failed for want of a readable module.
  * It is deliberately <b>not</b> {@code transitive}: the binding's types appear only in
  * package-private members ({@code lazyMode}, {@code cacheType},
- * {@code buildInferenceParameters}), never in an exported signature — {@code LlamaCppJniConfigFactory}
- * returns srcmorph's own {@code LlamaCppJniConfig} — so no consumer needs the module transitively.
+ * {@code buildInferenceParameters}), never in an exported signature — {@code ProviderConfigFactory}
+ * returns srcmorph's own {@code ProviderConfig} — so no consumer needs the module transitively.
  * Should a llama type ever surface in an exported signature, this must become
  * {@code requires transitive}.</p>
  *
@@ -68,17 +69,15 @@ module net.ladenthin.srcmorph {
     // not `requires static`. Not transitive -- see the class javadoc above for why.
     requires net.ladenthin.llama;
 
-    // OpenAiCompatibleAiGenerationProvider writes its request body with Jackson (the version the
+    // OpenAiCompatibleGenerationProvider writes its request body with Jackson (the version the
     // parent pins; net.ladenthin:llama depends on it too, so nothing new reaches a consumer).
     requires com.fasterxml.jackson.databind;
     // SrcMorphConfigurationFileLoader reads the YAML configuration file of the CLI and the plugin.
     requires com.fasterxml.jackson.dataformat.yaml;
 
     exports net.ladenthin.srcmorph.config;
-    exports net.ladenthin.srcmorph.document;
     exports net.ladenthin.srcmorph.engine;
-    exports net.ladenthin.srcmorph.indexer;
-    exports net.ladenthin.srcmorph.prompt;
-    exports net.ladenthin.srcmorph.provider;
-    exports net.ladenthin.srcmorph.support;
+    // The CLI masks a URL's user info in its configuration echo (UrlUserInfo).
+    exports net.ladenthin.srcmorph.support to
+            net.ladenthin.srcmorph.cli;
 }

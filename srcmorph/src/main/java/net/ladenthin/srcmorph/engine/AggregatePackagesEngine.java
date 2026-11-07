@@ -8,21 +8,21 @@ import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 import lombok.ToString;
-import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
-import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
+import net.ladenthin.srcmorph.config.ModelRegistry;
+import net.ladenthin.srcmorph.config.RoutingRule;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
-import net.ladenthin.srcmorph.indexer.AiIndexTally;
+import net.ladenthin.srcmorph.indexer.IndexTally;
 import net.ladenthin.srcmorph.indexer.PackageIndexer;
-import net.ladenthin.srcmorph.prompt.AiPromptSupport;
-import net.ladenthin.srcmorph.provider.AiGenerationProvider;
-import net.ladenthin.srcmorph.provider.AiGenerationProviderFactory;
+import net.ladenthin.srcmorph.prompt.PromptCatalog;
+import net.ladenthin.srcmorph.provider.GenerationProvider;
+import net.ladenthin.srcmorph.provider.GenerationProviderFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * Phase 2 orchestration: aggregates per-package {@code .ai.md} index files and fills in their
  * AI-generated summary fields, with the phase's one rule: its prompt and model
- * ({@link SrcMorphConfiguration#getFieldGenerations()} holds exactly that rule).
+ * ({@link SrcMorphConfiguration#getRules()} holds exactly that rule).
  *
  * <p>Extracted from what was {@code AggregatePackagesMojo.execute()} in the
  * {@code llamacpp-ai-index-maven-plugin} module.</p>
@@ -36,7 +36,7 @@ public final class AggregatePackagesEngine {
     private static final String PHASE = "aggregate-packages";
 
     /** The configuration file's key for the phase's rule, named in a configuration error. */
-    private static final String CLI_KEY = "packageFieldGenerations";
+    private static final String CLI_KEY = "packageRules";
 
     private final SrcMorphConfiguration config;
 
@@ -57,11 +57,10 @@ public final class AggregatePackagesEngine {
      * @throws SrcMorphException naming the first problem found
      */
     public void check() throws SrcMorphException {
-        final AiFieldGenerationConfig rule =
-                EngineSupport.requiredPhaseRule(PHASE, CLI_KEY, config.getFieldGenerations());
+        final RoutingRule rule = EngineSupport.requiredPhaseRule(PHASE, CLI_KEY, config.getRules());
         EngineSupport.resolveFactsKeys(config, Collections.singletonList(rule));
         EngineSupport.buildPromptSupport(
-                config.getPromptDefinitions(), config.getProfileDirectory(), config.getFieldGenerations());
+                config.getPromptDefinitions(), config.getProfileDirectory(), config.getRules());
         EngineSupport.validateRoutedModelPaths(
                 config.getGenerationProvider(),
                 EngineSupport.buildAiModelDefinitionSupport(config.getAiDefinitions(), config.getModelDirectory()),
@@ -69,8 +68,8 @@ public final class AggregatePackagesEngine {
         LOGGER.info(
                 "Check passed: the package rule (prompt '{}', model '{}'), its profile files and its model are in"
                         + " order.",
-                rule.getPromptKey(),
-                rule.getAiDefinitionKey());
+                rule.requirePromptKey(),
+                rule.requireAiDefinitionKey());
     }
 
     /**
@@ -89,8 +88,7 @@ public final class AggregatePackagesEngine {
             LOGGER.info("planOnly: the package phase does not run.");
             return 0;
         }
-        final Path basePath =
-                config.getBaseDirectory().toPath().toAbsolutePath().normalize();
+        final Path basePath = EngineSupport.basePath(config);
         final Path outputPath =
                 config.getOutputDirectory().toPath().toAbsolutePath().normalize();
         final List<Path> resolvedSubtrees = EngineSupport.resolveSubtrees(basePath, config.getSubtrees());
@@ -100,38 +98,40 @@ public final class AggregatePackagesEngine {
         LOGGER.info("Output directory: {}", outputPath);
         LOGGER.info("Subtrees        : {}", resolvedSubtrees);
         LOGGER.info("Force           : {}", config.isForce());
+        LOGGER.info("Regenerate on   : {}", config.getRegenerateOn());
         LOGGER.info("Provider        : {}", config.getGenerationProvider());
 
         // the rule is checked before anything else, so a wrong one fails on a fresh tree too
-        final AiFieldGenerationConfig rule =
-                EngineSupport.requiredPhaseRule(PHASE, CLI_KEY, config.getFieldGenerations());
+        final RoutingRule rule = EngineSupport.requiredPhaseRule(PHASE, CLI_KEY, config.getRules());
         EngineSupport.resolveFactsKeys(config, Collections.singletonList(rule));
         if (!outputPath.toFile().exists()) {
             LOGGER.info("AI output directory does not exist, skipping package aggregation: {}", outputPath);
             return 0;
         }
 
-        final AiPromptSupport promptSupport = EngineSupport.buildPromptSupport(
-                config.getPromptDefinitions(), config.getProfileDirectory(), config.getFieldGenerations());
-        final AiModelDefinitionSupport modelDefinitionSupport =
+        final PromptCatalog promptSupport = EngineSupport.buildPromptSupport(
+                config.getPromptDefinitions(), config.getProfileDirectory(), config.getRules());
+        final ModelRegistry modelDefinitionSupport =
                 EngineSupport.buildAiModelDefinitionSupport(config.getAiDefinitions(), config.getModelDirectory());
         EngineSupport.validateRoutedModelPaths(
                 config.getGenerationProvider(), modelDefinitionSupport, Collections.singletonList(rule));
-        LOGGER.info("Package rule    : prompt '{}', model '{}'", rule.getPromptKey(), rule.getAiDefinitionKey());
-        final AiGenerationProviderFactory providerFactory = new AiGenerationProviderFactory();
+        LOGGER.info(
+                "Package rule    : prompt '{}', model '{}'", rule.requirePromptKey(), rule.requireAiDefinitionKey());
+        final GenerationProviderFactory providerFactory = new GenerationProviderFactory();
 
-        final AiIndexTally aggregated;
-        try (AiGenerationProvider provider = providerFactory.create(
+        final IndexTally aggregated;
+        try (GenerationProvider provider = providerFactory.create(
                 config.getGenerationProvider(),
-                EngineSupport.resolveLlamaCppJniConfig(modelDefinitionSupport, rule.getAiDefinitionKey()),
+                EngineSupport.resolveProviderConfig(modelDefinitionSupport, rule.requireAiDefinitionKey()),
                 promptSupport)) {
             final PackageIndexer packageIndexer = new PackageIndexer(
                     basePath,
                     outputPath,
-                    config.getPluginVersion(),
+                    config.getGeneratorVersion(),
                     config.getAiVersion(),
                     resolvedSubtrees,
                     config.isForce(),
+                    config.getRegenerateOn(),
                     provider,
                     rule,
                     promptSupport,

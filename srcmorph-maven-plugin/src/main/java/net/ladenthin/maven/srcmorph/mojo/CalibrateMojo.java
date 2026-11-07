@@ -18,7 +18,7 @@ import org.apache.maven.plugins.annotations.Mojo;
  * representative generations, reads the model's own measured prefill/decode throughput, and prints a
  * paste-ready YAML {@code calibration:} block. Paste that into the model's entry under
  * {@code aiDefinitions} of the configuration file so the plan's time estimate reflects <em>this</em>
- * machine instead of the built-in reference-CPU coefficients. The numbers are per machine (GPU/CPU,
+ * machine instead of the built-in estimate, which is based on GPT-6 Luna. The numbers are per machine (GPU/CPU,
  * quant, context), so re-run on each host.</p>
  *
  * <p>Thin wrapper: builds the configuration of the file rules from the configuration file and delegates
@@ -27,7 +27,7 @@ import org.apache.maven.plugins.annotations.Mojo;
  */
 @SuppressWarnings("initialization.fields.uninitialized")
 @Mojo(name = "calibrate", threadSafe = true)
-public class CalibrateMojo extends AbstractAiIndexMojo {
+public class CalibrateMojo extends AbstractSrcMorphMojo {
 
     /** Creates a new {@link CalibrateMojo}. */
     public CalibrateMojo() {

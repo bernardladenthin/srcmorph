@@ -8,26 +8,30 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
 import lombok.ToString;
-import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
-import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
-import net.ladenthin.srcmorph.document.AiGenerationResult;
+import net.ladenthin.srcmorph.config.ModelRegistry;
+import net.ladenthin.srcmorph.config.RegenerateOn;
+import net.ladenthin.srcmorph.config.RoutingRule;
 import net.ladenthin.srcmorph.document.AiMdChildEntryLineFormatter;
 import net.ladenthin.srcmorph.document.AiMdDocument;
 import net.ladenthin.srcmorph.document.AiMdDocumentCodec;
 import net.ladenthin.srcmorph.document.AiMdHeader;
 import net.ladenthin.srcmorph.document.AiMdHeaderCodec;
-import net.ladenthin.srcmorph.document.AiMdHeaderSupport;
-import net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport;
-import net.ladenthin.srcmorph.prompt.AiPromptSupport;
-import net.ladenthin.srcmorph.provider.AiGenerationProvider;
-import net.ladenthin.srcmorph.support.AiChecksumSupport;
-import net.ladenthin.srcmorph.support.AiPathSupport;
-import net.ladenthin.srcmorph.support.AiTimeSupport;
+import net.ladenthin.srcmorph.document.AiMdRewritePolicy;
+import net.ladenthin.srcmorph.facts.FactExtractor;
+import net.ladenthin.srcmorph.indexer.generation.SummaryGenerator;
+import net.ladenthin.srcmorph.indexer.generation.SummaryResult;
+import net.ladenthin.srcmorph.prompt.PromptCatalog;
+import net.ladenthin.srcmorph.prompt.PromptPreparer;
+import net.ladenthin.srcmorph.provider.GenerationProvider;
+import net.ladenthin.srcmorph.support.ChecksumSupport;
 import net.ladenthin.srcmorph.support.Java8CompatibilityHelper;
+import net.ladenthin.srcmorph.support.SourcePaths;
+import net.ladenthin.srcmorph.support.TimeSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,7 +75,7 @@ public class PackageIndexer {
     private static final String CHILD_SUMMARY_MISSING_NOTE = "(no summary available)";
 
     /**
-     * Context-type label passed to {@link AiFieldGenerationSupport} so that trim-warning
+     * Context-type label passed to {@link SummaryGenerator} so that trim-warning
      * log messages read "Trimmed AI input for package field '…'".
      */
     private static final String CONTEXT_TYPE_PACKAGE = "package";
@@ -90,34 +94,46 @@ public class PackageIndexer {
     });
 
     private final Path outputRoot;
-    private final String pluginVersion;
+    private final String generatorVersion;
     private final String aiVersion;
     private final List<Path> sourceSubtrees;
     private final List<Path> aiSubtrees;
     private final boolean force;
 
-    private final AiFieldGenerationConfig rule;
+    private final RoutingRule rule;
 
-    private final AiPathSupport pathSupport = new AiPathSupport();
-    private final AiTimeSupport timeSupport = new AiTimeSupport();
-    private final AiChecksumSupport checksumSupport = new AiChecksumSupport();
-    private final AiMdHeaderSupport headerSupport = new AiMdHeaderSupport();
+    private final SourcePaths pathSupport = new SourcePaths();
+    private final TimeSupport timeSupport = new TimeSupport();
+    private final ChecksumSupport checksumSupport = new ChecksumSupport();
+    private final AiMdRewritePolicy headerSupport;
+
+    /** The CRC32 of the rule's prompts ({@code P}). */
+    private final String promptHash;
+
+    /** The CRC32 of the rule's fact counters ({@code N}), {@code ""} without. */
+    private final String factsHash;
+
+    /** The CRC32 of the rule's model ({@code M}). */
+    private final String modelHash;
+
     private final AiMdChildEntryLineFormatter childEntryLineFormatter = new AiMdChildEntryLineFormatter();
     private final AiMdDocumentCodec documentCodec = new AiMdDocumentCodec();
     private final AiMdHeaderCodec headerCodec = new AiMdHeaderCodec();
     private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
 
-    private final AiFieldGenerationSupport fieldGenerationSupport;
+    private final SummaryGenerator summaryGenerator;
 
     /**
      * Creates a new {@link PackageIndexer}.
      *
      * @param baseDirectory          project base directory
      * @param outputRoot             root directory in which {@code .ai.md} files reside
-     * @param pluginVersion          plugin version recorded in headers
+     * @param generatorVersion          generator version recorded in headers
      * @param aiVersion              AI summarisation logic version recorded in headers
      * @param sourceSubtrees         source subtrees in scope; may be empty
-     * @param force                  when {@code true}, regenerate even when fields are populated
+     * @param force                  when {@code true}, rewrite every package, whatever {@code regenerateOn}
+     *                               says
+     * @param regenerateOn           which changed header fields rewrite a package
      * @param generationProvider     AI provider used to generate fields
      * @param rule                   the package phase's rule: its prompt and model
      * @param promptSupport          prompt lookup
@@ -126,16 +142,17 @@ public class PackageIndexer {
     public PackageIndexer(
             final Path baseDirectory,
             final Path outputRoot,
-            final String pluginVersion,
+            final String generatorVersion,
             final String aiVersion,
             final Collection<Path> sourceSubtrees,
             final boolean force,
-            final AiGenerationProvider generationProvider,
-            final AiFieldGenerationConfig rule,
-            final AiPromptSupport promptSupport,
-            final AiModelDefinitionSupport modelDefinitionSupport) {
+            final RegenerateOn regenerateOn,
+            final GenerationProvider generationProvider,
+            final RoutingRule rule,
+            final PromptCatalog promptSupport,
+            final ModelRegistry modelDefinitionSupport) {
         this.outputRoot = outputRoot;
-        this.pluginVersion = pluginVersion;
+        this.generatorVersion = generatorVersion;
         this.aiVersion = aiVersion;
         this.sourceSubtrees = new ArrayList<>(sourceSubtrees);
         // Inlined here (instead of calling toAiSubtrees) so the Checker Framework
@@ -147,9 +164,19 @@ public class PackageIndexer {
         }
         this.aiSubtrees = ai;
         this.force = force;
+        this.headerSupport = new AiMdRewritePolicy(
+                regenerateOn.isSource(),
+                regenerateOn.isPrompt(),
+                regenerateOn.isFacts(),
+                regenerateOn.isModel(),
+                regenerateOn.isChildren());
         this.rule = rule.copy();
-        this.fieldGenerationSupport = new AiFieldGenerationSupport(
-                generationProvider, new AiPromptPreparationSupport(promptSupport), modelDefinitionSupport);
+        this.promptHash = HeaderHashes.prompt(promptSupport, rule);
+        this.factsHash = FactExtractor.factsHash(rule.getFacts());
+        this.modelHash = HeaderHashes.model(
+                rule.requireAiDefinitionKey(), modelDefinitionSupport.definition(rule.requireAiDefinitionKey()));
+        this.summaryGenerator =
+                new SummaryGenerator(generationProvider, new PromptPreparer(promptSupport), modelDefinitionSupport);
     }
 
     /**
@@ -160,13 +187,13 @@ public class PackageIndexer {
      *         and were not written
      * @throws IOException if the output tree cannot be read or written
      */
-    public AiIndexTally aggregate(final Path rootDirectory) throws IOException {
-        final AiIndexTally tally = new AiIndexTally();
+    public IndexTally aggregate(final Path rootDirectory) throws IOException {
+        final IndexTally tally = new IndexTally();
         aggregateRecursive(rootDirectory, tally);
         return tally;
     }
 
-    private void aggregateRecursive(final Path directory, final AiIndexTally tally) throws IOException {
+    private void aggregateRecursive(final Path directory, final IndexTally tally) throws IOException {
         final List<Path> subDirectories;
         try (Stream<Path> stream = Files.list(directory)) {
             subDirectories =
@@ -178,13 +205,20 @@ public class PackageIndexer {
         }
 
         if (matchesAggregationScope(directory) && shouldCreatePackageFile(directory)) {
-            AiIndexOutcome outcome;
+            IndexOutcome outcome;
             try {
                 outcome = writePackageFile(directory);
-            } catch (final IOException e) {
-                // one failed request (after its retries) does not end the pass
+            } catch (final IOException | RuntimeException e) {
+                // an interrupt ends the pass, as in the file phase, whatever the exception it surfaced as (an
+                // InterruptedIOException, a ClosedByInterruptException, any other after the flag was set);
+                // one failed request (after its retries) does not, nor does a timeout (a
+                // SocketTimeoutException is an InterruptedIOException as well) or an unchecked error of a
+                // provider (the llama.cpp binding throws only those)
+                if (Thread.currentThread().isInterrupted()) {
+                    throw e;
+                }
                 LOGGER.error("Summarizing the package {} failed: {}", directory, String.valueOf(e.getMessage()));
-                outcome = AiIndexOutcome.FAILED;
+                outcome = IndexOutcome.FAILED;
             }
             tally.add(outcome);
         }
@@ -235,9 +269,13 @@ public class PackageIndexer {
         return Files.exists(directory.resolve(AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME));
     }
 
-    private AiIndexOutcome writePackageFile(final Path directory) throws IOException {
+    private IndexOutcome writePackageFile(final Path directory) throws IOException {
         final List<String> contents = collectContents(directory);
         final List<String> childLinks = collectChildLinks(directory);
+        // the child summaries the model reads: their hash (K) tells a file summary rewritten over the same
+        // source, which leaves the package's checksum (C) as it was
+        final StringBuilder summaries = new StringBuilder();
+        final int bodyCount = appendChildSummaries(summaries, directory);
         final Path packageFile = directory.resolve(AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME);
 
         final String nodeName = outputRoot.relativize(directory).toString().replace('\\', '/');
@@ -247,35 +285,45 @@ public class PackageIndexer {
         final String generatedAt = timeSupport.formatInstant(java.time.Instant.now());
 
         final AiMdHeader baseHeader = new AiMdHeader(
-                title,
-                AiMdHeaderCodec.HEADER_VERSION_1_0,
-                packageChecksum,
-                packageDate,
-                generatedAt,
-                pluginVersion,
-                aiVersion,
-                AiMdHeaderCodec.NODE_TYPE_PACKAGE,
-                childLinks);
+                        title,
+                        AiMdHeaderCodec.HEADER_VERSION_1_0,
+                        packageChecksum,
+                        packageDate,
+                        generatedAt,
+                        generatorVersion,
+                        aiVersion,
+                        AiMdHeaderCodec.NODE_TYPE_PACKAGE,
+                        childLinks)
+                .withHashes(
+                        promptHash,
+                        factsHash,
+                        modelHash,
+                        HeaderHashes.children(Collections.singletonList(summaries.toString())));
 
-        if (!headerSupport.shouldWrite(force, packageFile, baseHeader)) {
+        if (!headerSupport.shouldRewrite(force, packageFile, baseHeader)) {
             LOGGER.info("Unchanged package AI index file: {}", packageFile);
-            return AiIndexOutcome.UNCHANGED;
+            return IndexOutcome.UNCHANGED;
         }
 
-        final String sourceText = buildPackageSourceText(baseHeader, directory, contents);
+        final String sourceText = buildPackageSourceText(baseHeader, contents, summaries, bodyCount);
 
-        final AiGenerationResult result =
-                fieldGenerationSupport.generate(rule, packageFile, CONTEXT_TYPE_PACKAGE, sourceText, baseHeader);
+        // the call names its input by the package's path below the output root, as package-body says (a
+        // relative path heads the user message whole, an absolute one by its file name); the root package
+        // by the output directory's name
+        final Path packagePath = outputRoot.relativize(directory);
+        final Path rootName = outputRoot.getFileName();
+        final Path callName = rootName != null && packagePath.toString().isEmpty() ? rootName : packagePath;
+        final SummaryResult result = summaryGenerator.generate(rule, callName, CONTEXT_TYPE_PACKAGE, sourceText);
 
         if (!result.complete()) {
-            return AiIndexOutcome.FAILED;
+            return IndexOutcome.FAILED;
         }
 
         final AiMdDocument document = new AiMdDocument(baseHeader, result.body());
         documentCodec.write(packageFile, document);
 
         LOGGER.info("Wrote package AI index file: {}", packageFile);
-        return AiIndexOutcome.WRITTEN;
+        return IndexOutcome.WRITTEN;
     }
 
     private List<String> collectContents(final Path directory) throws IOException {
@@ -371,23 +419,23 @@ public class PackageIndexer {
      * package contents.</p>
      *
      * <p>No explicit length cap is applied here: the combined text is subject to the existing
-     * trim logic in {@link net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport#preparePrompt}, which truncates at a line
+     * trim logic in {@link net.ladenthin.srcmorph.prompt.PromptPreparer#preparePrompt}, which truncates at a line
      * boundary to the computed {@code maxInputChars} budget and triggers the {@code warnOnTrim}
      * warning — so large packages degrade gracefully without a bespoke truncation scheme.</p>
      *
      * @param header    the package's own header (its title and metadata)
-     * @param directory the package directory whose child {@code .ai.md} bodies are embedded
      * @param contents  pre-collected child entry names, used only for the no-body fallback
+     * @param summaries the child summary blocks ({@code appendChildSummaries})
+     * @param bodyCount how many of them had a body
      * @return the rendered source text for the AI prompt
-     * @throws IOException if a child {@code .ai.md} file cannot be read
      */
     private String buildPackageSourceText(
-            final AiMdHeader header, final Path directory, final Collection<String> contents) throws IOException {
+            final AiMdHeader header,
+            final Collection<String> contents,
+            final CharSequence summaries,
+            final int bodyCount) {
         final StringBuilder builder = new StringBuilder();
         appendPackageHeaderLines(builder, header);
-
-        final StringBuilder summaries = new StringBuilder();
-        final int bodyCount = appendChildSummaries(summaries, directory);
 
         if (bodyCount > 0) {
             builder.append(summaries);
@@ -555,7 +603,7 @@ public class PackageIndexer {
     }
 
     private String calculatePackageDate(final Path directory) throws IOException {
-        String latest = AiTimeSupport.EPOCH_DATE;
+        String latest = TimeSupport.EPOCH_DATE;
 
         try (Stream<Path> stream = Files.list(directory)) {
             for (Path path : compatibilityHelper.toList(stream.sorted(BY_FILE_NAME))) {
@@ -567,13 +615,13 @@ public class PackageIndexer {
 
                 if (Files.isDirectory(path)) {
                     if (hasPackageAiMdFile(path)) {
-                        latest = laterDate(latest, readChildPackageHeader(path).d());
+                        latest = laterDate(latest, readChildPackageHeader(path).sourceDate());
                     }
                     continue;
                 }
 
                 if (isAiMdContentFile(name)) {
-                    latest = laterDate(latest, documentCodec.read(path).header().d());
+                    latest = laterDate(latest, documentCodec.read(path).header().sourceDate());
                 }
             }
         }

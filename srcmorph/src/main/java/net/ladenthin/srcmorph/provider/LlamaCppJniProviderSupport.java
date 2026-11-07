@@ -15,15 +15,16 @@ import net.ladenthin.llama.parameters.InferenceParameters;
 import net.ladenthin.llama.value.ChatResponse;
 import net.ladenthin.llama.value.Pair;
 import net.ladenthin.llama.value.Usage;
-import net.ladenthin.srcmorph.document.AiGenerationRequest;
-import net.ladenthin.srcmorph.prompt.AiPromptSupport;
+import net.ladenthin.srcmorph.prompt.GenerationRequest;
+import net.ladenthin.srcmorph.prompt.PromptCatalog;
 import net.ladenthin.srcmorph.support.Java8CompatibilityHelper;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Everything {@link LlamaCppJniAiGenerationProvider} does that does not touch the JNI binding's
- * native side: turning a {@link AiGenerationRequest} plus a {@link LlamaCppJniConfig} into
+ * Everything {@link LlamaCppJniGenerationProvider} does that does not touch the JNI binding's
+ * native side: turning a {@link GenerationRequest} plus a {@link ProviderConfig} into
  * {@link InferenceParameters}, resolving configured CLI strings to the binding's enums, and
  * reporting on a {@link ChatResponse} that has already come back.
  *
@@ -55,6 +56,15 @@ final class LlamaCppJniProviderSupport {
     private static final String FINISH_REASON_LENGTH = "length";
 
     /**
+     * Finish reason of an answer the provider stopped because it failed in the middle of the generation
+     * (OpenRouter's normalized reason); the text ends wherever the failure hit it.
+     */
+    private static final String FINISH_REASON_ERROR = "error";
+
+    /** OpenAI finish reason of an answer the provider's content filter stopped. */
+    private static final String FINISH_REASON_CONTENT_FILTER = "content_filter";
+
+    /**
      * Fixed llama.cpp server slot every request is pinned to. The model is loaded once and reused
      * for all files; pinning each request to the same slot lets the prompt cache
      * ({@code cache_prompt}) reuse the shared prompt-template prefix's KV across files instead of
@@ -77,8 +87,8 @@ final class LlamaCppJniProviderSupport {
     /** Number of chat-template kwargs put into the map (used for presizing). */
     private static final int CHAT_TEMPLATE_KWARG_COUNT = 2;
 
-    private final LlamaCppJniConfig config;
-    private final AiPromptSupport promptSupport;
+    private final ProviderConfig config;
+    private final PromptCatalog promptSupport;
     private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
 
     /**
@@ -87,7 +97,7 @@ final class LlamaCppJniProviderSupport {
      * @param config        llama.cpp configuration
      * @param promptSupport prompt lookup used to render request prompts
      */
-    LlamaCppJniProviderSupport(final LlamaCppJniConfig config, final AiPromptSupport promptSupport) {
+    LlamaCppJniProviderSupport(final ProviderConfig config, final PromptCatalog promptSupport) {
         this.config = Objects.requireNonNull(config, "config");
         this.promptSupport = Objects.requireNonNull(promptSupport, "promptSupport");
     }
@@ -189,6 +199,33 @@ final class LlamaCppJniProviderSupport {
     }
 
     /**
+     * What the binding would refuse of a model's enum knobs ({@code lazyMode}, {@code cacheTypeK},
+     * {@code cacheTypeV}), found without loading the model: the message of the first value no enum
+     * declares, or {@code null} when every one is blank or known.
+     *
+     * @param lazyMode   the configured {@code lazyMode}
+     * @param cacheTypeK the configured {@code cacheTypeK}
+     * @param cacheTypeV the configured {@code cacheTypeV}
+     * @return the problem, or {@code null}
+     */
+    static @Nullable String knobProblem(final String lazyMode, final String cacheTypeK, final String cacheTypeV) {
+        try {
+            if (!lazyMode.trim().isEmpty()) {
+                lazyMode(lazyMode);
+            }
+            if (!cacheTypeK.trim().isEmpty()) {
+                cacheType("cacheTypeK", cacheTypeK);
+            }
+            if (!cacheTypeV.trim().isEmpty()) {
+                cacheType("cacheTypeV", cacheTypeV);
+            }
+            return null;
+        } catch (final IllegalArgumentException e) {
+            return e.getMessage();
+        }
+    }
+
+    /**
      * Renders the accepted KV-cache types for an error message.
      *
      * @return the CLI strings the binding's enum declares, comma-separated in declaration order
@@ -221,55 +258,123 @@ final class LlamaCppJniProviderSupport {
     }
 
     /**
-     * Warns when the model stopped because the output budget ran out rather than because it was done.
+     * Whether the provider, not the model, ended an answer with this finish reason: {@code error} or
+     * {@code content_filter}. Any other reason ({@code stop}, a server's own word for it, none) is the
+     * model's.
+     *
+     * @param finishReason the first choice's finish reason, may be {@code null}
+     * @return {@code true} when the provider stopped the answer
+     */
+    static boolean stoppedByProvider(final @Nullable String finishReason) {
+        return FINISH_REASON_ERROR.equals(finishReason) || FINISH_REASON_CONTENT_FILTER.equals(finishReason);
+    }
+
+    /**
+     * The warning for an answer the model did not finish: one that stopped at the output budget, or one
+     * the provider stopped ({@link #stoppedByProvider(String)}). The caller logs it under its own logger,
+     * so a remote model's calibration warning names the remote provider.
      *
      * @param request  the request whose source file is named in the warning
      * @param response the completed chat response
+     * @return the warning, or {@code null} when the model finished the answer (or there is none)
      */
-    void warnOnTruncatedAnswer(final AiGenerationRequest request, final ChatResponse response) {
+    @Nullable
+    String truncationWarning(final GenerationRequest request, final ChatResponse response) {
         if (response.getChoices().isEmpty()) {
-            return;
+            return null;
         }
-        if (!FINISH_REASON_LENGTH.equals(response.getChoices().get(0).getFinishReason())) {
-            return;
+        final @Nullable String finishReason = response.getChoices().get(0).getFinishReason();
+        if (stoppedByProvider(finishReason)) {
+            return "Generated text for " + request.sourceFile() + " ended with finish reason '" + finishReason
+                    + "': the provider stopped it, not the model.";
         }
-        LOGGER.warn(
-                "Generated text for {} was cut off at the {}-token output budget, not finished by the model."
-                        + " The .ai.md will end mid-thought; raise maxOutputTokens for this model, or shorten"
-                        + " the prompt.",
-                request.sourceFile(),
-                config.maxOutputTokens());
+        if (!FINISH_REASON_LENGTH.equals(finishReason)) {
+            return null;
+        }
+        return "Generated text for " + request.sourceFile() + " was cut off at the " + config.maxOutputTokens()
+                + "-token output budget, not finished by the model. The .ai.md will end mid-thought; raise"
+                + " maxOutputTokens for this model, or shorten the prompt.";
+    }
+
+    /**
+     * The answer of a response, its thinking block stripped ({@link CompletionParser}), refused as
+     * {@link #requireCompleteAnswer} refuses one. A thinking block left open is an answer the model did not
+     * finish, unless the provider stopped it ({@link #stoppedByProvider(String)}): then that is the reason,
+     * not the output budget, and nothing of the reasoning is kept as the partial answer.
+     *
+     * @param request  the request whose source file is named in a message
+     * @param response the completed chat response
+     * @param parser   strips the thinking block
+     * @return the answer text
+     * @throws IncompleteAnswerException if the answer is no summary
+     */
+    String completeAnswer(final GenerationRequest request, final ChatResponse response, final CompletionParser parser)
+            throws IncompleteAnswerException {
+        final String text;
+        try {
+            text = parser.parseCompletion(response.getFirstContent());
+        } catch (final IncompleteAnswerException e) {
+            // the parser refuses only a block that has content, so the response has a choice
+            requireNotStopped(request, response.getChoices().get(0).getFinishReason(), "");
+            throw e;
+        }
+        requireCompleteAnswer(request, response, text);
+        return text;
     }
 
     /**
      * Refuses an answer that is no summary, so it is never stored as one: a response without a choice, an
-     * answer the model did not finish (stopped at the output budget) and an empty answer, such as the
+     * answer the model did not finish (stopped at the output budget), an answer the provider stopped
+     * ({@link #stoppedByProvider(String)}: an OpenRouter generation that failed half-way came back with
+     * finish reason {@code error} and a text ending mid-sentence) and an empty answer, such as the
      * reasoning-only answer of a model that spent its budget thinking.
      *
      * @param request  the request whose source file is named in the message
      * @param response the completed chat response
      * @param text     the answer text after the thinking block was stripped
-     * @throws AiIncompleteAnswerException if the answer is one of those
+     * @throws IncompleteAnswerException if the answer is one of those
      */
-    void requireCompleteAnswer(final AiGenerationRequest request, final ChatResponse response, final String text)
-            throws AiIncompleteAnswerException {
+    void requireCompleteAnswer(final GenerationRequest request, final ChatResponse response, final String text)
+            throws IncompleteAnswerException {
         if (response.getChoices().isEmpty()) {
-            throw new AiIncompleteAnswerException(
-                    AiIncompleteAnswerException.Reason.NO_ANSWER,
+            throw new IncompleteAnswerException(
+                    IncompleteAnswerException.Reason.NO_ANSWER,
                     "The response for " + request.sourceFile() + " has no answer (no choice)");
         }
-        if (FINISH_REASON_LENGTH.equals(response.getChoices().get(0).getFinishReason())) {
-            throw new AiIncompleteAnswerException(
-                    AiIncompleteAnswerException.Reason.TRUNCATED,
+        final @Nullable String finishReason = response.getChoices().get(0).getFinishReason();
+        requireNotStopped(request, finishReason, text);
+        if (FINISH_REASON_LENGTH.equals(finishReason)) {
+            throw new IncompleteAnswerException(
+                    IncompleteAnswerException.Reason.TRUNCATED,
                     "The answer for " + request.sourceFile() + " was cut off at the " + config.maxOutputTokens()
                             + "-token output budget, not finished by the model; raise maxOutputTokens for this"
                             + " model, or shorten the prompt",
                     text);
         }
         if (text.trim().isEmpty()) {
-            throw new AiIncompleteAnswerException(
-                    AiIncompleteAnswerException.Reason.EMPTY,
+            throw new IncompleteAnswerException(
+                    IncompleteAnswerException.Reason.EMPTY,
                     "The model answered nothing for " + request.sourceFile() + " (an empty or reasoning-only answer)");
+        }
+    }
+
+    /**
+     * Refuses an answer the provider stopped ({@link #stoppedByProvider(String)}).
+     *
+     * @param request      the request whose source file is named in the message
+     * @param finishReason the first choice's finish reason, may be {@code null}
+     * @param text         what the model wrote before the provider stopped it
+     * @throws IncompleteAnswerException if the provider stopped the answer
+     */
+    private static void requireNotStopped(
+            final GenerationRequest request, final @Nullable String finishReason, final String text)
+            throws IncompleteAnswerException {
+        if (stoppedByProvider(finishReason)) {
+            throw new IncompleteAnswerException(
+                    IncompleteAnswerException.Reason.ABORTED,
+                    "The answer for " + request.sourceFile() + " ended with finish reason '" + finishReason
+                            + "': the provider stopped it, not the model",
+                    text);
         }
     }
 
@@ -279,7 +384,7 @@ final class LlamaCppJniProviderSupport {
      * @param request  the request whose source file is named in the line
      * @param response the completed chat response
      */
-    void logPromptCacheReuse(final AiGenerationRequest request, final ChatResponse response) {
+    void logPromptCacheReuse(final GenerationRequest request, final ChatResponse response) {
         if (!LOGGER.isDebugEnabled()) {
             return;
         }
@@ -301,7 +406,7 @@ final class LlamaCppJniProviderSupport {
      * @param request the request to render
      * @return the parameters to hand to the binding
      */
-    InferenceParameters buildInferenceParameters(final AiGenerationRequest request) {
+    InferenceParameters buildInferenceParameters(final GenerationRequest request) {
         // Static instructions go in the SYSTEM message (byte-identical across files, so its KV
         // prefix is reused by cache_prompt); the variable file name + source go in the USER message.
         final String systemPrompt = promptSupport.systemPrompt(request.promptKey());
@@ -337,7 +442,7 @@ final class LlamaCppJniProviderSupport {
         // Pin the RNG seed only when explicitly configured (>= 0). Upstream's default is a random seed
         // per request, so an unconfigured run keeps exactly the behaviour it had; a configured one makes
         // the generated body stable for a given machine and configuration, which is what turns a
-        // re-index into a reviewable diff. Not bit-reproducibility -- see AiGenerationConfig.DEFAULT_SEED.
+        // re-index into a reviewable diff. Not bit-reproducibility -- see ModelDefinition.DEFAULT_SEED.
         final InferenceParameters seededParameters =
                 config.seed() >= 0 ? baseParameters.withSeed(config.seed()) : baseParameters;
         // The two penalty windows -- the one the repeat penalty acts on, and DRY's own -- are forwarded

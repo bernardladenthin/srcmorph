@@ -47,7 +47,7 @@ public class Java8CompatibilityHelper {
      * @param args   the arguments referenced by the format specifiers in the format string
      * @return a formatted string
      */
-    // Not annotated @FormatMethod because callers (AiPromptSupport#buildPrompt) pass a
+    // Not annotated @FormatMethod because callers (PromptCatalog#buildPrompt) pass a
     // runtime template loaded from configuration, not a compile-time constant string —
     // marking this @FormatMethod would propagate FormatStringAnnotation into every
     // caller and break the build.
@@ -127,7 +127,7 @@ public class Java8CompatibilityHelper {
      * {@code new HashMap<>(compatibilityHelper.hashMapCapacityFor(n))}. Pass
      * {@code 0} for an empty map (returns {@code 1}, the smallest non-trivial capacity).
      * Centralised here so the formula isn't duplicated across construction sites
-     * (originally inlined in {@code AiPromptSupport} / {@code AiModelDefinitionSupport}).
+     * (originally inlined in {@code PromptCatalog} / {@code ModelRegistry}).
      *
      * @param numMappings expected number of entries the map will hold; must be {@code >= 0}
      * @return load-factor-corrected initial capacity, never {@code < 1}

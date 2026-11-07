@@ -6,7 +6,7 @@ package net.ladenthin.srcmorph;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import net.ladenthin.srcmorph.config.AiGenerationConfig;
+import net.ladenthin.srcmorph.config.ModelDefinition;
 import org.junit.jupiter.api.Assumptions;
 
 /**
@@ -19,7 +19,7 @@ import org.junit.jupiter.api.Assumptions;
  * anywhere: not in CI, not in a normal local build. The repository nonetheless carries the ~90 MB
  * GGUF they need, checked out on every job.</p>
  *
- * <p>That cost something real. {@code LlamaCppJniAiGenerationProvider} forwarded a {@code -1} DRY
+ * <p>That cost something real. {@code LlamaCppJniGenerationProvider} forwarded a {@code -1} DRY
  * penalty window to a binding that rejects any negative window (llama.cpp b10273 dropped the old
  * "{@code -1} = context size" meaning), so <em>every</em> real generation threw
  * {@link IllegalArgumentException} before producing a token. Two releases, 1.1.0 and 1.1.1, shipped
@@ -53,10 +53,10 @@ public final class NativeLlamaAvailability {
     /**
      * Threads for every test that runs the real model: the production default, 4 or fewer cores.
      * <p>With {@code threads(8)} on the 4-vCPU GitHub runner one generation took 431 s; it takes
-     * seconds with no more threads than cores (see {@link AiGenerationConfig#DEFAULT_THREADS}). PIT
+     * seconds with no more threads than cores (see {@link ModelDefinition#DEFAULT_THREADS}). PIT
      * re-runs these tests for every mutant they cover and turned that into hours.</p>
      */
-    public static final int THREADS = AiGenerationConfig.DEFAULT_THREADS;
+    public static final int THREADS = ModelDefinition.DEFAULT_THREADS;
 
     /** Utility class; not instantiable. */
     private NativeLlamaAvailability() {

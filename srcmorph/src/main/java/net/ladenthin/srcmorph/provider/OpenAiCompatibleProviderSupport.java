@@ -37,14 +37,15 @@ import java.util.regex.Pattern;
 import lombok.ToString;
 import net.ladenthin.llama.value.ChatResponse;
 import net.ladenthin.llama.value.Usage;
-import net.ladenthin.srcmorph.document.AiGenerationRequest;
-import net.ladenthin.srcmorph.prompt.AiPromptSupport;
+import net.ladenthin.srcmorph.prompt.GenerationRequest;
+import net.ladenthin.srcmorph.prompt.PromptCatalog;
 import net.ladenthin.srcmorph.support.Java8CompatibilityHelper;
 import net.ladenthin.srcmorph.support.ReplaceWithLibrary;
+import net.ladenthin.srcmorph.support.UrlUserInfo;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Everything {@link OpenAiCompatibleAiGenerationProvider} does that needs no network: the request
+ * Everything {@link OpenAiCompatibleGenerationProvider} does that needs no network: the request
  * body, the endpoint, the API key lookup, the status check, the error message and the timings.
  *
  * <p>Split from the provider for the same reason {@link LlamaCppJniProviderSupport} is split from
@@ -145,8 +146,23 @@ final class OpenAiCompatibleProviderSupport {
     /** Lowest HTTP status that counts as success. */
     private static final int HTTP_OK_FIRST = 200;
 
-    /** First HTTP status above the success range. */
+    /** First HTTP status above the success range, the first redirect. */
     private static final int HTTP_OK_END = 300;
+
+    /** First HTTP status above the redirect range. */
+    private static final int HTTP_REDIRECT_END = 400;
+
+    /**
+     * The character that ends a URL's user info. No {@code baseUrl} may hold one: srcmorph never sends
+     * the user info, and one after a {@code /} cannot be told from a password with an unencoded {@code /}.
+     */
+    private static final char USER_INFO_END = '@';
+
+    /** The character a URL's query starts with. */
+    private static final char QUERY_START = '?';
+
+    /** The character a URL's fragment starts with. */
+    private static final char FRAGMENT_START = '#';
 
     /** The plain-HTTP scheme prefix a {@code baseUrl} may start with (a local server). */
     static final String HTTP_SCHEME = "http://";
@@ -232,10 +248,10 @@ final class OpenAiCompatibleProviderSupport {
     /** The years an rfc850-date read too far ahead is moved back. */
     private static final int YEARS_PER_CENTURY = 100;
 
-    private final LlamaCppJniConfig config;
+    private final ProviderConfig config;
 
     @ToString.Exclude
-    private final AiPromptSupport promptSupport;
+    private final PromptCatalog promptSupport;
 
     @ToString.Exclude
     private final Function<String, @Nullable String> environment;
@@ -251,8 +267,8 @@ final class OpenAiCompatibleProviderSupport {
      * @param environment   looks up an environment variable by name, {@code null} when unset
      */
     OpenAiCompatibleProviderSupport(
-            final LlamaCppJniConfig config,
-            final AiPromptSupport promptSupport,
+            final ProviderConfig config,
+            final PromptCatalog promptSupport,
             final Function<String, @Nullable String> environment) {
         this.config = Objects.requireNonNull(config, "config");
         this.promptSupport = Objects.requireNonNull(promptSupport, "promptSupport");
@@ -271,7 +287,7 @@ final class OpenAiCompatibleProviderSupport {
      * @return the request body
      * @throws IOException if the body cannot be serialised
      */
-    String requestBody(final AiGenerationRequest request) throws IOException {
+    String requestBody(final GenerationRequest request) throws IOException {
         final ObjectNode body = MAPPER.createObjectNode();
         final String remoteModel = config.remoteModel();
         if (!compatibilityHelper.isBlank(remoteModel)) {
@@ -436,9 +452,88 @@ final class OpenAiCompatibleProviderSupport {
     private String baseUrl() {
         final String base = config.baseUrl().trim();
         if (!base.startsWith(HTTP_SCHEME) && !base.startsWith(HTTPS_SCHEME)) {
-            throw new IllegalArgumentException("baseUrl is not an http(s) URL: '" + base + "'");
+            throw new IllegalArgumentException("baseUrl is not an http(s) URL: '" + UrlUserInfo.mask(base) + "'");
+        }
+        final @Nullable String userInfo = userInfoProblem(base);
+        if (userInfo != null) {
+            throw new IllegalArgumentException(userInfo);
+        }
+        final @Nullable String query = queryProblem(base);
+        if (query != null) {
+            throw new IllegalArgumentException(query);
+        }
+        final @Nullable String malformed = malformedProblem(base);
+        if (malformed != null) {
+            throw new IllegalArgumentException(malformed);
         }
         return withoutTrailingSlashes(base);
+    }
+
+    /**
+     * The problem of a {@code baseUrl} that is no URL. It is asked after {@link #userInfoProblem(String)},
+     * so the {@code baseUrl} holds no {@code @} and no password.
+     *
+     * @param baseUrl the model's {@code baseUrl}, trimmed
+     * @return the problem, or {@code null} when it parses as a URL
+     */
+    static @Nullable String malformedProblem(final String baseUrl) {
+        return parsed(baseUrl) == null ? malformedMessage(baseUrl) : null;
+    }
+
+    /**
+     * Parses a {@code baseUrl}.
+     *
+     * @param baseUrl the model's {@code baseUrl}, trimmed
+     * @return the URL, or {@code null} when it is none or has no host ({@code https:///v1} is no server)
+     */
+    private static @Nullable URL parsed(final String baseUrl) {
+        try {
+            final URL url = new URL(baseUrl);
+            return url.getHost().isEmpty() ? null : url;
+        } catch (final MalformedURLException e) {
+            return null;
+        }
+    }
+
+    private static String malformedMessage(final String baseUrl) {
+        return "its baseUrl is not a URL: '" + UrlUserInfo.mask(baseUrl) + "'";
+    }
+
+    /**
+     * The problem of a {@code baseUrl} with a query or a fragment: srcmorph appends its paths
+     * ({@link #CHAT_COMPLETIONS_PATH}, {@link #MODELS_PATH}) to the URL, so they would land in the query,
+     * and a key there would be printed with the endpoint. Only the part before it is shown.
+     *
+     * @param baseUrl the model's {@code baseUrl}, trimmed
+     * @return the problem, or {@code null} when the URL has neither
+     */
+    static @Nullable String queryProblem(final String baseUrl) {
+        for (int end = 0; end < baseUrl.length(); end++) {
+            final char c = baseUrl.charAt(end);
+            if (c == QUERY_START || c == FRAGMENT_START) {
+                return "its baseUrl has a query or a fragment ('" + UrlUserInfo.mask(baseUrl.substring(0, end))
+                        + "' followed by '" + c + "...'), which would stand in front of the path srcmorph"
+                        + " appends: give the path only, and the key in the variable apiKeyEnv names";
+            }
+        }
+        return null;
+    }
+
+    /**
+     * The problem of a {@code baseUrl} that holds an {@code @}, read as user info: srcmorph never sends
+     * it, so a key there would not authenticate, and the run stops before a request instead of failing on
+     * the first one. Any {@code @} is refused, not only one before the path: a password with an unencoded
+     * {@code /} puts its {@code @} behind the path's first slash ({@code https://u:123/abc@host/v1} even
+     * parses, as host {@code u} and port {@code 123}), so such a URL is shown as its scheme only.
+     *
+     * @param baseUrl the model's {@code baseUrl}
+     * @return the problem, with the user info masked, or {@code null} when the URL holds no {@code @}
+     */
+    static @Nullable String userInfoProblem(final String baseUrl) {
+        return baseUrl.indexOf(USER_INFO_END) >= 0
+                ? "its baseUrl holds an @ ('" + UrlUserInfo.mask(baseUrl) + "'), read as user info, which srcmorph"
+                        + " never sends: put the key in the variable apiKeyEnv names"
+                : null;
     }
 
     private static String withoutTrailingSlashes(final String url) {
@@ -536,7 +631,7 @@ final class OpenAiCompatibleProviderSupport {
      * (a local {@code llama-server} or {@code NativeServer}); anything else fails before a byte is
      * sent. Without that, a model that sets a plain-{@code http} {@code baseUrl} would send the key its
      * {@code apiKeyEnv} names readable to every hop. Which host may receive a key at all is the
-     * model's own decision: no {@code apiKeyEnv}, no key ({@code AiGenerationConfig.DEFAULT_API_KEY_ENV}
+     * model's own decision: no {@code apiKeyEnv}, no key ({@code ModelDefinition.DEFAULT_API_KEY_ENV}
      * is empty).
      *
      * @param endpoint the URL the request goes to (from {@link #endpoint()})
@@ -583,9 +678,10 @@ final class OpenAiCompatibleProviderSupport {
     }
 
     /**
-     * What would fail the first request of a model, found before any request is made: an
-     * {@code apiKeyEnv} whose variable is not set, or a key that would go in cleartext to another
-     * machine (a plain {@code http} {@code baseUrl} that is not loopback).
+     * What would fail the first request of a model, found before any request is made: a {@code baseUrl}
+     * with user info ({@link #userInfoProblem(String)}), an {@code apiKeyEnv} whose variable is not set,
+     * or a key that would go in cleartext to another machine (a plain {@code http} {@code baseUrl} that is
+     * not loopback).
      *
      * @param baseUrl     the model's {@code baseUrl}, an {@code http(s)} URL
      * @param apiKeyEnv   the model's {@code apiKeyEnv}
@@ -594,6 +690,19 @@ final class OpenAiCompatibleProviderSupport {
      */
     static @Nullable String keyProblem(
             final String baseUrl, final String apiKeyEnv, final Function<String, @Nullable String> environment) {
+        final @Nullable String userInfo = userInfoProblem(baseUrl.trim());
+        if (userInfo != null) {
+            return userInfo;
+        }
+        final @Nullable String query = queryProblem(baseUrl.trim());
+        if (query != null) {
+            return query;
+        }
+        final String base = baseUrl.trim();
+        final @Nullable URL url = parsed(base);
+        if (url == null) {
+            return malformedMessage(base);
+        }
         final String name = apiKeyEnv.trim();
         if (name.isEmpty()) {
             return null;
@@ -602,16 +711,10 @@ final class OpenAiCompatibleProviderSupport {
         if (key == null || key.trim().isEmpty()) {
             return "its apiKeyEnv names " + name + ", which is not set in this process's environment";
         }
-        final String base = baseUrl.trim();
         if (!base.startsWith(HTTP_SCHEME)) {
             return null;
         }
-        final String host;
-        try {
-            host = new URL(base).getHost();
-        } catch (final MalformedURLException e) {
-            return "its baseUrl is not a URL: '" + base + "'";
-        }
+        final String host = url.getHost();
         return isLoopbackHost(host)
                 ? null
                 : "its key from " + name + " would go in cleartext to " + host
@@ -626,6 +729,33 @@ final class OpenAiCompatibleProviderSupport {
      */
     static boolean isSuccess(final int status) {
         return status >= HTTP_OK_FIRST && status < HTTP_OK_END;
+    }
+
+    /**
+     * Whether the status is a redirect (3xx). srcmorph follows none: the request carries the key, and a
+     * redirect would take it to whatever server the {@code Location} names.
+     *
+     * @param status the HTTP status
+     * @return {@code true} for 300..399
+     */
+    static boolean isRedirect(final int status) {
+        return status >= HTTP_OK_END && status < HTTP_REDIRECT_END;
+    }
+
+    /**
+     * The message of the exception a redirect fails with: endpoint, status and the {@code Location}, its
+     * user info, query and fragment masked.
+     *
+     * @param endpoint the URL that was called
+     * @param status   the HTTP status, a 3xx
+     * @param location the {@code Location} header, {@code null} when the server sent none
+     * @return the message
+     */
+    static String redirectMessage(final String endpoint, final int status, final @Nullable String location) {
+        return endpoint + " answered HTTP " + status + ", a redirect to "
+                + (location == null ? "no Location" : UrlUserInfo.mask(location))
+                + ", which srcmorph does not follow (the key would go along): point baseUrl at the server it"
+                + " redirects to";
     }
 
     /**
@@ -670,8 +800,8 @@ final class OpenAiCompatibleProviderSupport {
      * {@link #RETRY_BASE_DELAY_MILLIS}, at most {@link #MAX_RETRY_BACKOFF_MILLIS}, plus up to a quarter
      * of it as jitter so that clients that failed together do not retry together.
      *
-     * @param retryAfter the {@code Retry-After} header, or {@code null}; seconds of any length are capped,
-     *                   a date instead of seconds is ignored
+     * @param retryAfter the {@code Retry-After} header, or {@code null}: seconds of any length or an HTTP
+     *                   date, either capped at {@link #MAX_RETRY_AFTER_MILLIS}
      * @param retry      the retry about to be made, from {@code 1}
      * @param jitter     a random number in {@code [0, 1)}
      * @return the delay in milliseconds
@@ -815,11 +945,11 @@ final class OpenAiCompatibleProviderSupport {
      * @param seconds  wall-clock seconds of the call
      * @return the timings
      */
-    static AiGenerationTimings timings(final String text, final ChatResponse response, final double seconds) {
+    static TimedGeneration timings(final String text, final ChatResponse response, final double seconds) {
         final Usage usage = response.getUsage();
         final int completionTokens = (int) usage.getCompletionTokens();
         final double decodeRate = seconds > 0.0d ? completionTokens / seconds : 0.0d;
-        return new AiGenerationTimings(
+        return new TimedGeneration(
                 text, (int) usage.getPromptTokens(), (int) usage.getCachedTokens(), 0.0d, completionTokens, decodeRate);
     }
 }

@@ -12,8 +12,8 @@ import java.util.Locale;
 import java.util.Objects;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
-import net.ladenthin.srcmorph.config.AiGenerationConfig;
-import net.ladenthin.srcmorph.provider.AiGenerationProviderFactory;
+import net.ladenthin.srcmorph.config.ModelDefinition;
+import net.ladenthin.srcmorph.provider.GenerationProviderFactory;
 import net.ladenthin.srcmorph.provider.RemoteModel;
 import org.jspecify.annotations.Nullable;
 
@@ -36,6 +36,12 @@ import org.jspecify.annotations.Nullable;
 @ToString
 @EqualsAndHashCode
 public final class ModelListReport {
+
+    /** The Unicode line separator, a line break to YAML. */
+    private static final char LINE_SEPARATOR = '\u2028';
+
+    /** The Unicode paragraph separator, a line break to YAML. */
+    private static final char PARAGRAPH_SEPARATOR = '\u2029';
 
     /** The text of a table cell whose value the server does not state. */
     static final String UNKNOWN = "-";
@@ -61,7 +67,7 @@ public final class ModelListReport {
      * @param filter   the filter the models were chosen with, blank for none
      * @param listings one listing per server
      */
-    public ModelListReport(final String filter, final Collection<Listing> listings) {
+    ModelListReport(final String filter, final Collection<Listing> listings) {
         this.filter = Objects.requireNonNull(filter, "filter");
         this.listings = new ArrayList<>(listings);
     }
@@ -71,7 +77,7 @@ public final class ModelListReport {
      *
      * @return an unmodifiable view of the listings
      */
-    public List<Listing> listings() {
+    List<Listing> listings() {
         return Collections.unmodifiableList(listings);
     }
 
@@ -126,7 +132,7 @@ public final class ModelListReport {
         }
         int idWidth = MODEL_HEADING.length();
         for (final RemoteModel model : models) {
-            idWidth = Math.max(idWidth, model.id().length());
+            idWidth = Math.max(idWidth, escapeLineBreaks(model.id()).length());
         }
         final String row =
                 "#   %-" + idWidth + "s %" + CONTEXT_WIDTH + "s %" + PRICE_WIDTH + "s %" + PRICE_WIDTH + "s\n";
@@ -135,8 +141,10 @@ public final class ModelListReport {
             out.append(String.format(
                     Locale.ROOT,
                     row,
-                    model.id(),
-                    model.contextLength() > 0 ? Integer.toString(model.contextLength()) : UNKNOWN,
+                    escapeLineBreaks(model.id()),
+                    model.contextLength() == RemoteModel.UNKNOWN_CONTEXT_LENGTH
+                            ? UNKNOWN
+                            : Integer.toString(model.contextLength()),
                     price(model.inputUsdPerMillion()),
                     price(model.outputUsdPerMillion())));
         }
@@ -151,7 +159,7 @@ public final class ModelListReport {
         out.append("  - key: ")
                 .append(quote(listing.key() + KEY_SEPARATOR + model.id()))
                 .append('\n');
-        appendField(out, "provider", quote(AiGenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE));
+        appendField(out, "provider", quote(GenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE));
         appendField(out, "baseUrl", quote(listing.baseUrl()));
         appendField(out, "remoteModel", quote(model.id()));
         if (!listing.apiKeyEnv().trim().isEmpty()) {
@@ -166,7 +174,7 @@ public final class ModelListReport {
         appendField(out, "contextSize", Integer.toString(contextSize(listing.contextSize(), model.contextLength())));
         appendField(out, "maxOutputTokens", Integer.toString(listing.maxOutputTokens()));
         appendField(out, "temperature", Float.toString(listing.temperature()));
-        if (!AiGenerationConfig.DEFAULT_REASONING_EFFORT.equals(listing.reasoningEffort())) {
+        if (!ModelDefinition.DEFAULT_REASONING_EFFORT.equals(listing.reasoningEffort())) {
             appendField(out, "reasoningEffort", quote(listing.reasoningEffort()));
         }
     }
@@ -180,9 +188,9 @@ public final class ModelListReport {
      * @return the window of the entry
      */
     static int contextSize(final int patternContextSize, final int modelLimit) {
-        return modelLimit > RemoteModel.UNKNOWN_CONTEXT_LENGTH
-                ? Math.min(modelLimit, patternContextSize)
-                : patternContextSize;
+        return modelLimit == RemoteModel.UNKNOWN_CONTEXT_LENGTH
+                ? patternContextSize
+                : Math.min(modelLimit, patternContextSize);
     }
 
     private static void appendField(final StringBuilder out, final String name, final String value) {
@@ -190,14 +198,36 @@ public final class ModelListReport {
     }
 
     /**
-     * A double-quoted YAML scalar: backslash and double quote escaped, so any model id or URL reads
-     * back unchanged.
+     * A double-quoted YAML scalar: backslash and double quote escaped, and every control character and
+     * line break as {@code \\uXXXX}, so any model id or URL reads back unchanged and none ends the line.
      *
      * @param text the text
      * @return the quoted scalar
      */
     static String quote(final String text) {
-        return '"' + text.replace("\\", "\\\\").replace("\"", "\\\"") + '"';
+        return '"' + escapeLineBreaks(text.replace("\\", "\\\\").replace("\"", "\\\"")) + '"';
+    }
+
+    /**
+     * Writes every control character and every character YAML reads as a line break ({@code U+0085},
+     * {@code U+2028}, {@code U+2029}) as {@code \\uXXXX}: a model id is the server's text, and one with a
+     * line feed would end the {@code #} comment row it stands in and put its tail into the template.
+     *
+     * @param text the text
+     * @return the text on one line
+     */
+    static String escapeLineBreaks(final String text) {
+        final int length = text.length();
+        final StringBuilder out = new StringBuilder(length);
+        for (int i = 0; i < length; i++) {
+            final char c = text.charAt(i);
+            if (c == LINE_SEPARATOR || c == PARAGRAPH_SEPARATOR || Character.isISOControl(c)) {
+                out.append(String.format(Locale.ROOT, "\\u%04x", (int) c));
+            } else {
+                out.append(c);
+            }
+        }
+        return out.toString();
     }
 
     /**
@@ -205,7 +235,7 @@ public final class ModelListReport {
      */
     @ToString
     @EqualsAndHashCode
-    public static final class Listing {
+    static final class Listing {
         private final String key;
         private final String baseUrl;
         private final String apiKeyEnv;
@@ -220,7 +250,7 @@ public final class ModelListReport {
 
         private Listing(
                 final String key,
-                final AiGenerationConfig pattern,
+                final ModelDefinition pattern,
                 final int listed,
                 final Collection<RemoteModel> models) {
             this.key = Objects.requireNonNull(key, "key");
@@ -247,7 +277,7 @@ public final class ModelListReport {
          */
         static Listing of(
                 final String key,
-                final AiGenerationConfig pattern,
+                final ModelDefinition pattern,
                 final int listed,
                 final Collection<RemoteModel> models) {
             return new Listing(key, pattern, listed, models);
@@ -258,7 +288,7 @@ public final class ModelListReport {
          *
          * @return the key
          */
-        public String key() {
+        String key() {
             return key;
         }
 
@@ -267,7 +297,7 @@ public final class ModelListReport {
          *
          * @return the base URL
          */
-        public String baseUrl() {
+        String baseUrl() {
             return baseUrl;
         }
 
@@ -276,7 +306,7 @@ public final class ModelListReport {
          *
          * @return the variable name, empty when the pattern sends no key
          */
-        public String apiKeyEnv() {
+        String apiKeyEnv() {
             return apiKeyEnv;
         }
 
@@ -285,7 +315,7 @@ public final class ModelListReport {
          *
          * @return the pattern's {@code stream}
          */
-        public boolean stream() {
+        boolean stream() {
             return stream;
         }
 
@@ -294,7 +324,7 @@ public final class ModelListReport {
          *
          * @return the pattern's {@code requestsPerMinute}; {@code 0} or less for none
          */
-        public int requestsPerMinute() {
+        int requestsPerMinute() {
             return requestsPerMinute;
         }
 
@@ -303,7 +333,7 @@ public final class ModelListReport {
          *
          * @return the pattern's {@code contextSize}
          */
-        public int contextSize() {
+        int contextSize() {
             return contextSize;
         }
 
@@ -312,7 +342,7 @@ public final class ModelListReport {
          *
          * @return the pattern's {@code maxOutputTokens}
          */
-        public int maxOutputTokens() {
+        int maxOutputTokens() {
             return maxOutputTokens;
         }
 
@@ -321,7 +351,7 @@ public final class ModelListReport {
          *
          * @return the pattern's {@code temperature}
          */
-        public float temperature() {
+        float temperature() {
             return temperature;
         }
 
@@ -330,7 +360,7 @@ public final class ModelListReport {
          *
          * @return the pattern's {@code reasoningEffort}
          */
-        public String reasoningEffort() {
+        String reasoningEffort() {
             return reasoningEffort;
         }
 
@@ -339,7 +369,7 @@ public final class ModelListReport {
          *
          * @return the count
          */
-        public int listed() {
+        int listed() {
             return listed;
         }
 
@@ -348,7 +378,7 @@ public final class ModelListReport {
          *
          * @return an unmodifiable view of the models
          */
-        public List<RemoteModel> models() {
+        List<RemoteModel> models() {
             return Collections.unmodifiableList(models);
         }
     }

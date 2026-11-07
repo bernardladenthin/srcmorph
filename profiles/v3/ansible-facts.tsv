@@ -1,0 +1,32 @@
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# Ansible counters (playbooks, and the tasks, handlers, defaults and vars of a role), for a rule
+# with the prompt file-body-ops: one per line, label TAB pattern (Java regex). The [ignore] line
+# blanks YAML comments and the body of a block scalar (the lines below a | or > that are deeper than
+# its key, past a list item's dash, as deep as the first of them; the key stays, so
+# "ansible.builtin.shell: |" counts, and an empty scalar blanks no sibling key), so a "- name:" in a shell script
+# or a template does not count, and the items of a loop: or with_*: list (the lines below the key
+# that are deeper than it, or a list at its depth; the key stays). "plays" counts a hosts: key,
+# "named tasks, handlers and plays" every list item that starts with name:, not a loop's item;
+# "FQCN module calls" a fully qualified module
+# (ansible.builtin.copy:, community.general.ufw:); "loops" loop: and every with_* key; "privilege
+# escalation" a become: true or yes in any case, quoted or not; "template expressions" every {{ as
+# written ([raw]), so one in a block scalar, which Ansible renders, counts too, and leaves out only
+# one in a comment: after a # at a line start or after a blank, at most 200 characters before it.
+# OpsFactPatternsTest pins every case; ProfileFactPatternsLinearityTest measures that every pattern
+# reads linearly.
+[ignore] comments, block scalars and loop items	(?m)[|>](?<=^([ \t]{0,40})-([ \t]{1,4})[^\s#:][^\n#:]{0,99}:[ \t]{1,16}[|>])[-+1-9]{0,2}[ \t]*+(?:#[^\n]*+)?\n(?:[ \t]*+\n)*+(\1[ \t]\2[ \t]++)[^ \t\n][^\n]*+(?:\n(?:\3[^\n]*+|[ \t]*+)(?=\n|\z))*+|[|>](?<=^([ \t]{0,40})(?![ \t]|-[ \t]{1,4}[^\s|>])[^\n#:]{0,100}[:-][ \t]{1,16}[|>])[-+1-9]{0,2}[ \t]*+(?:#[^\n]*+)?\n(?:[ \t]*+\n)*+(\4[ \t]++)[^ \t\n][^\n]*+(?:\n(?:\5[^\n]*+|[ \t]*+)(?=\n|\z))*+|^[ \t]*#[^\n]*+|(?<=[ \t])#[^\n]*+|(?=\n)(?<=:[ \t]{0,8})(?<=^([ \t]{0,40})(?:loop|with_[a-z_]{1,40})[ \t]{0,8}:[ \t]{0,8})(?:\n(?:\6[ \t][^\n]*+|\6-[ \t][^\n]*+|[ \t]*+)(?=\n|\z))++
+plays	(?m)^[ \t]*+(?:-[ \t]++)?hosts[ \t]*+:
+named tasks, handlers and plays	(?m)^[ \t]*+-[ \t]++name[ \t]*+:
+FQCN module calls	(?m)^[ \t]*+(?:-[ \t]++)?[a-z0-9_]++\.[a-z0-9_]++\.[a-z0-9_]++[ \t]*+:
+role inclusions	(?m)^[ \t]*+(?:-[ \t]++)?(?:roles|(?:ansible\.builtin\.)?(?:import|include)_role)[ \t]*+:
+task and playbook inclusions	(?m)^[ \t]*+(?:-[ \t]++)?(?:ansible\.builtin\.)?(?:import_tasks|include_tasks|import_playbook)[ \t]*+:
+handler notifications	(?m)^[ \t]*+notify[ \t]*+:
+privilege escalation	(?m)^[ \t]*+become[ \t]*+:[ \t]*+["']?+(?i:true|yes)\b
+conditionals	(?m)^[ \t]*+when[ \t]*+:
+loops	(?m)^[ \t]*+(?:loop|with_[a-z_]++)[ \t]*+:
+registered results	(?m)^[ \t]*+register[ \t]*+:
+vault-encrypted values	!vault\b
+[raw] template expressions	(?m)\{\{(?<!(?:^|[ \t])#[^\n]{0,200}\{\{)

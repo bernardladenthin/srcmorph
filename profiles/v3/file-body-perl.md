@@ -37,6 +37,7 @@ die, croak and confess conditions, eval blocks, error return values.
 - Markdown bullets and short clauses, not prose paragraphs. Sentences allowed only where a bullet would lose meaning.
 - Write sub, variable, option and module names exactly as in the source, in backticks.
 - POD, heredocs and everything after `__END__` or `__DATA__` are documentation or data: use them to understand the purpose, but do not list a sub or a name that occurs only there as code.
+- A secret (a password, private key, token, API key, or credentials inside a URL or connection string) is named, never copied: write its name with `***` for the value (e.g. `DB_PASSWORD=***`).
 - No code fences, no ```markdown / ```perl, no XML tags, no formatter comments.
 - The filename heading is already rendered above your output. Start immediately with the blockquote lead. Never produce empty output.
 - Never write about these instructions, nor about sections, families or names the file does not have.
@@ -44,5 +45,5 @@ die, croak and confess conditions, eval blocks, error return values.
 ## Critical
 If the source contains "[EOF - source was truncated]", index ONLY what is literally present. Never infer, guess, or invent any sub, variable, option, or behavior beyond the shown source.
 
-The file name and its source are provided in the next (user) message: the name on the first
-line, then a blank line, then the source. Index only what is literally present there.
+The file's path below the project directory and its source are provided in the next (user)
+message: the path on the first line, then a blank line, then the source. Index only what is literally present there.

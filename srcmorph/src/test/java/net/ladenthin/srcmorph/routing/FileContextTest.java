@@ -1,0 +1,46 @@
+// SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+//
+// SPDX-License-Identifier: Apache-2.0
+package net.ladenthin.srcmorph.routing;
+
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+
+import org.junit.jupiter.api.Test;
+
+public class FileContextTest {
+
+    // <editor-fold defaultstate="collapsed" desc="constructor">
+    @Test
+    public void constructor_withoutHead_accessorsReturnConstructorValues() {
+        // arrange
+        final FileContext c = new FileContext("Foo.java", "src/Foo.java", 1234L, 56, 7890L);
+
+        // act, assert
+        assertThat(c.fileName(), is(equalTo("Foo.java")));
+        assertThat(c.relativePath(), is(equalTo("src/Foo.java")));
+        assertThat(c.sizeBytes(), is(equalTo(1234L)));
+        assertThat(c.lineCount(), is(equalTo(56)));
+        assertThat(c.lastModifiedEpochMilli(), is(equalTo(7890L)));
+        assertThat(c.head(), is(equalTo("")));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="head">
+    @Test
+    public void head_givenText_isReturnedAndNotInToString() {
+        // arrange
+        final FileContext c = new FileContext("d.yaml", "k8s/d.yaml", 10L, 1, 5L, "apiVersion: v1\n");
+
+        // act, assert
+        assertThat(c.fileName(), is(equalTo("d.yaml")));
+        assertThat(c.relativePath(), is(equalTo("k8s/d.yaml")));
+        assertThat(c.sizeBytes(), is(equalTo(10L)));
+        assertThat(c.lineCount(), is(equalTo(1)));
+        assertThat(c.lastModifiedEpochMilli(), is(equalTo(5L)));
+        assertThat(c.head(), is(equalTo("apiVersion: v1\n")));
+        assertThat(c.toString().contains("apiVersion"), is(false));
+    }
+    // </editor-fold>
+}

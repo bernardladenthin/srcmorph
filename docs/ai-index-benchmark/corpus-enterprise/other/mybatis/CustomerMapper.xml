@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+
+SPDX-License-Identifier: Apache-2.0
+-->
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="shop.customer.CustomerMapper">
+
+    <resultMap id="customerResult" type="shop.customer.Customer">
+        <id property="id" column="CUSTOMER_ID"/>
+        <result property="email" column="EMAIL"/>
+        <result property="loyaltyTier" column="LOYALTY_TIER"/>
+    </resultMap>
+
+    <sql id="customerColumns">CUSTOMER_ID, EMAIL, LOYALTY_TIER, CREATED_AT</sql>
+
+    <select id="findByEmail" resultMap="customerResult">
+        select <include refid="customerColumns"/> from CUSTOMER where EMAIL = #{email}
+    </select>
+
+    <select id="search" resultMap="customerResult">
+        select <include refid="customerColumns"/> from CUSTOMER
+        <where>
+            <if test="tier != null">LOYALTY_TIER = #{tier}</if>
+            <if test="createdAfter != null"><![CDATA[ and CREATED_AT >= #{createdAfter} ]]></if>
+        </where>
+        order by ${sortColumn}
+    </select>
+
+    <!-- <select id="findAll">select * from CUSTOMER</select> -->
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        insert into CUSTOMER (EMAIL, LOYALTY_TIER, CREATED_AT) values (#{email}, #{loyaltyTier}, now())
+    </insert>
+
+    <update id="promote">
+        update CUSTOMER
+        <set>LOYALTY_TIER = #{tier}</set>
+        where CUSTOMER_ID in
+        <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </update>
+
+    <delete id="deleteInactive">
+        delete from CUSTOMER where LAST_ORDER_AT &lt; #{cutoff}
+    </delete>
+</mapper>

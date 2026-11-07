@@ -1,0 +1,31 @@
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# Docker Compose counters (compose.yaml, docker-compose.yml and their overrides), for a rule with
+# the prompt file-body-ops: one per line, label TAB pattern (Java regex). The [ignore] line blanks
+# YAML comments and the body of a block scalar (the lines below a | or > that are deeper than its
+# key, past a list item's dash, as deep as the first of them; the key stays, and an empty command: >
+# blanks no sibling key), so a key quoted in a command does not count. A service counts by the image: or
+# build: it runs, so "services with an image" and "services built here" together are the services
+# (one with both counts in each); the other keys count wherever they stand (a service's volumes: and
+# the top-level volumes: alike). "variable substitutions" counts every ${NAME} and $NAME, not the
+# escape $${NAME} or $$NAME, which Compose writes as a literal ($$${NAME} is a $ and a substitution).
+# Compose interpolates a block scalar too (command: > with sh -c "echo ${GREETING}"), so that counter
+# reads the file as written ([raw]) and leaves out only a $ in a comment: after a # at a line start or
+# after a blank, at most 200 characters before it on its line.
+# OpsFactPatternsTest pins every case; ProfileFactPatternsLinearityTest measures that every pattern reads linearly.
+[ignore] comments and block scalars	(?m)[|>](?<=^([ \t]{0,40})-([ \t]{1,4})[^\s#:][^\n#:]{0,99}:[ \t]{1,16}[|>])[-+1-9]{0,2}[ \t]*+(?:#[^\n]*+)?\n(?:[ \t]*+\n)*+(\1[ \t]\2[ \t]++)[^ \t\n][^\n]*+(?:\n(?:\3[^\n]*+|[ \t]*+)(?=\n|\z))*+|[|>](?<=^([ \t]{0,40})(?![ \t]|-[ \t]{1,4}[^\s|>])[^\n#:]{0,100}[:-][ \t]{1,16}[|>])[-+1-9]{0,2}[ \t]*+(?:#[^\n]*+)?\n(?:[ \t]*+\n)*+(\4[ \t]++)[^ \t\n][^\n]*+(?:\n(?:\5[^\n]*+|[ \t]*+)(?=\n|\z))*+|^[ \t]*#[^\n]*+|(?<=[ \t])#[^\n]*+
+services with an image	(?m)^[ \t]++image[ \t]*+:
+services built here	(?m)^[ \t]++build[ \t]*+:
+port lists	(?m)^[ \t]++ports[ \t]*+:
+dependencies between services	(?m)^[ \t]++depends_on[ \t]*+:
+healthchecks	(?m)^[ \t]++healthcheck[ \t]*+:
+environment blocks and files	(?m)^[ \t]++(?:environment|env_file)[ \t]*+:
+volume lists	(?m)^[ \t]*+volumes[ \t]*+:
+network lists	(?m)^[ \t]*+networks[ \t]*+:
+secret lists	(?m)^[ \t]*+secrets[ \t]*+:
+restart policies	(?m)^[ \t]++restart[ \t]*+:
+profiles	(?m)^[ \t]++profiles[ \t]*+:
+deploy sections	(?m)^[ \t]++deploy[ \t]*+:
+[raw] variable substitutions	(?m)(?<!\$)(?:\$\$)*+\$\{?[A-Za-z_]\w*+(?<!(?:^|[ \t])#[^\n]{0,200})

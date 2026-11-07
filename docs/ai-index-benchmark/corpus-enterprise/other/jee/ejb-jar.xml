@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+
+SPDX-License-Identifier: Apache-2.0
+-->
+<ejb-jar xmlns="https://jakarta.ee/xml/ns/jakartaee" version="4.0">
+    <enterprise-beans>
+        <session>
+            <ejb-name>StockReservationBean</ejb-name>
+            <ejb-class>shop.stock.StockReservationBean</ejb-class>
+            <session-type>Stateless</session-type>
+            <env-entry>
+                <env-entry-name>reservationMinutes</env-entry-name>
+                <env-entry-type>java.lang.Integer</env-entry-type>
+                <env-entry-value>45</env-entry-value>
+            </env-entry>
+        </session>
+        <session>
+            <ejb-name>CheckoutSessionBean</ejb-name>
+            <ejb-class>shop.checkout.CheckoutSessionBean</ejb-class>
+            <session-type>Stateful</session-type>
+            <ejb-local-ref>
+                <ejb-ref-name>ejb/StockReservation</ejb-ref-name>
+                <local>shop.stock.StockReservation</local>
+            </ejb-local-ref>
+        </session>
+        <message-driven>
+            <ejb-name>OrderPlacedListener</ejb-name>
+            <ejb-class>shop.events.OrderPlacedListener</ejb-class>
+            <activation-config>
+                <activation-config-property>
+                    <activation-config-property-name>destinationLookup</activation-config-property-name>
+                    <activation-config-property-value>java:/jms/queue/OrderPlaced</activation-config-property-value>
+                </activation-config-property>
+            </activation-config>
+        </message-driven>
+    </enterprise-beans>
+    <interceptors>
+        <interceptor>
+            <interceptor-class>shop.audit.TimingInterceptor</interceptor-class>
+        </interceptor>
+    </interceptors>
+    <assembly-descriptor>
+        <container-transaction>
+            <method>
+                <ejb-name>StockReservationBean</ejb-name>
+                <method-name>reserve</method-name>
+            </method>
+            <trans-attribute>RequiresNew</trans-attribute>
+        </container-transaction>
+        <interceptor-binding>
+            <ejb-name>*</ejb-name>
+            <interceptor-class>shop.audit.TimingInterceptor</interceptor-class>
+        </interceptor-binding>
+    </assembly-descriptor>
+</ejb-jar>

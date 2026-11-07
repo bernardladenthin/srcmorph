@@ -7,8 +7,10 @@
 # everything after __END__ / __DATA__, heredoc bodies (<<"EOT", <<'EOT', <<\EOT, <<EOT, <<~EOT) and
 # comment lines, keeping the line breaks, so a sub named in the documentation or in a usage text does
 # not count, and a heredoc marker inside a comment or POD inside a heredoc opens nothing. A << after a
-# variable, a number, ) or ] is a shift (but print $fh <<EOT is a heredoc, as perl reads it), one
-# after a trailing # comment or whose line goes on with an unclosed quote opens nothing, and << "EOT"
+# variable, a number, ), ] or a hash element ($h{x}, $r->{k}) is a shift (but print $fh <<EOT and
+# print {$fh} <<EOT are heredocs, as perl reads them), one after a trailing # comment, inside an
+# unclosed q{}, qq//, qw, qr, m//, s///, y or tr on its line, or whose line goes on with an unclosed
+# quote opens nothing (the rest of such a line is blanked), and << "EOT"
 # with a space is a heredoc; a heredoc whose marker never comes (perl refuses the file) runs to the
 # end, so a long file of shifts or unclosed heredocs stays linear. Perl 5.38's
 # class and method count as packages and subs, use parent / base as modules used. "die, croak and
@@ -17,7 +19,7 @@
 # and delete. Counts are regex heuristics: a sub generated with eval or a glob assignment, an %ENV
 # slice or a key in a variable is not seen, and of two heredocs started on one line (print <<A,
 # <<B;) only the first body is blanked. PerlFactPatternsTest pins every case.
-[ignore] POD, __END__, heredoc bodies and comment lines	(?ms)^=[a-zA-Z]\w*\b.*?(?:^=cut\b[^\n]*|\z)|^__(?:END|DATA)__\b.*\z|(?=<<)(?:(?<=\b(?:print|printf|say)[ \t]{1,8}\$\w{1,64}[ \t]{1,8})|(?<![$@%][\w:]{1,64}[ \t]{0,8}|\b\d{1,20}[ \t]{0,8}|[)\]][ \t]{0,8}))(?<![ \t;{}]#[^\n]{0,200})<<(?:~[ \t]*|[ \t]+(?=["']))?(?:\\([A-Za-z_]\w*+)|(["'])([A-Za-z_]\w*+)\2|([A-Za-z_]\w*+))(?:[^"'#\n]++|"(?:[^"\\\n]|\\.)*+"|'(?:[^'\\\n]|\\.)*+'|#[^\n]*+)*+\n(?:.*?^[ \t]*(?:\1|\3|\4)[ \t]*$|.*)|^[ \t]*#[^\n]*
+[ignore] POD, __END__, heredoc bodies and comment lines	(?ms)^=[a-zA-Z]\w*\b.*?(?:^=cut\b[^\n]*|\z)|^__(?:END|DATA)__\b.*\z|(?=<<)(?:(?<=\b(?:print|printf|say)[ \t]{1,8}\$\w{1,64}[ \t]{1,8})|(?<![$@%][\w:]{1,64}[ \t]{0,8}|\b\d{1,20}[ \t]{0,8}|[)\]][ \t]{0,8}|[\w>}]\{[^{}\n]{0,64}\}[ \t]{0,8}))(?<![ \t;{}]#[^\n]{0,200})(?<!\b(?:qq?|qw|qr|m|s|y|tr)[ \t]{0,4}(?:\{[^}\n]{0,200}|\([^)\n]{0,200}|\[[^\]\n]{0,200}|<[^>\n]{0,200}|/[^/\n]{0,200}|\|[^|\n]{0,200}|![^!\n]{0,200}))<<(?:~[ \t]*|[ \t]+(?=["']))?(?:\\([A-Za-z_]\w*+)|(["'])([A-Za-z_]\w*+)\2|([A-Za-z_]\w*+))(?:[^"'#\n]++|"(?:[^"\\\n]|\\.)*+"|'(?:[^'\\\n]|\\.)*+'|#[^\n]*+)*+(?:\n(?:.*?^[ \t]*(?:\1|\3|\4)[ \t]*$|.*)|[^\n]*+)|^[ \t]*#[^\n]*
 packages	(?m)^[ \t]*(?:package|class)[ \t]+[A-Za-z_]\w*(?:::\w+)*
 subs	(?m)^[ \t]*(?:(?:my|our|state)[ \t]+)?(?:sub|method)[ \t]+[A-Za-z_]\w*(?:::\w+)*(?:[ \t]*\((?:[^()]|\([^()]*\))*\))?(?:[ \t]*:[ \t]*\w+(?:\([^)]*\))?)*(?:[ \t]*\((?:[^()]|\([^()]*\))*\))?[ \t]*(?:\{|$)
 modules used	(?m)^[ \t]*use[ \t]+(?:[A-Z]\w*(?:::\w+)*|(?:parent|base)\b)

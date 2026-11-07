@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+
+SPDX-License-Identifier: Apache-2.0
+-->
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  id="fulfilment-definitions" targetNamespace="http://shop.example/bpmn">
+    <bpmn:message id="msgPaymentReceived" name="PaymentReceived"/>
+    <bpmn:error id="errOutOfStock" name="OutOfStock" errorCode="STOCK_EMPTY"/>
+
+    <bpmn:process id="orderFulfilment" name="Order fulfilment" isExecutable="true">
+        <bpmn:startEvent id="orderPlaced" name="Order placed"/>
+        <bpmn:sequenceFlow id="toReserve" sourceRef="orderPlaced" targetRef="reserveStock"/>
+        <bpmn:serviceTask id="reserveStock" name="Reserve stock" camunda:class="shop.bpm.ReserveStockDelegate"/>
+        <bpmn:boundaryEvent id="stockMissing" attachedToRef="reserveStock">
+            <bpmn:errorEventDefinition errorRef="errOutOfStock"/>
+        </bpmn:boundaryEvent>
+        <bpmn:sequenceFlow id="toWaitPayment" sourceRef="reserveStock" targetRef="waitForPayment"/>
+        <bpmn:intermediateCatchEvent id="waitForPayment" name="Wait for payment">
+            <bpmn:messageEventDefinition messageRef="msgPaymentReceived"/>
+        </bpmn:intermediateCatchEvent>
+        <bpmn:sequenceFlow id="toAmountCheck" sourceRef="waitForPayment" targetRef="amountCheck"/>
+        <bpmn:exclusiveGateway id="amountCheck" name="Large order?"/>
+        <bpmn:sequenceFlow id="large" sourceRef="amountCheck" targetRef="approveOrder">
+            <bpmn:conditionExpression>${order.total &gt; 1000}</bpmn:conditionExpression>
+        </bpmn:sequenceFlow>
+        <bpmn:sequenceFlow id="small" sourceRef="amountCheck" targetRef="shipOrder">
+            <bpmn:conditionExpression>${order.total &lt;= 1000}</bpmn:conditionExpression>
+        </bpmn:sequenceFlow>
+        <bpmn:userTask id="approveOrder" name="Approve large order" camunda:candidateGroups="backoffice"/>
+        <bpmn:sequenceFlow id="approvedToShip" sourceRef="approveOrder" targetRef="shipOrder"/>
+        <bpmn:serviceTask id="shipOrder" name="Ship order" camunda:type="external" camunda:topic="shipping"/>
+        <bpmn:sequenceFlow id="toInvoice" sourceRef="shipOrder" targetRef="createInvoice"/>
+        <bpmn:callActivity id="createInvoice" name="Create invoice" calledElement="invoicing"/>
+        <bpmn:sequenceFlow id="toEnd" sourceRef="createInvoice" targetRef="orderCompleted"/>
+        <bpmn:endEvent id="orderCompleted" name="Order completed"/>
+        <bpmn:sequenceFlow id="toCancelled" sourceRef="stockMissing" targetRef="orderCancelled"/>
+        <bpmn:endEvent id="orderCancelled" name="Order cancelled"/>
+    </bpmn:process>
+
+    <bpmndi:BPMNDiagram id="fulfilmentDiagram">
+        <bpmndi:BPMNPlane id="plane" bpmnElement="orderFulfilment">
+            <bpmndi:BPMNShape id="shapeOrderPlaced" bpmnElement="orderPlaced"><dc:Bounds x="100" y="100" width="36" height="36"/></bpmndi:BPMNShape>
+            <bpmndi:BPMNShape id="shapeReserveStock" bpmnElement="reserveStock"><dc:Bounds x="200" y="78" width="100" height="80"/></bpmndi:BPMNShape>
+            <bpmndi:BPMNShape id="shapeShipOrder" bpmnElement="shipOrder"><dc:Bounds x="600" y="78" width="100" height="80"/></bpmndi:BPMNShape>
+        </bpmndi:BPMNPlane>
+    </bpmndi:BPMNDiagram>
+</bpmn:definitions>

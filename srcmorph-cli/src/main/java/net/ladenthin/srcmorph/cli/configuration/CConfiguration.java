@@ -5,7 +5,7 @@ package net.ladenthin.srcmorph.cli.configuration;
 
 import java.util.List;
 import lombok.ToString;
-import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
+import net.ladenthin.srcmorph.config.RoutingRule;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
 import org.jspecify.annotations.Nullable;
 
@@ -48,19 +48,19 @@ public class CConfiguration {
 
     /**
      * The rule of the package phase ({@link CCommand#AggregatePackages}, and the package step of
-     * {@link CCommand#All}), the top-level {@code packageFieldGenerations} of the configuration file,
+     * {@link CCommand#All}), the top-level {@code packageRules} of the configuration file,
      * which the Maven plugin's {@code aggregate-packages} goal reads too: exactly one rule, with the
      * package prompt and its model. The phase fails without it; the file rules of
-     * {@code srcMorph.fieldGenerations} never reach it.
+     * {@code srcMorph.rules} never reach it.
      */
-    public @Nullable List<AiFieldGenerationConfig> packageFieldGenerations;
+    public @Nullable List<RoutingRule> packageRules;
 
     /**
      * The rule of the project phase ({@link CCommand#AggregateProject}, and the project step of
-     * {@link CCommand#All}), the top-level {@code projectFieldGenerations} of the configuration file,
+     * {@link CCommand#All}), the top-level {@code projectRules} of the configuration file,
      * which the Maven plugin's {@code aggregate-project} goal reads too: at most one rule, with the
      * project-overview prompt and its model.
      * Unset (the default), the project index is written without an overview.
      */
-    public @Nullable List<AiFieldGenerationConfig> projectFieldGenerations;
+    public @Nullable List<RoutingRule> projectRules;
 }

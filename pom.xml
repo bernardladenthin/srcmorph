@@ -137,7 +137,7 @@ SPDX-License-Identifier: Apache-2.0
                 <version>2.0.20</version>
             </dependency>
             <!--
-                Pin logback-classic for the TEST scope only: AiFieldGenerationSupportTest attaches a
+                Pin logback-classic for the TEST scope only: SummaryGeneratorTest attaches a
                 logback ListAppender to capture log output, and LogCaptor-style capture needs logback
                 specifically. Test scope never reaches a published artifact or a consumer's runtime classpath, so its
                 Java 11 bytecode is harmless here. The managed version wins over whatever the llama
@@ -155,7 +155,7 @@ SPDX-License-Identifier: Apache-2.0
                 matching version — pinning them together here keeps maven-enforcer's
                 dependencyConvergence rule satisfied without needing a separate jackson-core/
                 jackson-annotations/snakeyaml pin. jackson-databind is also used directly by srcmorph's
-                OpenAiCompatibleAiGenerationProvider and transitively by net.ladenthin:llama; this one
+                OpenAiCompatibleGenerationProvider and transitively by net.ladenthin:llama; this one
                 managed version is what all three resolve to.
             -->
             <dependency>

@@ -7,14 +7,15 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Collections;
 import lombok.ToString;
-import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
-import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
+import net.ladenthin.srcmorph.config.ModelRegistry;
+import net.ladenthin.srcmorph.config.RoutingRule;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
-import net.ladenthin.srcmorph.indexer.AiIndexOutcome;
+import net.ladenthin.srcmorph.indexer.IndexOutcome;
 import net.ladenthin.srcmorph.indexer.ProjectIndexer;
-import net.ladenthin.srcmorph.prompt.AiPromptSupport;
-import net.ladenthin.srcmorph.provider.AiGenerationProvider;
-import net.ladenthin.srcmorph.provider.AiGenerationProviderFactory;
+import net.ladenthin.srcmorph.indexer.ProjectOverview;
+import net.ladenthin.srcmorph.prompt.PromptCatalog;
+import net.ladenthin.srcmorph.provider.GenerationProvider;
+import net.ladenthin.srcmorph.provider.GenerationProviderFactory;
 import net.ladenthin.srcmorph.support.Java8CompatibilityHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,7 +27,7 @@ import org.slf4j.LoggerFactory;
  * <p>Extracted from what was {@code AggregateProjectMojo.execute()} in the
  * {@code llamacpp-ai-index-maven-plugin} module. By default this is fully deterministic (a per-package
  * lead/link table of contents, no model call); when
- * {@link SrcMorphConfiguration#getFieldGenerations()} holds a rule (at most one), it is the
+ * {@link SrcMorphConfiguration#getRules()} holds a rule (at most one), it is the
  * <em>optional</em> AI overview generation (one extra call synthesising a short project overview
  * paragraph from the per-package leads) — see {@link ProjectIndexer}.</p>
  */
@@ -42,7 +43,7 @@ public final class AggregateProjectEngine {
     private static final String PHASE = "aggregate-project";
 
     /** The configuration file's key for the phase's rule, named in a configuration error. */
-    private static final String CLI_KEY = "projectFieldGenerations";
+    private static final String CLI_KEY = "projectRules";
 
     private final SrcMorphConfiguration config;
     private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
@@ -79,10 +80,10 @@ public final class AggregateProjectEngine {
         LOGGER.info("Starting AI project index aggregation");
         LOGGER.info("Output directory: {}", outputPath);
         LOGGER.info("Force           : {}", config.isForce());
+        LOGGER.info("Regenerate on   : {}", config.getRegenerateOn());
 
         // the rule is checked before anything else, so a wrong one fails on a fresh tree too
-        final AiFieldGenerationConfig overview =
-                EngineSupport.optionalPhaseRule(PHASE, CLI_KEY, config.getFieldGenerations());
+        final RoutingRule overview = EngineSupport.optionalPhaseRule(PHASE, CLI_KEY, config.getRules());
         if (overview != null) {
             EngineSupport.resolveFactsKeys(config, Collections.singletonList(overview));
         }
@@ -95,21 +96,25 @@ public final class AggregateProjectEngine {
         final String title =
                 projectName == null || compatibilityHelper.isBlank(projectName) ? DEFAULT_PROJECT_TITLE : projectName;
 
-        final AiIndexOutcome outcome;
+        final IndexOutcome outcome;
         if (overview != null) {
             outcome = aggregateWithOverview(outputPath, title, overview);
         } else {
             LOGGER.info("Project overview generation: disabled (no rule configured)");
-            final ProjectIndexer indexer =
-                    new ProjectIndexer(title, config.getPluginVersion(), config.getAiVersion(), config.isForce());
+            final ProjectIndexer indexer = new ProjectIndexer(
+                    title,
+                    config.getGeneratorVersion(),
+                    config.getAiVersion(),
+                    config.isForce(),
+                    config.getRegenerateOn());
             outcome = indexer.aggregate(outputPath);
         }
-        if (outcome == AiIndexOutcome.FAILED) {
+        if (outcome == IndexOutcome.FAILED) {
             throw new SrcMorphException("The project overview for " + outputPath + " got an incomplete answer"
                     + " and the project index was not written; the WARN line says why, and the next run tries it"
                     + " again");
         }
-        final int written = outcome == AiIndexOutcome.WRITTEN ? 1 : 0;
+        final int written = outcome == IndexOutcome.WRITTEN ? 1 : 0;
         LOGGER.info("Project index files written: {}", written);
 
         LOGGER.info("AI project index aggregation finished.");
@@ -124,15 +129,14 @@ public final class AggregateProjectEngine {
      * @throws SrcMorphException naming the first problem found
      */
     public void check() throws SrcMorphException {
-        final AiFieldGenerationConfig overview =
-                EngineSupport.optionalPhaseRule(PHASE, CLI_KEY, config.getFieldGenerations());
+        final RoutingRule overview = EngineSupport.optionalPhaseRule(PHASE, CLI_KEY, config.getRules());
         if (overview == null) {
             LOGGER.info("Check passed: the project index has no overview rule and calls no model.");
             return;
         }
         EngineSupport.resolveFactsKeys(config, Collections.singletonList(overview));
         EngineSupport.buildPromptSupport(
-                config.getPromptDefinitions(), config.getProfileDirectory(), config.getFieldGenerations());
+                config.getPromptDefinitions(), config.getProfileDirectory(), config.getRules());
         EngineSupport.validateRoutedModelPaths(
                 config.getGenerationProvider(),
                 EngineSupport.buildAiModelDefinitionSupport(config.getAiDefinitions(), config.getModelDirectory()),
@@ -140,49 +144,46 @@ public final class AggregateProjectEngine {
         LOGGER.info(
                 "Check passed: the overview rule (prompt '{}', model '{}'), its profile files and its model are in"
                         + " order.",
-                overview.getPromptKey(),
-                overview.getAiDefinitionKey());
+                overview.requirePromptKey(),
+                overview.requireAiDefinitionKey());
     }
 
     /**
      * Aggregates the project index with the optional AI overview paragraph enabled, generated by the
-     * given field generation. A provider is created (and closed) only on this path, so the deterministic
+     * given rule. A provider is created (and closed) only on this path, so the deterministic
      * default never instantiates a model.
      *
      * @param outputPath the resolved output directory holding the {@code .ai.md} tree
      * @param title      the resolved project title
-     * @param overview   the overview field generation (prompt + model)
+     * @param overview   the overview rule (prompt + model)
      * @return what the project index pass did
      * @throws SrcMorphException if the provider or model definitions are misconfigured
      * @throws IOException       if the output tree cannot be read or written
      */
-    private AiIndexOutcome aggregateWithOverview(
-            final Path outputPath, final String title, final AiFieldGenerationConfig overview)
+    private IndexOutcome aggregateWithOverview(final Path outputPath, final String title, final RoutingRule overview)
             throws SrcMorphException, IOException {
-        final AiPromptSupport promptSupport = EngineSupport.buildPromptSupport(
-                config.getPromptDefinitions(), config.getProfileDirectory(), config.getFieldGenerations());
-        final AiModelDefinitionSupport modelDefinitionSupport =
+        final PromptCatalog promptSupport = EngineSupport.buildPromptSupport(
+                config.getPromptDefinitions(), config.getProfileDirectory(), config.getRules());
+        final ModelRegistry modelDefinitionSupport =
                 EngineSupport.buildAiModelDefinitionSupport(config.getAiDefinitions(), config.getModelDirectory());
         EngineSupport.validateRoutedModelPaths(
                 config.getGenerationProvider(), modelDefinitionSupport, Collections.singletonList(overview));
         LOGGER.info(
                 "Project overview generation: enabled (prompt '{}', model '{}')",
-                overview.getPromptKey(),
-                overview.getAiDefinitionKey());
-        final AiGenerationProviderFactory providerFactory = new AiGenerationProviderFactory();
-        try (AiGenerationProvider provider = providerFactory.create(
+                overview.requirePromptKey(),
+                overview.requireAiDefinitionKey());
+        final GenerationProviderFactory providerFactory = new GenerationProviderFactory();
+        try (GenerationProvider provider = providerFactory.create(
                 config.getGenerationProvider(),
-                EngineSupport.resolveLlamaCppJniConfig(modelDefinitionSupport, overview.getAiDefinitionKey()),
+                EngineSupport.resolveProviderConfig(modelDefinitionSupport, overview.requireAiDefinitionKey()),
                 promptSupport)) {
             final ProjectIndexer indexer = new ProjectIndexer(
                     title,
-                    config.getPluginVersion(),
+                    config.getGeneratorVersion(),
                     config.getAiVersion(),
                     config.isForce(),
-                    provider,
-                    overview,
-                    promptSupport,
-                    modelDefinitionSupport);
+                    config.getRegenerateOn(),
+                    new ProjectOverview(provider, overview, promptSupport, modelDefinitionSupport));
             return indexer.aggregate(outputPath);
         }
     }

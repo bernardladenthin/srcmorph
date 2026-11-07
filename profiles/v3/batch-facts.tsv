@@ -1,0 +1,24 @@
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# Windows batch counters (.bat, .cmd), for a rule with the prompt file-body-fallback: one per line,
+# label TAB pattern (Java regex), keywords in any case as cmd.exe reads them. The [ignore] line
+# blanks REM and :: comment lines, a REM after an & (echo x & rem note) and the text an echo prints
+# (echo, echo. and echo: up to the line end or an &, |, < or >), so a "goto" in a comment or an "if"
+# or "call" in a message does not count. "labels" counts a :name
+# at the start of a line (a call or goto target); "variables set" every set, set /a and set /p, also
+# after an if or in a for body; "conditionals (approx)" every if; "for loops" a for over a %variable,
+# with its options or the root of a /r; "exits" an exit command, not a label :exit nor a goto to it;
+# "error level checks" every errorlevel. OpsFactPatternsTest pins every case;
+# ProfileFactPatternsLinearityTest measures that every pattern reads linearly.
+[ignore] REM and :: comment lines, echoed text	(?im)^[ \t]*+(?:@[ \t]*+)?(?:rem\b|::)[^\n]*+|(?<=&)[ \t]*+rem\b[^\n]*+|(?<![\w.%-])echo(?![\w-])[^\n&|<>]*+
+labels	(?m)^[ \t]*+:[A-Za-z_][\w.-]*+
+calls	(?i)\bcall[ \t]++
+gotos	(?i)\bgoto[ \t]++:?\w
+variables set	(?i)\bset[ \t]++(?:/[ap][ \t]++)?"?[A-Za-z_]
+conditionals (approx)	(?i)\bif[ \t]++
+for loops	(?i)\bfor[ \t]++(?:/[dflr][ \t]++(?:(?:"[^"\n]*+"|[^\s%"]++)[ \t]++)?)?%%?[A-Za-z]
+local scopes	(?i)\bsetlocal\b
+exits	(?i)(?<![\w.:%-])exit\b(?<!\bgoto[ \t]{1,8}exit)(?![ \t]*+=)
+error level checks	(?i)errorlevel\b

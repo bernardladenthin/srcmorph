@@ -18,10 +18,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import net.ladenthin.srcmorph.config.AiModelDefinition;
+import net.ladenthin.srcmorph.config.ModelDefinition;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
-import net.ladenthin.srcmorph.provider.LlamaCppJniConfig;
 import net.ladenthin.srcmorph.provider.ModelListFixtures;
+import net.ladenthin.srcmorph.provider.ProviderConfig;
 import net.ladenthin.srcmorph.provider.RemoteModel;
 import org.junit.jupiter.api.Test;
 
@@ -36,16 +36,16 @@ public class ListModelsEngineTest {
             new RemoteModel("mai-code-1.1-flash", 127790, null, null));
 
     /** The configurations the lister was asked with, in order. */
-    private final List<LlamaCppJniConfig> asked = new ArrayList<>();
+    private final List<ProviderConfig> asked = new ArrayList<>();
 
-    private List<RemoteModel> record(final LlamaCppJniConfig config) {
+    private List<RemoteModel> recorded(final ProviderConfig config) {
         asked.add(config);
         return MODELS;
     }
 
-    private static AiModelDefinition definition(
+    private static ModelDefinition definition(
             final String key, final String provider, final String baseUrl, final String apiKeyEnv) {
-        final AiModelDefinition definition = new AiModelDefinition();
+        final ModelDefinition definition = new ModelDefinition();
         definition.setKey(key);
         definition.setProvider(provider);
         definition.setBaseUrl(baseUrl);
@@ -53,8 +53,7 @@ public class ListModelsEngineTest {
         return definition;
     }
 
-    private static SrcMorphConfiguration configuration(
-            final String runProvider, final AiModelDefinition... definitions) {
+    private static SrcMorphConfiguration configuration(final String runProvider, final ModelDefinition... definitions) {
         final SrcMorphConfiguration configuration = new SrcMorphConfiguration();
         configuration.setGenerationProvider(runProvider);
         configuration.setAiDefinitions(new ArrayList<>(Arrays.asList(definitions)));
@@ -63,14 +62,14 @@ public class ListModelsEngineTest {
 
     private ModelListReport execute(final SrcMorphConfiguration configuration, final String filter)
             throws SrcMorphException {
-        return new ListModelsEngine(configuration, filter, (config, prompts) -> record(config)).execute();
+        return new ListModelsEngine(configuration, filter, (config, prompts) -> recorded(config)).execute();
     }
 
     // <editor-fold defaultstate="collapsed" desc="which servers">
     @Test
     public void execute_asksEveryOpenAiCompatibleServerOnce_perBaseUrlAndKey() throws Exception {
         // arrange
-        final AiModelDefinition local = definition("local", "llamacpp-jni", GATEWAY, "");
+        final ModelDefinition local = definition("local", "llamacpp-jni", GATEWAY, "");
         local.setModelPath("model.gguf");
         final SrcMorphConfiguration configuration = configuration(
                 "llamacpp-jni",
@@ -95,22 +94,29 @@ public class ListModelsEngineTest {
 
     @Test
     public void execute_aDefinitionWithoutProvider_takesTheRunsProvider() throws Exception {
+        // act
         final ModelListReport report = execute(
                 configuration(
                         "openai-compatible",
                         definition("openrouter", "", "https://openrouter.ai/api/v1", "OPENROUTER_API_KEY")),
                 "");
 
+        // assert
         assertThat(asked.size(), is(1));
         assertThat(report.listings().get(0).baseUrl(), is("https://openrouter.ai/api/v1"));
     }
 
     @Test
     public void execute_noOpenAiCompatibleDefinition_fails() {
-        final AiModelDefinition local = definition("local", "llamacpp-jni", GATEWAY, "");
+        // arrange
+        final ModelDefinition local = definition("local", "llamacpp-jni", GATEWAY, "");
         local.setModelPath("model.gguf");
-        final SrcMorphException thrown =
-                assertThrows(SrcMorphException.class, () -> execute(configuration("openai-compatible", local), ""));
+        final SrcMorphConfiguration configuration = configuration("openai-compatible", local);
+
+        // act
+        final SrcMorphException thrown = assertThrows(SrcMorphException.class, () -> execute(configuration, ""));
+
+        // assert
         assertThat(
                 thrown.getMessage(),
                 is("None of the 1 aiDefinitions has the provider 'openai-compatible'; ListModels lists the models"
@@ -120,26 +126,35 @@ public class ListModelsEngineTest {
 
     @Test
     public void execute_noDefinitionsAtAll_fails() {
+        // arrange
         final SrcMorphConfiguration configuration = new SrcMorphConfiguration();
         configuration.setGenerationProvider("openai-compatible");
         configuration.setAiDefinitions(null);
+
+        // act, assert
         assertThrows(SrcMorphException.class, () -> execute(configuration, ""));
     }
 
     @Test
     public void execute_aDefinitionWithoutKey_failsAsAConfigurationError() {
-        final AiModelDefinition keyless = new AiModelDefinition();
+        // arrange
+        final ModelDefinition keyless = new ModelDefinition();
         keyless.setProvider("openai-compatible");
-        assertThrows(SrcMorphException.class, () -> execute(configuration("openai-compatible", keyless), ""));
+        final SrcMorphConfiguration configuration = configuration("openai-compatible", keyless);
+
+        // act, assert
+        assertThrows(SrcMorphException.class, () -> execute(configuration, ""));
     }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="filter">
     @Test
-    public void execute_filter_keepsTheIdsThatContainIt_ignoringCaseAndSurroundingSpace() throws Exception {
+    public void execute_filter_keepsTheIdsThatContainItIgnoringCaseAndSurroundingSpace() throws Exception {
+        // act
         final ModelListReport report =
                 execute(configuration("openai-compatible", definition("copilot", "", GATEWAY, "")), " Grok ");
 
+        // assert
         final ModelListReport.Listing listing = report.listings().get(0);
         assertThat(listing.listed(), is(4));
         assertThat(listing.models(), is(Arrays.asList(MODELS.get(1), MODELS.get(2))));
@@ -147,9 +162,11 @@ public class ListModelsEngineTest {
 
     @Test
     public void execute_blankFilter_keepsEveryModel() throws Exception {
+        // act
         final ModelListReport report =
                 execute(configuration("openai-compatible", definition("copilot", "", GATEWAY, "")), "");
 
+        // assert
         assertThat(report.listings().get(0).models(), is(MODELS));
     }
     // </editor-fold>
@@ -157,14 +174,17 @@ public class ListModelsEngineTest {
     // <editor-fold defaultstate="collapsed" desc="failures">
     @Test
     public void execute_aServerThatCannotBeAsked_failsNamingTheDefinitionAndTheServer() {
+        // arrange
         final IOException cause = new IOException("http://127.0.0.1:3030/v1/models answered HTTP 401: nope");
         final ListModelsEngine engine = new ListModelsEngine(
                 configuration("openai-compatible", definition("copilot", "", GATEWAY, "")), "", (config, prompts) -> {
                     throw cause;
                 });
 
+        // act
         final SrcMorphException thrown = assertThrows(SrcMorphException.class, engine::execute);
 
+        // assert
         assertThat(
                 thrown.getMessage(),
                 is("Listing the models of aiDefinition 'copilot' at http://127.0.0.1:3030/v1 failed: "
@@ -174,6 +194,7 @@ public class ListModelsEngineTest {
 
     @Test
     public void execute_aBaseUrlThatIsNotHttp_failsAsWell() {
+        // arrange
         final ListModelsEngine engine = new ListModelsEngine(
                 configuration("openai-compatible", definition("copilot", "", "file:///etc", "")),
                 "",
@@ -181,17 +202,24 @@ public class ListModelsEngineTest {
                     throw new IllegalArgumentException("baseUrl is not an http(s) URL: 'file:///etc'");
                 });
 
+        // act
         final SrcMorphException thrown = assertThrows(SrcMorphException.class, engine::execute);
 
+        // assert
         assertThat(
                 thrown.getMessage(),
                 is("Listing the models of aiDefinition 'copilot' at file:///etc failed: baseUrl is not an http(s)"
                         + " URL: 'file:///etc'"));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="constructor">
     @Test
-    public void constructor_nullArguments_throw() {
+    public void constructor_nullArguments_throwsNullPointerException() {
+        // arrange
         final SrcMorphConfiguration configuration = new SrcMorphConfiguration();
+
+        // act, assert
         assertThrows(NullPointerException.class, () -> new ListModelsEngine(null, ""));
         assertThrows(NullPointerException.class, () -> new ListModelsEngine(configuration, null));
         assertThrows(NullPointerException.class, () -> new ListModelsEngine(configuration, "", null));
@@ -207,6 +235,7 @@ public class ListModelsEngineTest {
      */
     @Test
     public void execute_publicConstructor_asksTheServerOverHttp() throws Exception {
+        // arrange
         final List<String> paths = Collections.synchronizedList(new ArrayList<>());
         final HttpServer server = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0);
         server.createContext("/", exchange -> {
@@ -222,14 +251,17 @@ public class ListModelsEngineTest {
         try {
             final String baseUrl = "http://127.0.0.1:" + server.getAddress().getPort() + "/v1";
 
+            // act
             final ModelListReport report = new ListModelsEngine(
                             configuration("openai-compatible", definition("jllama", "", baseUrl, "")), "")
                     .execute();
 
+            // assert
             assertThat(paths, is(Collections.singletonList("GET /v1/models")));
             assertThat(
                     report.listings().get(0).models(),
-                    is(Collections.singletonList(new RemoteModel("smollm2", 0, null, null))));
+                    is(Collections.singletonList(
+                            new RemoteModel("smollm2", RemoteModel.UNKNOWN_CONTEXT_LENGTH, null, null))));
         } finally {
             server.stop(0);
         }

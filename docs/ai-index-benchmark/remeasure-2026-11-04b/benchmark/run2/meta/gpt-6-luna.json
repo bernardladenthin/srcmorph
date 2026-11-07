@@ -1,0 +1,78 @@
+{
+ "key": "gpt-6-luna",
+ "name": "GPT-6 Luna",
+ "backend": "openrouter",
+ "definition": {
+  "key": "gpt-6-luna",
+  "maxOutputTokens": 4096,
+  "temperature": 0.2,
+  "provider": "openai-compatible",
+  "baseUrl": "https://openrouter.ai/api/v1",
+  "contextSize": 131072,
+  "reasoningEffort": "low",
+  "remoteModel": "openai/gpt-6-luna"
+ },
+ "javaCommit": "1e056c23652992a07cca0056d2783cbf6520f5a1",
+ "corpus": "srcmorph",
+ "profile": "v3",
+ "javaPrompt": "file-body-oop",
+ "facts": false,
+ "oversize": null,
+ "maxChunks": null,
+ "profileHashes": {
+  "file-body-contract.md": "34b65f0a7de7be00bf14a2d61bc8f01ffba1dd3178345f600ab4e3a3f33c05b7",
+  "file-body-fallback.md": "2e57ccbb77fb6866ea5092e54e70e462d9fff32a0860a2df31b28a089101ee6a",
+  "file-body-oop.md": "66e9016d66782bd404e117c38cc62100374deac6a4bad223b535767383650eda",
+  "file-body-ops.md": "bba1a8aeddbb2be82e30fa511007b2753cb059af7b590943a8375c7bf8b5c72d",
+  "file-body-perl.md": "08631597d92190dd6d391a20a58e215f692b67f09953cd15f586804b86d0978c",
+  "file-body-shell.md": "85d03e187ea5417ee8104b4049fa2418a0c460bc918ffdd00109b9272c9d667b",
+  "file-body-sql.md": "7ccbdab6eefea1156e5ed29c3f8ff84a74ea99bd4cbafd85601019e5d82d828e",
+  "file-body-view.md": "a42545c0f88a7ed9dc7101b5e35d1b74a38a60a631778cd43d2e665040ced331",
+  "file-body-xml.md": "fed6968a01666d82687b711aca52ab3ceba307a4f3cc98a2e77bb5ea21c06b36",
+  "map-chunk.md": "ebc4aa4592de553fb7616b66f1e727fd94da30828c8c1d76986a8ee4e885aec3",
+  "package-body.md": "e4398dd0c0e4a01648166b2db2decf78a42b63e5298c04739568a98e8b5406e4",
+  "project-body.md": "2ccf5e75f1fb1140f98cfa1033a9b88bb3c1e7eb222cbef0387a6b0136b86241",
+  "reduce-parts.md": "067474a90b6a35bc6092fccc5b9c929daccf18506fad638c0d4eee98316032b7"
+ },
+ "cli": {
+  "jar": "srcmorph-cli-1.5.0-SNAPSHOT.jar",
+  "sha256": "acac779d219fe7a1ebefbd9c238c4f03df2ffa001d68361a0a4dd43c48cd2686"
+ },
+ "java": "openjdk version \"25.0.1\" 2025-10-21 LTS",
+ "startedAt": "2026-11-04T11:56:04Z",
+ "phases": {
+  "GenerateFileIndex": {
+   "exit": 0,
+   "seconds": 203.1,
+   "cutOff": []
+  },
+  "AggregatePackages": {
+   "exit": 0,
+   "seconds": 80.0,
+   "cutOff": []
+  },
+  "AggregateProject": {
+   "exit": 0,
+   "seconds": 3.4,
+   "cutOff": []
+  }
+ },
+ "finishedAt": "2026-11-04T12:00:51Z",
+ "fileTokens": {
+  "files": 24,
+  "written": 24,
+  "unchanged": 0,
+  "failed": 0,
+  "calls": 24,
+  "promptTokens": 86745,
+  "cachedPromptTokens": 86673,
+  "completionTokens": 20332,
+  "seconds": 202.4410654
+ },
+ "finishReasons": {
+  "stop": 24
+ },
+ "tokenCostUsd": 0.01104,
+ "costUsd": 0.018234,
+ "files": 37
+}

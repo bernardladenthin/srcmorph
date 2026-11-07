@@ -11,10 +11,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.Collections;
 import net.ladenthin.srcmorph.CommonTestFixtures;
-import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
-import net.ladenthin.srcmorph.config.AiModelDefinition;
+import net.ladenthin.srcmorph.config.ModelDefinition;
+import net.ladenthin.srcmorph.config.RoutingRule;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -24,11 +25,11 @@ public class CalibrateEngineTest {
     /**
      * A model definition with a (dummy, never loaded) {@code modelPath} set: even with the mock
      * provider, the engine always builds a
-     * {@link net.ladenthin.srcmorph.provider.LlamaCppJniConfig} value object, which requires a
+     * {@link net.ladenthin.srcmorph.provider.ProviderConfig} value object, which requires a
      * non-null model path.
      */
-    private static AiModelDefinition mockModelDefinition() {
-        final AiModelDefinition definition = new AiModelDefinition();
+    private static ModelDefinition mockModelDefinition() {
+        final ModelDefinition definition = new ModelDefinition();
         definition.setKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
         definition.setModelPath("mock.gguf");
         definition.setCharsPerToken(0);
@@ -52,32 +53,46 @@ public class CalibrateEngineTest {
         return config;
     }
 
+    // <editor-fold defaultstate="collapsed" desc="execute">
     @Test
-    public void execute_missingFieldGenerationsThrowsSrcMorphException() {
+    public void execute_missingFieldGenerations_throwsSrcMorphException() {
+        // arrange
         final SrcMorphConfiguration config = baseConfig();
-        config.setFieldGenerations(null);
+        config.setRules(null);
+        final CalibrateEngine engine = new CalibrateEngine(config);
 
-        final SrcMorphException e = assertThrows(SrcMorphException.class, () -> new CalibrateEngine(config).execute());
+        // act
+        final SrcMorphException e = assertThrows(SrcMorphException.class, engine::execute);
+
+        // assert
         assertThat(e.getMessage(), containsString("nothing to calibrate"));
     }
 
     @Test
-    public void execute_noRoutableRuleThrowsSrcMorphException() {
+    public void execute_noRoutableRule_throwsSrcMorphException() {
+        // arrange
         final SrcMorphConfiguration config = baseConfig();
         // A rule with neither promptKey nor aiDefinitionKey set is not routable.
-        config.setFieldGenerations(Collections.singletonList(new AiFieldGenerationConfig()));
+        config.setRules(Collections.singletonList(new RoutingRule()));
+        final CalibrateEngine engine = new CalibrateEngine(config);
 
-        final SrcMorphException e = assertThrows(SrcMorphException.class, () -> new CalibrateEngine(config).execute());
+        // act
+        final SrcMorphException e = assertThrows(SrcMorphException.class, engine::execute);
+
+        // assert
         assertThat(e.getMessage(), containsString("No routable"));
     }
 
     @Test
-    public void execute_calibratesTheRoutedModelAndRendersXml() throws Exception {
+    public void execute_fileRules_calibratesTheRoutedModelAndRendersXml() throws Exception {
+        // arrange
         final SrcMorphConfiguration config = baseConfig();
-        config.setFieldGenerations(CommonTestFixtures.createFileFieldGenerations());
+        config.setRules(CommonTestFixtures.createFileRules());
 
+        // act
         final CalibrationReport report = new CalibrateEngine(config).execute();
 
+        // assert
         assertThat(report.measurements().size(), is(1));
         final CalibrationReport.ModelMeasurement measurement =
                 report.measurements().get(0);
@@ -95,18 +110,21 @@ public class CalibrateEngineTest {
     }
 
     @Test
-    public void execute_dedupesMultipleRulesRoutedToTheSameModel() throws Exception {
+    public void execute_multipleRulesRoutedToTheSameModel_dedupesTheMeasurement() throws Exception {
+        // arrange
         final SrcMorphConfiguration config = baseConfig();
-        final AiFieldGenerationConfig ruleA = new AiFieldGenerationConfig();
+        final RoutingRule ruleA = new RoutingRule();
         ruleA.setPromptKey(CommonTestFixtures.PROMPT_KEY_FILE_BODY);
         ruleA.setAiDefinitionKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
-        final AiFieldGenerationConfig ruleB = new AiFieldGenerationConfig();
+        final RoutingRule ruleB = new RoutingRule();
         ruleB.setPromptKey(CommonTestFixtures.PROMPT_KEY_FILE_BODY);
         ruleB.setAiDefinitionKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
-        config.setFieldGenerations(java.util.Arrays.asList(ruleA, ruleB));
+        config.setRules(Arrays.asList(ruleA, ruleB));
 
+        // act
         final CalibrationReport report = new CalibrateEngine(config).execute();
 
+        // assert
         assertThat(report.measurements().size(), is(1));
     }
 
@@ -117,12 +135,15 @@ public class CalibrateEngineTest {
      * the files are actually written, to the documented names, with the documented content.
      */
     @Test
-    public void execute_writesTheReportAsJsonAndYamlIntoTheOutputDirectory() throws Exception {
+    public void execute_fileRules_writesTheReportAsJsonAndYamlIntoTheOutputDirectory() throws Exception {
+        // arrange
         final SrcMorphConfiguration config = baseConfig();
-        config.setFieldGenerations(CommonTestFixtures.createFileFieldGenerations());
+        config.setRules(CommonTestFixtures.createFileRules());
 
+        // act
         final CalibrationReport report = new CalibrateEngine(config).execute();
 
+        // assert
         final Path json = outputDirectory.resolve(CalibrationReport.JSON_FILE_NAME);
         final Path yaml = outputDirectory.resolve(CalibrationReport.YAML_FILE_NAME);
         assertThat(Files.exists(json), is(true));
@@ -138,14 +159,18 @@ public class CalibrateEngineTest {
 
     /** A missing output directory is created rather than being a reason to fail the run. */
     @Test
-    public void execute_createsTheOutputDirectoryWhenItDoesNotExist() throws Exception {
+    public void execute_outputDirectoryDoesNotExist_createsTheOutputDirectory() throws Exception {
+        // arrange
         final SrcMorphConfiguration config = baseConfig();
         final Path nested = outputDirectory.resolve("does/not/exist/yet");
         config.setOutputDirectory(nested.toFile());
-        config.setFieldGenerations(CommonTestFixtures.createFileFieldGenerations());
+        config.setRules(CommonTestFixtures.createFileRules());
 
+        // act
         new CalibrateEngine(config).execute();
 
+        // assert
         assertThat(Files.exists(nested.resolve(CalibrationReport.JSON_FILE_NAME)), is(true));
     }
+    // </editor-fold>
 }

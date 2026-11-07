@@ -8,10 +8,10 @@
 # ${...} Maven properties of the fixture pom, so a -D on the command line is observable:
 # it.model (the model every rule runs on) and it.aiVersion (in every header).
 
-packageFieldGenerations:
+packageRules:
   - promptKey: package-body
     aiDefinitionKey: "${it.model}"
-projectFieldGenerations:
+projectRules:
   - promptKey: project-body
     aiDefinitionKey: "${it.model}"
 
@@ -24,6 +24,17 @@ srcMorph:
   excludes:
     - "**/package-info.java"
   aiVersion: "${it.aiVersion}"
+
+  # When a summary is rewritten. force: true rewrites every one. Otherwise a summary is rewritten when
+  # it is missing or empty, its aiVersion changed, or a change below whose switch is true (each one is
+  # by default); false keeps the summary and records the new value at its next rewrite.
+  force: false
+  regenerateOn:
+    source: true                             # C: the file's source, a package's files, the project's packages
+    prompt: true                             # P: the rule's prompts, its map and reduce prompts too
+    facts: true                              # N: the rule's fact counters
+    model: true                              # M: the rule's model (definition key, remoteModel, model file)
+    children: true                           # K: the summaries a package or the project is written from
 
   aiDefinitions:
     - key: fixture-model
@@ -41,10 +52,10 @@ srcMorph:
     - key: project-body
       templateFile: "../../.github/plugin-it/project-body.md"
 
-  fieldGenerations:
+  rules:
     # Extra.java: inline facts with an ignore counter, kept out of the facts line and out of the count.
     - id: extra
-      promptKey: file-body-java
+      promptKey: file-body-oop
       aiDefinitionKey: "${it.model}"
       priority: 10
       facts:
@@ -66,7 +77,7 @@ srcMorph:
             - pathGlob: "**/Names.java"
             - size: {max: 100000}
     - id: java
-      promptKey: file-body-java
+      promptKey: file-body-oop
       aiDefinitionKey: "${it.model}"
       factsKey: java-facts
       condition:

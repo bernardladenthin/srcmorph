@@ -6,9 +6,11 @@
 Replaces the text between '<!-- generated:begin -->' and '<!-- generated:end -->' in
 ../MODEL-CARD.md, so the hand-written assessment around the tables stays untouched.
 
-Usage: python report.py
+Usage: python report.py [--card <MODEL-CARD.md>]
 """
+import argparse
 import json
+import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -18,14 +20,21 @@ BACKEND = {"openrouter": "OpenRouter", "huggingface": "HF / nscale", "copilot": 
            "local": "local GGUF (RTX 3070)"}
 
 
+
+def invented_per_100(kinds):
+    """The invented names per 100 backticked ones over every kind: their sums, so a kind with three
+    backticked names weighs as much as its three, not as much as a kind with three thousand."""
+    if any("ticked" not in k for k in kinds):
+        sys.exit("a summary.json without the ticked and invented totals: run score.py again")
+    ticked = sum(k["ticked"] for k in kinds)
+    return 100 * sum(k["invented"] for k in kinds) / ticked if ticked else None
+
 def fmt(value, pattern="{:.2f}", missing="–"):
     return missing if value is None else pattern.format(value)
 
 
-def main():
-    models = json.loads((HERE / "models.json").read_text(encoding="utf-8"))["models"]
-    summary = json.loads((HERE / "scores" / "summary.json").read_text(encoding="utf-8"))
-    runs = {p.stem: json.loads(p.read_text(encoding="utf-8")) for p in sorted((HERE / "runs").glob("*.json"))}
+def generated_block(models, summary, runs):
+    """The generated tables of the card, from the models, the scores' summary and the runs' meta."""
 
     overview = ["| Model | Backend | Files | Time (min) | s/file | Cost (USD) | Cut off |",
                 "|---|---|---|---|---|---|---|"]
@@ -58,13 +67,12 @@ def main():
             f" | {total / 60:.1f} | {files_phase.get('seconds', 0) / max(file_count, 1):.1f} | {cost_text}"
             f" | {len(cut)}{' (' + ', '.join('`' + c + '`' for c in cut) + ')' if cut else ''} |")
         java, sql, other = kinds_of.get("java", {}), kinds_of.get("sql", {}), kinds_of.get("other", {})
-        ticked = [kinds_of[k] for k in ("java", "sql", "other") if k in kinds_of]
-        invented = [k["inventedPer100"] for k in ticked if k["inventedPer100"] is not None]
+        invented = invented_per_100([kinds_of[k] for k in ("java", "sql", "other") if k in kinds_of])
         kinds.append(
             f"| {name} | {fmt(java.get('compaction'))} | {fmt(java.get('recall'), '{:.0%}')}"
             f" | {fmt(sql.get('compaction'))} | {fmt(sql.get('recall'), '{:.0%}')} | {sql.get('numbers', '–')}"
             f" | {fmt(other.get('compaction'))} | {fmt(other.get('recall'), '{:.0%}')}"
-            f" | {fmt(sum(invented) / len(invented) if invented else None, '{:.1f}')} |")
+            f" | {fmt(invented, '{:.1f}')} |")
         all_kinds = list(kinds_of.values())
         per_model.add(sum(k["files"] for k in all_kinds))
         reasons = {}
@@ -95,10 +103,22 @@ def main():
         "¹ also in the June 2026 benchmark ([COMPARISON.md](COMPARISON.md)).",
         END,
     ])
-    text = CARD.read_text(encoding="utf-8")
+    return generated
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Renders the generated tables of the model card.")
+    parser.add_argument("--card", default=str(CARD), help="the card whose generated block is replaced")
+    args = parser.parse_args()
+    models = json.loads((HERE / "models.json").read_text(encoding="utf-8"))["models"]
+    summary = json.loads((HERE / "scores" / "summary.json").read_text(encoding="utf-8"))
+    runs = {p.stem: json.loads(p.read_text(encoding="utf-8")) for p in sorted((HERE / "runs").glob("*.json"))}
+    card = Path(args.card)
+    text = card.read_text(encoding="utf-8")
     start, end = text.index(BEGIN), text.index(END) + len(END)
-    CARD.write_text(text[:start] + generated + text[end:], encoding="utf-8", newline="\n")
-    print(f"updated {CARD}")
+    card.write_text(text[:start] + generated_block(models, summary, runs) + text[end:], encoding="utf-8",
+                    newline="\n")
+    print(f"updated {card}")
 
 
 if __name__ == "__main__":

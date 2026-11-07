@@ -8,7 +8,8 @@ Thank you for your interest in contributing to **srcmorph**, a prompt-driven sou
 
 ### Prerequisites
 
-- Java 8+ (production code targets Java 8; CI builds on Java 8 via temurin)
+- JDK 25 to build (the version in `.java-version`, which CI takes, Temurin); the production code of
+  `srcmorph` is compiled for Java 8 (`maven.compiler.release` 8), its tests for Java 21
 - Maven 3.6.3+
 
 ### Common commands
@@ -86,13 +87,13 @@ Pull requests are expected to pass all CI checks (build, test, CodeQL) before me
 
 ## Coding standards
 
-- **Java version:** Production code targets Java 8 (source/target = 1.8); do not use APIs unavailable on Java 8 in `src/main`.
+- **Java version:** The production code of `srcmorph` is compiled with `--release 8`; do not use APIs unavailable on Java 8 in `src/main` (the compiler rejects them).
 - **Encoding:** UTF-8 throughout.
-- **License headers:** All `.java` files must include the Apache 2.0 license header wrapped in `// @formatter:off` / `// @formatter:on`. Copy the header from any existing source file.
+- **License headers:** Every file carries an SPDX header (`SPDX-FileCopyrightText` and `SPDX-License-Identifier`), or an entry in `REUSE.toml` where it cannot hold one; `reuse lint` checks it. Copy the header from any existing source file.
 - **Named constants:** Every meaningful string literal, header field name, and node type must be declared as a `public static final` or `private static final` constant with Javadoc.
 - **Null safety:** Mark nullable parameters and return types explicitly; prefer early null/empty guards with a log warning over silent skips.
-- **Records:** Use Java `record` types for immutable value carriers (note: records are a development-environment convenience; ensure source/target = 1.8 compatibility for emitted bytecode).
-- **Logging:** Use `org.apache.maven.plugin.logging.Log` (not SLF4J), obtained via `getLog()` or constructor injection.
+- **Value carriers:** Java 8 has no `record`; write a final class with final fields (Lombok's `@ToString` / `@EqualsAndHashCode` where the classes around it use them) and mark it `@ConvertToRecord` (`support.ConvertToRecord`) for the move to a later baseline.
+- **Logging:** Use SLF4J (`org.slf4j.Logger`, one `private static final Logger LOGGER` per class) in the library and the CLI; the Maven plugin's Mojos log through Maven's `getLog()`.
 - **Javadoc:** Use HTML entities for operators (`&lt;`, `&gt;`, `&#x2264;`, etc.); never use bare Unicode symbols in Javadoc.
 
 Consult [CLAUDE.md](./CLAUDE.md) and [CODE_WRITING_GUIDE.md](./CODE_WRITING_GUIDE.md) at the root of the repository for the full set of conventions enforced on every production file.
@@ -103,7 +104,7 @@ Consult [CLAUDE.md](./CLAUDE.md) and [CODE_WRITING_GUIDE.md](./CODE_WRITING_GUID
 
 > Every new feature or behavior change MUST include automated tests. Pull requests that add or change functionality without corresponding tests will be asked to add tests before merge. Bug fixes SHOULD include a regression test.
 
-Tests are written with **JUnit 4** and **Hamcrest**. Use `MockAiGenerationProvider` for all tests that do not explicitly exercise the llama.cpp JNI backend. Tests that call the real JNI must guard with a JNI-availability check so the suite remains runnable on machines without the native library.
+Tests are written with **JUnit 5 (Jupiter)** and **Hamcrest**. Use `MockGenerationProvider` (or a lambda `GenerationProvider`) for all tests that do not explicitly exercise the llama.cpp JNI backend. Tests that call the real JNI must guard with `NativeLlamaAvailability` (a JUnit assumption) so the suite remains runnable on machines without the native library.
 
 See [TEST_WRITING_GUIDE.md](./TEST_WRITING_GUIDE.md) at the root of the repository for the full test conventions.
 
