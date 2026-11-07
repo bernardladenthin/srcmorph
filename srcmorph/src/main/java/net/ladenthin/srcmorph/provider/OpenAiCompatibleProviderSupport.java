@@ -37,6 +37,7 @@ import java.util.regex.Pattern;
 import lombok.ToString;
 import net.ladenthin.llama.value.ChatResponse;
 import net.ladenthin.llama.value.Usage;
+import net.ladenthin.srcmorph.config.ModelDefinition;
 import net.ladenthin.srcmorph.prompt.GenerationRequest;
 import net.ladenthin.srcmorph.prompt.PromptCatalog;
 import net.ladenthin.srcmorph.support.Java8CompatibilityHelper;
@@ -52,6 +53,13 @@ import org.jspecify.annotations.Nullable;
  * the JNI provider: this class is on the 100% PIT gate, the provider's socket handling is not
  * (removing a timeout or a {@code disconnect()} call changes nothing a test can observe), and the
  * stub-server tests cover the provider instead.</p>
+ *
+ * <p>The request body is shaped for OpenRouter and llama.cpp's {@code llama-server}, the two servers
+ * srcmorph is measured against, not for OpenAI's own API: that one refuses an argument it does not
+ * know, and {@code top_k}, {@code min_p} and the penalty are none of its chat-completions fields. So
+ * a knob outside the OpenAI fields goes out only when the definition gives it a value of its own, and
+ * a field the two servers name differently goes out under both names (see
+ * {@link #requestBody(GenerationRequest)}).</p>
  */
 @ToString
 final class OpenAiCompatibleProviderSupport {
@@ -277,11 +285,22 @@ final class OpenAiCompatibleProviderSupport {
 
     /**
      * The JSON body of one chat-completions request: the same two messages the {@code llamacpp-jni}
-     * provider sends, plus the portable sampling knobs. {@code top_k} and {@code min_p} go out only
-     * when positive, {@code seed} only when set ({@code >= 0}), {@code stop} only when non-empty,
-     * {@code model} and {@code reasoning.effort} only when non-blank. {@code stream} is the model's
-     * switch; a streamed request also asks for the usage chunk ({@code stream_options.include_usage}),
-     * which carries the token counts the timings report.
+     * provider sends, plus the portable sampling knobs.
+     *
+     * <p>{@code max_tokens}, {@code temperature} and {@code top_p} always go out; {@code seed} only
+     * when set ({@code >= 0}), {@code stop} only when non-empty, {@code model} only when non-blank.
+     * {@code top_k} and the repetition penalty are no OpenAI fields and go out only when the
+     * definition sets a value other than the {@link net.ladenthin.srcmorph.config.ModelDefinition}
+     * default it shares with the local provider ({@code 40}, {@code 1.0}): those are llama.cpp's own
+     * defaults, which {@code llama-server} applies anyway, and leaving them out lets OpenRouter apply
+     * the model's. A top-k of {@code 0} switches top-k off on both servers and is sent. {@code min_p}
+     * goes out only when positive. The penalty is {@code repetition_penalty} for OpenRouter and
+     * {@code repeat_penalty} for {@code llama-server}, the effort {@code reasoning.effort} for
+     * OpenRouter and {@code reasoning_effort} for {@code llama-server} (and OpenAI); each server reads
+     * its own and ignores the other, and the effort goes out only when non-blank.</p>
+     *
+     * <p>{@code stream} is the model's switch; a streamed request also asks for the usage chunk
+     * ({@code stream_options.include_usage}), which carries the token counts the timings report.</p>
      *
      * @param request the file to describe
      * @return the request body
@@ -301,13 +320,17 @@ final class OpenAiCompatibleProviderSupport {
         body.put("max_tokens", config.maxOutputTokens());
         body.put("temperature", config.temperature());
         body.put("top_p", config.topP());
-        if (config.topK() > 0) {
+        if (config.topK() != ModelDefinition.DEFAULT_TOP_K) {
             body.put("top_k", config.topK());
         }
         if (config.minP() > 0.0f) {
             body.put("min_p", config.minP());
         }
-        body.put("repetition_penalty", config.repeatPenalty());
+        final float repeatPenalty = config.repeatPenalty();
+        if (Float.compare(repeatPenalty, ModelDefinition.DEFAULT_REPEAT_PENALTY) != 0) {
+            body.put("repetition_penalty", repeatPenalty);
+            body.put("repeat_penalty", repeatPenalty);
+        }
         final int seed = config.seed();
         if (seed >= 0) {
             body.put("seed", seed);
@@ -322,6 +345,7 @@ final class OpenAiCompatibleProviderSupport {
         final String reasoningEffort = config.reasoningEffort();
         if (!compatibilityHelper.isBlank(reasoningEffort)) {
             body.putObject("reasoning").put("effort", reasoningEffort);
+            body.put("reasoning_effort", reasoningEffort);
         }
         body.put("stream", config.stream());
         if (config.stream()) {

@@ -527,8 +527,11 @@ model); everything else has a default. The defaults below are the shipped values
 **An `openai-compatible` model** sends the source file to the server at `baseUrl`; with the default
 that is OpenRouter, i.e. a third party. It sends the same system prompt and user message as the
 local provider and only the portable sampling knobs: `maxOutputTokens`, `temperature`, `topP`,
-`topK` and `minP` (when positive), `repeatPenalty`, `seed` (when set), `stopStrings` and
-`reasoningEffort`. The knobs of a local llama.cpp context (threads, GPU, KV cache, DRY, prompt
+`seed` (when set), `stopStrings`, and these only when the definition gives them a value of its own:
+`topK` (other than `40`), `minP` (when positive), `repeatPenalty`
+(other than `1.0`; as `repetition_penalty` and `repeat_penalty`) and `reasoningEffort` (when set; as
+`reasoning.effort` and `reasoning_effort`). The body is shaped for OpenRouter and llama.cpp's
+`llama-server`, each of which reads its own name and ignores the other. The knobs of a local llama.cpp context (threads, GPU, KV cache, DRY, prompt
 caching) are ignored. A `408`, a `429` (not one saying the quota is used up), a `5xx` other than `501` /
 `505` or a connect timeout is retried (`maxRetries`); a read timeout after the request was sent, and any
 other non-2xx answer, fail the file with the status and the server's error text. With `stream` set, the answer arrives as Server-Sent Events and is assembled

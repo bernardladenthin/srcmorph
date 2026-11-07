@@ -36,8 +36,11 @@ import org.slf4j.LoggerFactory;
  * <p>The request carries the same two messages the {@code llamacpp-jni} provider sends, and the
  * response is parsed by the same {@link ChatResponseParser} and {@link CompletionParser}, so a
  * remote model fills the {@code .ai.md} body exactly as a local one does. Only the portable sampling
- * knobs go out (see {@link OpenAiCompatibleProviderSupport#requestBody}); threads, GPU layers, KV
- * cache, DRY sampling and prompt caching belong to a local llama.cpp context and are not sent.</p>
+ * knobs go out, in a body shaped for OpenRouter and llama.cpp's {@code llama-server}: {@code top_k},
+ * {@code min_p} and the repetition penalty, which are no OpenAI fields, only when the definition sets
+ * a value of its own, and the penalty and the reasoning effort under the names of both servers (see
+ * {@link OpenAiCompatibleProviderSupport#requestBody}); threads, GPU layers, KV cache, DRY sampling
+ * and prompt caching belong to a local llama.cpp context and are not sent.</p>
  *
  * <p>The API key is read from the environment variable {@code apiKeyEnv} names and sent as
  * {@code Authorization: Bearer}; it never sits in a configuration file. No variable, or an empty

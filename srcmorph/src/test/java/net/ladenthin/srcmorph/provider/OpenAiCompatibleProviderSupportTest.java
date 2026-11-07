@@ -28,6 +28,7 @@ import net.ladenthin.llama.value.ChatMessage;
 import net.ladenthin.llama.value.ChatResponse;
 import net.ladenthin.llama.value.Usage;
 import net.ladenthin.srcmorph.CommonTestFixtures;
+import net.ladenthin.srcmorph.config.ModelDefinition;
 import net.ladenthin.srcmorph.document.AiMdHeader;
 import net.ladenthin.srcmorph.document.AiMdHeaderCodec;
 import net.ladenthin.srcmorph.prompt.GenerationRequest;
@@ -117,12 +118,59 @@ public class OpenAiCompatibleProviderSupportTest {
         assertThat(body.get("max_tokens").asInt(), is(128));
         assertThat(body.get("temperature").floatValue(), is(0.15f));
         assertThat(body.get("top_p").floatValue(), is(0.9f));
-        assertThat(body.get("top_k").asInt(), is(40));
+        assertThat(body.has("top_k"), is(false));
         assertThat(body.has("min_p"), is(false));
-        assertThat(body.get("repetition_penalty").floatValue(), is(1.0f));
+        assertThat(body.has("repetition_penalty"), is(false));
+        assertThat(body.has("repeat_penalty"), is(false));
         assertThat(body.has("seed"), is(false));
         assertThat(body.has("stop"), is(false));
         assertThat(body.has("reasoning"), is(false));
+        assertThat(body.has("reasoning_effort"), is(false));
+    }
+
+    /**
+     * {@code top_k} and the repetition penalty are no OpenAI fields: at the definition's defaults,
+     * llama.cpp's own (40, 1.0), they stay out of the request, set by hand or not.
+     */
+    @Test
+    public void requestBody_topKAndPenaltyAtTheirDefaults_areOmitted() throws Exception {
+        // arrange
+        final ProviderConfig config = ProviderConfig.builder()
+                .modelPath("")
+                .topK(ModelDefinition.DEFAULT_TOP_K)
+                .repeatPenalty(ModelDefinition.DEFAULT_REPEAT_PENALTY)
+                .build();
+
+        // act
+        final JsonNode body = body(config);
+
+        // assert
+        assertThat(body.has("top_k"), is(false));
+        assertThat(body.has("repetition_penalty"), is(false));
+        assertThat(body.has("repeat_penalty"), is(false));
+    }
+
+    /** A top-k of 0 switches top-k off on OpenRouter and on llama-server alike, so it is sent. */
+    @Test
+    public void requestBody_topKZero_isSentToSwitchTopKOff() throws Exception {
+        // act
+        final JsonNode body =
+                body(ProviderConfig.builder().modelPath("").topK(0).build());
+
+        // assert
+        assertThat(body.get("top_k").asInt(), is(0));
+    }
+
+    /** A penalty below the neutral 1.0 is a value of its own too, under both servers' names. */
+    @Test
+    public void requestBody_penaltyBelowNeutral_isSentUnderBothNames() throws Exception {
+        // act
+        final JsonNode body =
+                body(ProviderConfig.builder().modelPath("").repeatPenalty(0.9f).build());
+
+        // assert
+        assertThat(body.get("repetition_penalty").floatValue(), is(0.9f));
+        assertThat(body.get("repeat_penalty").floatValue(), is(0.9f));
     }
 
     @Test
@@ -145,7 +193,8 @@ public class OpenAiCompatibleProviderSupportTest {
         // act
         final JsonNode body = body(config);
 
-        // assert -- top_k 1, seed 0 and min_p just above 0 sit on the inclusion boundaries
+        // assert -- seed 0 and min_p just above 0 sit on the inclusion boundaries; the penalty and the
+        // effort go out under OpenRouter's and llama-server's names
         assertThat(body.get("model").asText(), is("openai/gpt-6-luna"));
         assertThat(body.get("max_tokens").asInt(), is(256));
         assertThat(body.get("temperature").floatValue(), is(0.5f));
@@ -153,11 +202,13 @@ public class OpenAiCompatibleProviderSupportTest {
         assertThat(body.get("top_k").asInt(), is(1));
         assertThat(body.get("min_p").floatValue(), is(0.05f));
         assertThat(body.get("repetition_penalty").floatValue(), is(1.1f));
+        assertThat(body.get("repeat_penalty").floatValue(), is(1.1f));
         assertThat(body.get("seed").asInt(), is(0));
         assertThat(body.get("stop").size(), is(2));
         assertThat(body.get("stop").get(0).asText(), is("</s>"));
         assertThat(body.get("stop").get(1).asText(), is("END"));
         assertThat(body.get("reasoning").get("effort").asText(), is("high"));
+        assertThat(body.get("reasoning_effort").asText(), is("high"));
     }
 
     @Test
@@ -166,10 +217,9 @@ public class OpenAiCompatibleProviderSupportTest {
         final ProviderConfig config = ProviderConfig.builder()
                 .modelPath("")
                 .remoteModel("   ")
-                .topK(0)
                 .seed(-1)
                 .stopStrings(Collections.emptyList())
-                .reasoningEffort("")
+                .reasoningEffort("  ")
                 .build();
 
         // act
@@ -177,10 +227,10 @@ public class OpenAiCompatibleProviderSupportTest {
 
         // assert
         assertThat(body.has("model"), is(false));
-        assertThat(body.has("top_k"), is(false));
         assertThat(body.has("seed"), is(false));
         assertThat(body.has("stop"), is(false));
         assertThat(body.has("reasoning"), is(false));
+        assertThat(body.has("reasoning_effort"), is(false));
     }
 
     @Test
