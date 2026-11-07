@@ -877,12 +877,21 @@ class CorrelateTest(unittest.TestCase):
 
         self.assertEqual(table, [("a", 120, 0.5, 0.6), ("b", 50, 0.5, 0.6)])
 
-    def test_correlations_theCardsScores_areWhatTheCardQuotes(self):
+    def test_correlations_theCardsScores_coverTheCardsThirtyTwoRuns(self):
         summary = json.loads((HERE / "scores" / "summary.json").read_text(encoding="utf-8"))
         search = json.loads((HERE / "scores" / "search.json").read_text(encoding="utf-8"))["runs"]
 
         result = correlate.correlations(correlate.rows(summary, search, set(correlate.CARD_EXCLUDED)))
 
         self.assertEqual(result["runs"], 32)
-        self.assertEqual(round(result["pearsonHit1"], 2), -0.18)
-        self.assertEqual(round(result["pearsonMrr"], 2), -0.08)
+        for key in ("pearsonHit1", "pearsonMrr", "spearmanHit1", "spearmanMrr"):
+            self.assertTrue(-1.0 <= result[key] <= 1.0, key)
+
+    def test_correlations_aSmallTable_areItsPearsonAndSpearman(self):
+        table = [("a", 100, 0.9, 0.95), ("b", 200, 0.8, 0.9), ("c", 300, 0.7, 0.85)]
+
+        result = correlate.correlations(table)
+
+        self.assertEqual(result["runs"], 3)
+        self.assertAlmostEqual(result["pearsonHit1"], -1.0)
+        self.assertAlmostEqual(result["spearmanMrr"], -1.0)

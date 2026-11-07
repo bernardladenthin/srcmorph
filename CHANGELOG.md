@@ -375,10 +375,11 @@ The entries below hold the details; what a 1.4.0 user changes:
   `invoice-service`; and the large-corpus run 2 of 2026-11-01 gives gpt-oss-20b 49.1 % instead of
   55.2 % (a stricter format check of an earlier round), so the gpt-oss mean over the three large runs
   re-scores to 76.0 %, published 78.1 % (run 3 keeps its 88.3 %). The writeups keep the numbers they
-  were published with. `scores/search.json` predates `search.py` reading the text without the
-  facts and coverage lines: an offline BM25 re-run moves five runs' MRR by up to 0.016 (hit@1 and
-  hit@3 stay), and the reader's numbers were taken on the old text too; renewing them is a paid
-  re-run, so the file stays as published.
+  were published with. `scores/search.json` is re-run (2026-11-07, 1.46 USD) on the text without
+  the facts and coverage lines that `search.py` reads now: BM25's hit@1 stays in every run (MRR up
+  to 0.016), the reader's hit@1 moves in 27 of 37 runs by up to 12 points (mean 93.6 % over the 35
+  runs), and the correlation of an index's size with it is +0.13 with hit@1, +0.15 with the MRR. The
+  model card's Search section keeps the numbers it was published with.
 - **The model card's search prose and caveats match its data:** BM25 over the summaries finds 67 to
   91 % first (it said 67 to 86 %), 81 % on average against 84 % over the source, and nine of the 35
   runs beat the source; the index length goes with the reader's hit@1 at

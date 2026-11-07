@@ -7,9 +7,10 @@ Reads scores/summary.json (the bytes of every run's file summaries: Java, SQL an
 package and project summaries left out) and scores/search.json (the reader's hit@1 and MRR) and prints
 Pearson's r and Spearman's rank correlation of the two over the scored runs. By default the three
 runs the card names as empty or broken are left out (Grok 4.7's reasoning before every lead, Granite
-4.0 H-Tiny's fenced and headed summaries, Qwen3.5-35B-A3B's five empty Java summaries), which gives the
-card's "over the 32 scored runs ... correlation -0.18 with hit@1, -0.08 with the MRR"; --exclude ""
-takes all of them.
+4.0 H-Tiny's fenced and headed summaries, Qwen3.5-35B-A3B's five empty Java summaries), as the card's
+"over the 32 scored runs ..." does; --exclude "" takes all of them. The card's -0.18 with hit@1 and
+-0.08 with the MRR are of the search.json it was published with; the reader run of 2026-11-07, which
+reads the answer without the facts and coverage lines, gives +0.13 and +0.15.
 
 Writes nothing.
 
