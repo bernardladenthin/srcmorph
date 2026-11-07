@@ -70,7 +70,8 @@ For every model under <out> (one directory per model key) and every source file 
   run's --meta file, for a summary written and for one missing alike); such a body may still be
   complete, so it is reported, not failed.
 A file is a source of the corpus as run.py configures srcmorph: by its extension or by a name glob,
-both in any case (run.indexes).
+both in any case (run.indexes), unless the secrets rule keeps it from every model (run.skipped), so a
+file srcmorph skips is no missing summary (indexed).
 The facts and coverage lines srcmorph puts in front of a body are srcmorph's, not the model's: every
 measure is taken on the body without them. A reasoning block in front of the answer (`<think>`,
 harmony's analysis channel, Gemma's thought channel, or reasoning up to a `</think>` without its
@@ -124,9 +125,11 @@ def fenced_blocks(text):
     content column (0 at the top; in a list item the item's content column, so a fence indented under
     `  - item` opens at four spaces), and closed by a run of the same character at least as long, at most
     three spaces right of that column, with nothing but spaces after it; an unclosed one runs to the end
-    (markers 1). A ``` inside a line of prose ("answers in ```json blocks") opens nothing. A non-blank line
-    left of an item's content column ends the item. start and end span the opening line to the closing one
-    (without its line break), code the lines between them."""
+    of the text, or of its list item (markers 1). A ``` inside a line of prose ("answers in ```json
+    blocks") opens nothing. A non-blank line left of an item's content column ends the item, and a fence
+    opened in it: a `## Heading` after an unclosed fence of an item is read again. start and end span the
+    opening line to the closing one, or to the last line of the block (without its line break), code the
+    lines between them."""
     blocks, columns = [], []
     lines = text.split("\n")
     offsets = [0]
@@ -153,19 +156,28 @@ def fenced_blocks(text):
             continue
         char, length = opener.group("marker")[0], len(opener.group("marker"))
         closer = re.compile(r"( *)" + re.escape(char) + "{" + str(length) + r",}[ \t]*")
-        j = i + 1
+        j, closed = i + 1, False
         while j < len(lines):
             match = closer.fullmatch(lines[j])
             if match and len(match.group(1)) <= container + 3:
+                closed = True
+                break
+            # a non-blank line left of the item's content column ends the item, and the fence with it
+            if container and lines[j].strip() and len(lines[j]) - len(lines[j].lstrip(" ")) < container:
                 break
             j += 1
         start = offsets[i]
         code_start = min(offsets[i + 1], len(text))
-        if j < len(lines):
+        if closed:
             blocks.append((start, offsets[j] + len(lines[j]), text[code_start:offsets[j]], 2))
+            i = j + 1
+        elif j < len(lines):
+            # unclosed, up to the end of its item: the line that ended the item is read again
+            blocks.append((start, offsets[j] - 1, text[code_start:offsets[j]], 1))
+            i = j
         else:
             blocks.append((start, len(text), text[code_start:], 1))
-        i = j + 1
+            i = j
     return blocks
 
 
@@ -631,10 +643,12 @@ def source_text(path):
     return data.decode("utf-8", errors="replace")
 
 
-def indexed(path):
-    """Whether srcmorph indexes a file of the corpus as run.py configures it: by its extension or a
-    name glob, in any case (run.indexes). A file it leaves out is no missing summary."""
-    return run.indexes(path.name)
+def indexed(path, root):
+    """Whether srcmorph summarizes a file of the corpus (root) as run.py configures it: the walk collects
+    it by its extension or a name glob, in any case (run.indexes), and the secrets rule does not keep it
+    from every model (run.skipped: by its name, its path or its head). A file it leaves out is no missing
+    summary."""
+    return run.indexes(path.name) and not run.skipped(path.relative_to(root).as_posix(), source_text(path))
 
 
 def missing_row(rel, kind, cut_off, src_bytes=0, ids=(), numbers=(), known=False):
@@ -660,7 +674,7 @@ def expected_aggregates(sources):
 
 def score_model(model_dir, work, facts, cut_off=frozenset()):
     rows = []
-    sources = sorted(p for p in work.rglob("*") if p.is_file() and indexed(p))
+    sources = sorted(p for p in work.rglob("*") if p.is_file() and indexed(p, work))
     for source_path in sources:
         rel = source_path.relative_to(work).as_posix()
         out = model_dir / (rel + ".ai.md")

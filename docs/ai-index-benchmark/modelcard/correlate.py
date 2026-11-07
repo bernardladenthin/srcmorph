@@ -30,8 +30,10 @@ FILE_KINDS = ("java", "sql", "other")
 
 
 def pearson(xs, ys):
-    """Pearson's r of two equally long series; None when one of them does not vary."""
+    """Pearson's r of two equally long series; None when they are empty or one of them does not vary."""
     n = len(xs)
+    if n == 0:
+        return None
     mean_x = sum(xs) / n
     mean_y = sum(ys) / n
     sxy = sum((x - mean_x) * (y - mean_y) for x, y in zip(xs, ys))
@@ -88,6 +90,18 @@ def correlations(table):
     }
 
 
+def fmt_r(value):
+    """A correlation with two decimals, or n/a where there is none (no run, or a series that does not vary)."""
+    return "n/a" if value is None else f"{value:.2f}"
+
+
+def result_line(result):
+    """The line main prints under the table."""
+    return (f"{result['runs']} runs: Pearson r {fmt_r(result['pearsonHit1'])} with hit@1, "
+            f"{fmt_r(result['pearsonMrr'])} with the MRR; Spearman {fmt_r(result['spearmanHit1'])} and "
+            f"{fmt_r(result['spearmanMrr'])}")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--scores", type=Path, default=HERE / "scores",
@@ -101,9 +115,7 @@ def main():
     table = rows(summary, search, excluded)
     for run, index_bytes, hit1, mrr in table:
         print(f"{run:40} {index_bytes:8d} bytes  hit@1 {hit1:.3f}  MRR {mrr:.3f}")
-    result = correlations(table)
-    print(f"\n{result['runs']} runs: Pearson r {result['pearsonHit1']:.2f} with hit@1, {result['pearsonMrr']:.2f}"
-          f" with the MRR; Spearman {result['spearmanHit1']:.2f} and {result['spearmanMrr']:.2f}")
+    print("\n" + result_line(correlations(table)))
 
 
 if __name__ == "__main__":

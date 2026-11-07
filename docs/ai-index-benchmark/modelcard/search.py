@@ -18,7 +18,8 @@ Two baselines go through the same retrievers: "source" (the source files themsel
 first / among the first three; MRR is the mean reciprocal rank of the first answer file (0 when
 the reader does not name one). BM25 ranks only the files that share a word with the question, so an
 empty index finds nothing instead of the alphabetically first file. The files are the sources the
-runs index (run.indexes: by extension or by a name such as Dockerfile, in any case).
+runs index and summarize (score.indexed: by extension or by a name such as Dockerfile, in any case,
+and not a file the secrets rule keeps from every model).
 
 Writes <scores>/search.json (per run and retriever) and <scores>/search.tsv (per question). The card's
 scores/ holds both retrievers over the card's runs, so --no-reader or another --out needs a --scores
@@ -42,8 +43,7 @@ from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from run import indexes
-from score import answer_of, body_of, model_text
+from score import answer_of, body_of, indexed, model_text, source_text
 
 HERE = Path(__file__).resolve().parent
 DEFAULT_OUT = HERE.parent / "outputs-2026-10"
@@ -90,14 +90,16 @@ def bm25_rank(docs, query, k1=1.5, b=0.75):
 
 
 def corpus_files(work):
-    """The corpus's sources as the runs index them (by extension or name), relative, in path order."""
-    return sorted(p.relative_to(work).as_posix() for p in work.rglob("*") if p.is_file() and indexes(p.name))
+    """The corpus's sources as the runs summarize them (score.indexed: by extension or name, without the
+    files the secrets rule skips), relative, in path order."""
+    return sorted(p.relative_to(work).as_posix() for p in work.rglob("*") if p.is_file() and indexed(p, work))
 
 
 def documents(run, out, work, files):
     """Path -> searchable text of one run (or baseline)."""
     if run == "source":
-        return {f: (work / f).read_text(encoding="utf-8") for f in files}
+        # read as srcmorph reads a source (score.source_text): a Latin-1 or UTF-16 file is no error
+        return {f: source_text(work / f) for f in files}
     if run == "paths":
         return {f: "" for f in files}
     docs = {}

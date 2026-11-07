@@ -26,7 +26,8 @@ SEED = 20261031
 
 
 def sql_dump(rng, scale):
-    """A bank data dump: three tables, two indexes, a view, then multi-row INSERT batches."""
+    """A bank data dump: three tables, two indexes and a view, then multi-row INSERT batches, with a fourth
+    table and a third index between them in the middle (ledger_hold, idx_hold_account)."""
     customers, accounts, transfers = int(4000 * scale), int(6000 * scale), int(20000 * scale)
     lines = [
         "-- Data dump of the payments ledger.",

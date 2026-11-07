@@ -207,6 +207,45 @@ class RulesTest(unittest.TestCase):
         # the hashes of the files the rules name pass the skip rule by
         self.assertIn("file-body-oop.md", run.profile_hashes(run.PROFILES / "v3", rules))
 
+    def test_secretsRule_isTheSelfTestsSecretsRule(self):
+        import yaml
+        selftest = yaml.safe_load((run.REPO / "srcmorph-maven-plugin" / "srcmorph-selftest.yaml")
+                                  .read_text(encoding="utf-8"))
+        theirs = next(r for r in selftest["srcMorph"]["rules"] if r["id"] == "secrets")
+
+        self.assertEqual(run.SECRETS_RULE, theirs)
+
+    def test_skipped_readsTheSecretsRuleAsSrcmorphDoes(self):
+        secret = "apiVersion: v1\nkind: Secret\ndata:\n  password: eA==\n"
+        for rel, text in ((".env", "TOKEN=x\n"), ("other/deploy/.env.production", ""),
+                          ("other/prod.TFVARS", ""), ("other/settings.xml", "<settings>\n"),
+                          ("other/gradle.properties", "signing.password=x\n"), ("other/deploy/postgres.yaml", secret),
+                          ("other/k8s/db-credentials.yaml", "password: x\n"),
+                          ("other/charts/shop/templates/db-secret.yaml", secret)):
+            with self.subTest(rel=rel):
+                self.assertTrue(run.skipped(rel, text))
+        for rel, text in (("other/app/src/main/res/xml/settings.xml", "<PreferenceScreen/>\n"),
+                          ("other/application.properties", "spring.datasource.password=${DB_PASSWORD}\n"),
+                          ("other/charts/shop/templates/postgres.yaml", secret + "  user: {{ .Values.user }}\n"),
+                          ("other/.github/workflows/secret-scan.yml", "on: push\n"),
+                          ("other/k8s/vault-deployment.yaml", "kind: Deployment\n"),
+                          ("other/deploy/provider.yaml", "kind: SecretProviderClass\n"),
+                          ("java/SecretManager.java", "class SecretManager {}\n")):
+            with self.subTest(rel=rel):
+                self.assertFalse(run.skipped(rel, text))
+        # contentMatches reads the head only, as srcmorph does
+        self.assertFalse(run.skipped("other/late.yaml", "x" * run.CONTENT_HEAD_CHARS + "\nkind: Secret\n"))
+
+    def test_pathGlob_asSrcmorphCompilesIt(self):
+        self.assertTrue(run.path_glob("**/templates/**").fullmatch("templates/a.yaml"))
+        self.assertTrue(run.path_glob("**/templates/**").fullmatch("charts/x/templates/a.yaml"))
+        self.assertFalse(run.path_glob("**/templates/**").fullmatch("charts/mytemplates/a.yaml"))
+        self.assertTrue(run.path_glob("**/.github/{workflows,actions}/**/*.{yml,yaml}").fullmatch(
+            ".github/workflows/ci.yml"))
+        self.assertFalse(run.path_glob("**/*pom.xml").fullmatch("a/b/POM.xml"))
+        with self.assertRaises(ValueError):
+            run.condition_matches({"size": {"min": 1}}, "a.java", "")
+
     def test_gradleKotlinScripts_takeTheGradleRuleOverKotlin(self):
         rules = {r["id"]: r for r in run.file_rules(run.PROFILES / "v3", "m", facts=True)}
 
@@ -405,6 +444,26 @@ class SearchTest(unittest.TestCase):
 
         self.assertEqual(files, ["other/Dockerfile", "other/a.sh"])
         self.assertEqual(docs, {"other/Dockerfile": "", "other/a.sh": "> Rotates the backups."})
+
+    def test_theFiles_leaveOutWhatTheSecretsRuleSkips_andASourceIsReadAsSrcmorphReadsIt(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work, out = Path(tmp) / "work", Path(tmp) / "out"
+            (work / "other" / "deploy").mkdir(parents=True)
+            (work / "other" / "deploy" / "postgres.yaml").write_text("kind: Secret\ndata: {}\n", encoding="utf-8")
+            (work / "other" / ".env").write_text("TOKEN=x\n", encoding="utf-8")
+            (work / "other" / "deploy" / "app.yaml").write_text("kind: Deployment\n", encoding="utf-8")
+            # Latin-1, no UTF-8: srcmorph reads it with a replacement character, as score.source_text does
+            (work / "other" / "a.sh").write_bytes("echo Größe\n".encode("latin-1"))
+
+            files = search.corpus_files(work)
+            docs = search.documents("source", out, work, files)
+            rows = score.score_model(out / "m", work, {})
+
+        self.assertEqual(files, ["other/a.sh", "other/deploy/app.yaml"])
+        self.assertEqual(docs["other/a.sh"], "echo Gr��e\n")
+        # a skipped file is no missing summary
+        self.assertEqual(sorted(r["file"] for r in rows if r.get("missing") and r["kind"] == "other"),
+                         ["other/a.sh", "other/deploy/app.yaml"])
 
     def test_aSummary_isTheAnswerAfterALeadingReasoningBlock_asScorePyReadsIt(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -682,10 +741,12 @@ class CutOffTest(unittest.TestCase):
 class RunModelTest(unittest.TestCase):
     """run_model's phases against a stand-in for the CLI: no Java, no model."""
 
-    def run_phases(self, failures, model=None, envs=None):
+    def run_phases(self, failures, model=None, envs=None, record=None):
         """The phases run_model starts when the CLI fails the given phases with the given log text (for a
-        local model unless one is given; the CLI's environment of every phase goes to envs)."""
+        local model unless one is given; the CLI's environment of every phase goes to envs; the file phase
+        writes record as its run record when given). The meta file as written is self.written."""
         started = []
+        self.written = None
 
         def fake_run(command, stdout=None, **kwargs):
             if command[-1].endswith(".json") and "-cp" in command:
@@ -693,6 +754,9 @@ class RunModelTest(unittest.TestCase):
                 started.append(phase)
                 if envs is not None:
                     envs.append(kwargs.get("env"))
+                config = json.loads(Path(command[-1]).read_text(encoding="utf-8"))["srcMorph"]
+                if record is not None and "runRecordFile" in config:
+                    Path(config["runRecordFile"]).write_text(json.dumps(record), encoding="utf-8")
                 text = failures.get(phase)
                 stdout.write(text or "done\n")
                 return subprocess.CompletedProcess(command, 1 if text else 0)
@@ -708,10 +772,78 @@ class RunModelTest(unittest.TestCase):
                 cp=str(tmp / "cp.txt"), prepend="", java="java", corpus="", commit=run.JAVA_COMMIT,
                 profile="v3", meta=str(tmp / "meta"))
             model = model or next(m for m in MODELS["models"] if m["backend"] == "local")
-            with mock.patch.object(run.subprocess, "run", side_effect=fake_run), \
-                    mock.patch("sys.stdout", new_callable=io.StringIO):
-                meta = run.run_model(options, MODELS, run.PROFILES / "v3", model)
+            try:
+                with mock.patch.object(run.subprocess, "run", side_effect=fake_run), \
+                        mock.patch("sys.stdout", new_callable=io.StringIO):
+                    meta = run.run_model(options, MODELS, run.PROFILES / "v3", model)
+            finally:
+                written = tmp / "meta" / f"{model['key']}.json"
+                if written.exists():
+                    self.written = json.loads(written.read_text(encoding="utf-8"))
         return started, {phase: p["exit"] for phase, p in meta["phases"].items()}
+
+    OPENROUTER = next(m for m in MODELS["models"] if m["backend"] == "openrouter")
+    RECORD = {"totals": {"promptTokens": 1000, "cachedPromptTokens": 0, "completionTokens": 100},
+              "files": [{"file": "java/A.java", "calls": 1, "finishReason": "stop", "outcome": "written"}]}
+
+    def test_aPaidRun_whoseCostLookupsFail_keepsItsMetaWithNullCosts(self):
+        # no network: the price list times out, the usage after the run is refused
+        with mock.patch.object(run, "openrouter_usage", side_effect=[2.5, urllib.error.URLError("refused")]), \
+                mock.patch.object(run, "openrouter_price", side_effect=TimeoutError("timed out")):
+            started, exits = self.run_phases({}, self.OPENROUTER, record=self.RECORD)
+
+        self.assertEqual(started, list(run.PHASES))
+        self.assertEqual(set(exits.values()), {0})
+        self.assertIsNotNone(self.written)
+        self.assertEqual((self.written["tokenCostUsd"], self.written["costUsd"]), (None, None))
+        self.assertEqual(self.written["costErrors"], {
+            "tokenCostUsd": "the model's prices: TimeoutError: timed out",
+            "costUsd": "the usage after the run: URLError: <urlopen error refused>"})
+        self.assertEqual(self.written["fileTokens"], self.RECORD["totals"])
+
+    def test_aPaidRun_whoseUsageBeforeFails_stillRunsAndPricesItsTokens(self):
+        with mock.patch.object(run, "openrouter_usage", side_effect=[OSError("no route")]) as usage, \
+                mock.patch.object(run, "openrouter_price", return_value=(1e-6, 2e-6, 1e-7)):
+            started, _ = self.run_phases({}, self.OPENROUTER, record=self.RECORD)
+
+        self.assertEqual(started, list(run.PHASES))
+        self.assertEqual(usage.call_count, 1)
+        self.assertEqual(self.written["tokenCostUsd"], run.token_cost(self.RECORD["totals"], (1e-6, 2e-6, 1e-7)))
+        self.assertIsNone(self.written["costUsd"])
+        self.assertEqual(self.written["costErrors"], {"costUsd": "the usage before the run: OSError: no route"})
+
+    def test_aPaidRun_writesItsMetaBeforeTheCostLookups(self):
+        # whatever a lookup raises, the meta of the finished run is on disk already
+        with mock.patch.object(run, "openrouter_usage", return_value=1.0), \
+                mock.patch.object(run, "openrouter_price", side_effect=RuntimeError("unexpected")), \
+                self.assertRaises(RuntimeError):
+            self.run_phases({}, self.OPENROUTER, record=self.RECORD)
+
+        self.assertIsNotNone(self.written)
+        self.assertIn("finishedAt", self.written)
+        self.assertNotIn("tokenCostUsd", self.written)
+
+    def test_aPaidRun_whoseLookupsAnswer_recordsBothCosts(self):
+        with mock.patch.object(run, "openrouter_usage", side_effect=[2.0, 2.25]), \
+                mock.patch.object(run, "openrouter_price", return_value=(1e-6, 2e-6, 1e-7)):
+            self.run_phases({}, self.OPENROUTER, record=self.RECORD)
+
+        self.assertEqual((self.written["tokenCostUsd"], self.written["costUsd"]), (0.0012, 0.25))
+        self.assertNotIn("costErrors", self.written)
+
+    def test_absolutePaths_includeTheModelDirectory(self):
+        options = argparse.Namespace(work="w", out="o", meta="m", parts="", model_dir="models")
+
+        run.absolute_paths(options)
+        model = next(m for m in MODELS["models"] if m["backend"] == "local")
+        definition = run.ai_definition(MODELS, model, options.model_dir)
+
+        self.assertEqual(options.model_dir, str(Path("models").resolve()))
+        self.assertEqual(options.work, str(Path("w").resolve()))
+        # an option not given stays empty
+        self.assertEqual(options.parts, "")
+        # so a local model's modelPath no longer resolves against the generated configuration's directory
+        self.assertTrue(Path(definition["modelPath"]).is_absolute())
 
     def test_aPackagePhaseThatWroteAllButSomePackages_stillRunsTheProjectPhase(self):
         started, exits = self.run_phases(
@@ -872,6 +1004,30 @@ class CorrelateTest(unittest.TestCase):
 
     def test_pearson_aSeriesThatDoesNotVary_isNone(self):
         self.assertIsNone(correlate.pearson([1, 2, 3], [5, 5, 5]))
+
+    def test_pearson_anEmptySeries_isNone(self):
+        self.assertIsNone(correlate.pearson([], []))
+        self.assertIsNone(correlate.spearman([], []))
+
+    def test_resultLine_anEmptyTableOrAConstantSeries_printsNotAvailable(self):
+        empty = correlate.correlations([])
+        constant = correlate.correlations([("a", 100, 0.5, 0.9), ("b", 200, 0.5, 0.8)])
+
+        self.assertEqual(correlate.result_line(empty),
+                         "0 runs: Pearson r n/a with hit@1, n/a with the MRR; Spearman n/a and n/a")
+        self.assertEqual(correlate.result_line(constant),
+                         "2 runs: Pearson r n/a with hit@1, -1.00 with the MRR; Spearman n/a and -1.00")
+
+    def test_main_anExcludedEveryRun_printsNotAvailable(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "summary.json").write_text(json.dumps({"a": {"java": {"bodyBytes": 1}}}), encoding="utf-8")
+            (Path(tmp) / "search.json").write_text(json.dumps({"runs": {"a": {"reader": {"hit1": 1, "mrr": 1}}}}),
+                                                   encoding="utf-8")
+            result = subprocess.run([sys.executable, str(HERE / "correlate.py"), "--scores", tmp, "--exclude", "a"],
+                                    capture_output=True, text=True)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("0 runs: Pearson r n/a", result.stdout)
 
     def test_ranks_ties_shareTheMeanOfTheirRanks(self):
         self.assertEqual(correlate.ranks([10, 30, 20, 30]), [1.0, 3.5, 2.0, 3.5])

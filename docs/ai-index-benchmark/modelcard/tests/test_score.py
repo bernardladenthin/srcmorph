@@ -188,6 +188,24 @@ class NamesFoundTest(unittest.TestCase):
 
         self.assertEqual((row["fences"], row["idsFound"]), (2, 1))
 
+    def test_anUnclosedFenceInAListItem_endsWithTheItem(self):
+        # CommonMark ends the item at a non-blank line left of its content column, and a fence opened in it
+        text = "- item\n  ```sql\n  SELECT 1;\n\n  SELECT 2;\n## Heading\nThen Baz.\n"
+
+        blocks = score.fenced_blocks(text)
+        row = score.score_file("", body(text), ["Baz"], [])
+
+        self.assertEqual(len(blocks), 1)
+        start, end, code, markers = blocks[0]
+        self.assertEqual((text[start:end], code, markers), ("  ```sql\n  SELECT 1;\n\n  SELECT 2;",
+                                                             "  SELECT 1;\n\n  SELECT 2;\n", 1))
+        self.assertTrue(text[end:].startswith("\n## Heading\n"))
+        # the heading and the line after it are read as the summary's own text again
+        self.assertEqual((row["fences"], row["badHeadings"], row["idsFound"]), (1, 1, 1))
+        # at the top no item ends it: an unclosed fence runs to the end of the text
+        self.assertEqual(score.fenced_blocks("```\nx\n## Heading\n")[0][1:], (len("```\nx\n## Heading\n"),
+                                                                             "x\n## Heading\n", 1))
+
     def test_aReasoningBlock_isNoPartOfTheSummarysMeasures(self):
         source = "class Foo { int bar; int baz; }"
         row = score.score_file(source, "<think>Foo has bar and baz, 61 of them, and `ghostName`." + LONG

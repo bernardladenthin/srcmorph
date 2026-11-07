@@ -55,10 +55,13 @@ prompt / cached / completion tokens and finish reasons; for an OpenRouter model 
 the file phase's tokens at the model's list prices, cached prompt tokens at the cache-read price
 (tokenCostUsd: an upper bound, the provider OpenRouter routes to may charge less, and the package and
 project phases are not in it), next to the account's usage delta (costUsd, all three phases, which
-also books whatever else used the key meanwhile, and late).
+also books whatever else used the key meanwhile, and late). The meta is written before the costs are
+looked up and again with them; a lookup that fails (no network, a timeout) leaves its cost null, with
+the reason under costErrors, and the next model still runs.
 """
 import argparse
 import hashlib
+import http.client
 import json
 import math
 import os
@@ -140,6 +143,71 @@ def indexes(file_name):
     lower = file_name.lower()
     return (any(lower.endswith(extension.lower()) for extension in EXTENSIONS)
             or any(name_glob(name).fullmatch(file_name) for name in FILE_NAMES))
+
+
+def path_glob(glob):
+    """A pathGlob as srcmorph compiles it (support.Glob): over the path below the base directory, "/" as
+    the separator, in its case; `**/` matches no directory too, `*` and `?` stay inside a segment, `{a,b}`
+    is either."""
+    out, depth, i = "", 0, 0
+    while i < len(glob):
+        char = glob[i]
+        if glob.startswith("**/", i):
+            out, i = out + "(?:.*/)?", i + 3
+            continue
+        if glob.startswith("**", i):
+            out, i = out + ".*", i + 2
+            continue
+        if char == "*":
+            out += "[^/]*"
+        elif char == "?":
+            out += "[^/]"
+        elif char == "{":
+            out, depth = out + "(?:", depth + 1
+        elif char == "}" and depth:
+            out, depth = out + ")", depth - 1
+        elif char == "," and depth:
+            out += "|"
+        else:
+            out += re.escape(char)
+        i += 1
+    return re.compile(out)
+
+
+# The characters of a file's head a contentMatches condition reads (SrcMorphConfiguration's
+# DEFAULT_CONTENT_HEAD_CHARS).
+CONTENT_HEAD_CHARS = 16_384
+
+
+def condition_matches(condition, rel_path, head):
+    """Whether a file matches a rule's condition as srcmorph's ConditionEvaluator reads it: and, or and
+    not groups over extensions and fileNames (the file name, in any case), pathGlob (the path below the
+    base directory) and contentMatches (found in the head). Another condition is refused, so a rule that
+    starts to use one is not read wrong."""
+    if "and" in condition:
+        return all(condition_matches(c, rel_path, head) for c in condition["and"]["conditions"])
+    if "or" in condition:
+        return any(condition_matches(c, rel_path, head) for c in condition["or"]["conditions"])
+    if "not" in condition:
+        return not condition_matches(condition["not"], rel_path, head)
+    name = rel_path.rsplit("/", 1)[-1]
+    if "extensions" in condition:
+        return any(name.lower().endswith(extension.lower()) for extension in condition["extensions"])
+    if "fileNames" in condition:
+        return any(name_glob(glob).fullmatch(name) for glob in condition["fileNames"])
+    if "pathGlob" in condition:
+        return path_glob(condition["pathGlob"]).fullmatch(rel_path) is not None
+    if "contentMatches" in condition:
+        return re.search(condition["contentMatches"], head) is not None
+    raise ValueError(f"a condition run.py does not read: {condition}")
+
+
+def skipped(rel_path, text):
+    """Whether the secrets rule (SECRETS_RULE) keeps a file from every model, so the run writes no summary
+    for it: rel_path below the corpus, with "/", and the file's text."""
+    return condition_matches(SECRETS_RULE["condition"], rel_path, text[:CONTENT_HEAD_CHARS])
+
+
 # A language gets a rule of its own when the profile has its prompt (file-body-<prompt>.md) or when
 # --facts asks for its counters (<name>-facts.tsv); otherwise the fallback rule summarizes it. A POM
 # matches pom and xml; its priority gives it the Maven counters, with the XML prompt.
@@ -234,7 +302,7 @@ SECRETS_RULE = {"id": "secrets", "skip": True, "priority": 1000, "condition": _o
                         "*{secret,secrets,credential,credentials}*.{yml,yaml,properties,json,xml,conf,env,hcl}"]},
          {"not": _or({"pathGlob": "**/.github/**"},
                      HELM_TEMPLATE,
-                     _and({"contentMatches": r"(?m)^kind:[ \t]*[\"']?[A-Z]"},
+                     _and({"contentMatches": r"""(?m)^kind:[ \t]*["']?[A-Z]"""},
                           {"not": {"contentMatches": K8S_SECRET}}))}))}
 PHASES = ("GenerateFileIndex", "AggregatePackages", "AggregateProject")
 WORK_MARKER = ".srcmorph-benchmark-work"
@@ -588,7 +656,12 @@ def run_model(args, models, profile, model):
     run_record = log_dir / "run-record.json"
     if run_record.exists():
         run_record.unlink()
-    usage_before = openrouter_usage() if model["backend"] == "openrouter" else None
+    usage_before = None
+    if model["backend"] == "openrouter":
+        try:
+            usage_before = openrouter_usage()
+        except COST_ERRORS as error:
+            cost_failed(meta, "costUsd", "the usage before the run: " + error_text(error))
     for phase in PHASES:
         config_path = log_dir / f"config_{phase}.json"
         config_path.write_text(json.dumps(phase_config(phase, Path(args.work), out_dir, profile, definition,
@@ -612,9 +685,10 @@ def run_model(args, models, profile, model):
             if not files_not_written(log_dir / f"{phase}.log", phase):
                 break
     meta["finishedAt"] = utc_now()
+    totals = None
     if run_record.exists():
         record = json.loads(run_record.read_text(encoding="utf-8"))
-        meta["fileTokens"] = record["totals"]
+        totals = meta["fileTokens"] = record["totals"]
         meta["finishReasons"] = dict(sorted(
             (reason, sum(1 for f in record["files"] if f["finishReason"] == reason))
             for reason in {f["finishReason"] for f in record["files"] if f["calls"]}))
@@ -623,16 +697,54 @@ def run_model(args, models, profile, model):
         if file_phase is not None:
             file_phase["cutOff"] = sorted(set(file_phase["cutOff"]) | {
                 f["file"] for f in record["files"] if f["finishReason"] == "length" and f["outcome"] != "written"})
-        if model["backend"] == "openrouter":
-            price = openrouter_price(definition["remoteModel"])
-            if price is not None:
-                meta["tokenCostUsd"] = token_cost(record["totals"], price)
-    if usage_before is not None:
-        meta["costUsd"] = round(openrouter_usage() - usage_before, 6)
     meta["files"] = sum(1 for _ in out_dir.rglob("*.ai.md")) if out_dir.exists() else 0
-    Path(args.meta).mkdir(parents=True, exist_ok=True)
-    (Path(args.meta) / f"{key}.json").write_text(json.dumps(meta, indent=1) + "\n", encoding="utf-8")
+    # the meta of a paid run is written before its cost is looked up, and again with it: a lookup that
+    # fails loses neither the meta nor the models after this one
+    write_meta(args.meta, meta)
+    if model["backend"] == "openrouter":
+        add_costs(meta, totals, definition["remoteModel"], usage_before)
+        write_meta(args.meta, meta)
     return meta
+
+
+# What a cost lookup over the network raises: no connection or a timeout (URLError and socket.timeout are
+# OSErrors), an answer cut short (http.client.IncompleteRead), one that is no JSON (ValueError) or lacks a
+# field (KeyError, TypeError).
+COST_ERRORS = (OSError, http.client.HTTPException, ValueError, KeyError, TypeError)
+
+
+def error_text(error):
+    return f"{type(error).__name__}: {error}"
+
+
+def cost_failed(meta, field, note):
+    """Records a cost that could not be looked up: null, with the reason under costErrors."""
+    meta[field] = None
+    meta.setdefault("costErrors", {})[field] = note
+
+
+def add_costs(meta, totals, remote_model, usage_before):
+    """The OpenRouter costs of a finished run, into its meta: tokenCostUsd from the file phase's token
+    totals at the model's list prices, costUsd from the account's usage since usage_before. A lookup that
+    fails records null and its error (cost_failed) instead of ending the run."""
+    if totals is not None:
+        try:
+            price = openrouter_price(remote_model)
+            if price is not None:
+                meta["tokenCostUsd"] = token_cost(totals, price)
+        except COST_ERRORS as error:
+            cost_failed(meta, "tokenCostUsd", "the model's prices: " + error_text(error))
+    if usage_before is not None:
+        try:
+            meta["costUsd"] = round(openrouter_usage() - usage_before, 6)
+        except COST_ERRORS as error:
+            cost_failed(meta, "costUsd", "the usage after the run: " + error_text(error))
+
+
+def write_meta(meta_dir, meta):
+    """Writes <meta>/<model key>.json."""
+    Path(meta_dir).mkdir(parents=True, exist_ok=True)
+    (Path(meta_dir) / f"{meta['key']}.json").write_text(json.dumps(meta, indent=1) + "\n", encoding="utf-8")
 
 
 def validate(parser, args, models):
@@ -649,6 +761,21 @@ def validate(parser, args, models):
         parser.error(f"unknown model key(s): {', '.join(unknown)}")
     if args.backend and args.backend not in models["backends"]:
         parser.error(f"unknown backend: {args.backend}")
+
+
+# The options whose path reaches a phase configuration: srcmorph resolves a relative path against the
+# configuration file's directory (the logs below --work), not the working one (--model-dir as the
+# directory of a local model's modelPath).
+PATH_OPTIONS = ("work", "out", "meta", "parts", "model_dir")
+
+
+def absolute_paths(args):
+    """The parsed options with every PATH_OPTIONS path that is given made absolute, against the working
+    directory."""
+    for name in PATH_OPTIONS:
+        if getattr(args, name, None):
+            setattr(args, name, str(Path(getattr(args, name)).resolve()))
+    return args
 
 
 def main():
@@ -673,11 +800,7 @@ def main():
     parser.add_argument("--chars-per-token", type=float, default=None)
     parser.add_argument("--java-prompt", default=JAVA_PROMPT)
     parser.add_argument("--parts", default="")
-    args = parser.parse_args()
-    # srcmorph resolves a relative path against the configuration file's directory, not the working one
-    for name in ("work", "out", "meta", "parts"):
-        if getattr(args, name, None):
-            setattr(args, name, str(Path(getattr(args, name)).resolve()))
+    args = absolute_paths(parser.parse_args())
     models = json.loads((HERE / "models.json").read_text(encoding="utf-8"))
     validate(parser, args, models)
 
