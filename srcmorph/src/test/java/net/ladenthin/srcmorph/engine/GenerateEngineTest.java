@@ -5,6 +5,7 @@ package net.ladenthin.srcmorph.engine;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -1468,6 +1469,136 @@ public class GenerateEngineTest {
 
         // assert
         assertThat(failed.getMessage(), containsString("no-such-prompt"));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="orphaned summaries">
+    /** The summary of Foo.java, written by the base configuration's run. */
+    private Path fooSummary() {
+        return tempDir.resolve("out/main/java/com/example/Foo.java.ai.md");
+    }
+
+    /**
+     * Summarizes Foo.java and Bar.java, then deletes Bar.java and lays out what else the output directory
+     * may hold: a package file and a hand-written note in the output tree, and a file summary outside it.
+     *
+     * @return the base configuration
+     */
+    private SrcMorphConfiguration configWithAnOrphan() throws Exception {
+        final SrcMorphConfiguration config = baseConfig();
+        final Path bar = tempDir.resolve("src/main/java/com/example/Bar.java");
+        Files.write(bar, "class Bar {}\n".getBytes(StandardCharsets.UTF_8));
+        new GenerateEngine(config).execute();
+        Files.delete(bar);
+        final String fileSummary = new String(Files.readAllBytes(fooSummary()), StandardCharsets.UTF_8);
+        Files.write(
+                tempDir.resolve("out/main/java/com/example/package.ai.md"),
+                fileSummary.replace("- X: file", "- X: package").getBytes(StandardCharsets.UTF_8));
+        Files.write(tempDir.resolve("out/notes.ai.md"), "# Notes\n".getBytes(StandardCharsets.UTF_8));
+        Files.createDirectories(tempDir.resolve("elsewhere"));
+        Files.write(tempDir.resolve("elsewhere/Gone.java.ai.md"), fileSummary.getBytes(StandardCharsets.UTF_8));
+        return config;
+    }
+
+    private Path barSummary() {
+        return tempDir.resolve("out/main/java/com/example/Bar.java.ai.md");
+    }
+
+    @Test
+    public void execute_theSummaryOfADeletedSource_isListedInThePlanAndKept() throws Exception {
+        // arrange
+        final SrcMorphConfiguration config = configWithAnOrphan();
+        logAppender.list.clear();
+
+        // act
+        final GenerateResult result = new GenerateEngine(config).execute();
+
+        // assert
+        assertThat(result.unchanged(), is(1));
+        assertThat(Files.exists(barSummary()), is(true));
+        assertThat(
+                String.join("\n", capturedMessages(Level.INFO)),
+                containsString("### Orphaned summaries (1)\n\nFile summaries no file of this plan is summarized into"));
+        assertThat(
+                String.join("\n", capturedMessages(Level.INFO)),
+                containsString("\n- out/main/java/com/example/Bar.java.ai.md\n"));
+        assertThat(
+                capturedMessages(Level.WARN),
+                is(Collections.singletonList("1 file summary(ies) below the output directory belong to no file of this"
+                        + " plan (see 'Orphaned summaries' in the plan above); the package and project phases still"
+                        + " read them, and pruneOrphans: true deletes them")));
+    }
+
+    @Test
+    public void execute_pruneOrphans_deletesTheFileSummaryOfADeletedSourceOnly() throws Exception {
+        // arrange
+        final SrcMorphConfiguration config = configWithAnOrphan();
+        config.setPruneOrphans(true);
+        logAppender.list.clear();
+
+        // act
+        new GenerateEngine(config).execute();
+
+        // assert
+        assertThat(Files.exists(barSummary()), is(false));
+        assertThat(Files.exists(fooSummary()), is(true));
+        assertThat(Files.exists(tempDir.resolve("out/main/java/com/example/package.ai.md")), is(true));
+        assertThat(Files.exists(tempDir.resolve("out/notes.ai.md")), is(true));
+        assertThat(Files.exists(tempDir.resolve("elsewhere/Gone.java.ai.md")), is(true));
+        assertThat(capturedMessages(Level.INFO).contains("Deleted the orphaned summary " + barSummary()), is(true));
+        assertThat(
+                String.join("\n", capturedMessages(Level.WARN)),
+                containsString("; pruneOrphans deletes them before the run"));
+    }
+
+    @Test
+    public void execute_pruneOrphansAndASkipRuleForAFormerSource_deletesItsSummary() throws Exception {
+        // arrange: Foo.java is skipped now, so nothing of this plan is summarized into its summary
+        final SrcMorphConfiguration config = baseConfig();
+        new GenerateEngine(config).execute();
+        final RoutingRule skip = javaFileRule();
+        skip.setSkip(true);
+        config.setRules(Collections.singletonList(skip));
+        config.setPruneOrphans(true);
+
+        // act
+        final GenerateResult result = new GenerateEngine(config).execute();
+
+        // assert
+        assertThat(result.skipped(), is(1));
+        assertThat(Files.exists(fooSummary()), is(false));
+    }
+
+    @Test
+    public void execute_planOnlyOrCheckWithPruneOrphans_deletesNothing() throws Exception {
+        // arrange
+        final SrcMorphConfiguration config = configWithAnOrphan();
+        config.setPruneOrphans(true);
+        config.setPlanOnly(true);
+
+        // act
+        new GenerateEngine(config).execute();
+        new GenerateEngine(config).check();
+
+        // assert
+        assertThat(Files.exists(barSummary()), is(true));
+        assertThat(
+                String.join("\n", capturedMessages(Level.WARN)),
+                containsString("; the package and project phases still read them, and pruneOrphans: true deletes"));
+    }
+
+    @Test
+    public void execute_noOutputDirectoryYet_findsNoOrphan() throws Exception {
+        // arrange
+        final SrcMorphConfiguration config = baseConfig();
+        config.setPruneOrphans(true);
+
+        // act
+        final GenerateResult result = new GenerateEngine(config).execute();
+
+        // assert
+        assertThat(result.written(), is(1));
+        assertThat(String.join("\n", capturedMessages(Level.INFO)), not(containsString("Orphaned summaries")));
     }
     // </editor-fold>
 }

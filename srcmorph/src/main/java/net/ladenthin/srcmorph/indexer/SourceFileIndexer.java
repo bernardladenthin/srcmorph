@@ -14,7 +14,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Pattern;
 import lombok.ToString;
 import net.ladenthin.srcmorph.config.ModelDefinition;
@@ -118,6 +120,7 @@ public final class SourceFileIndexer {
     private final ChecksumSupport checksumSupport = new ChecksumSupport();
     private final AiMdRewritePolicy headerSupport;
     private final AiMdDocumentCodec documentCodec = new AiMdDocumentCodec();
+    private final AiMdHeaderCodec headerCodec = new AiMdHeaderCodec();
     private final RuleSelector fieldGenerationSelector = new RuleSelector();
     private final ConditionEvaluator conditionEvaluator = new ConditionEvaluator();
     private final GenerationTimeEstimator timeEstimator = new GenerationTimeEstimator();
@@ -292,6 +295,87 @@ public final class SourceFileIndexer {
             candidates.add(path);
         }
         return candidates;
+    }
+
+    /**
+     * Returns the orphaned summaries: the {@code .ai.md} files of node type
+     * {@link AiMdHeaderCodec#NODE_TYPE_FILE} below the output root that none of {@code sources} is
+     * summarized into ({@link #targetFile(Path)}), the summary of a deleted, renamed or newly excluded source
+     * or of one a skip rule takes now. The package and project files are none, by their name in any case and
+     * by their header, nor is an {@code .ai.md} without a file header (a note written by hand); a summary
+     * that cannot be read is kept, with a warning, and so is everything the walk cannot read.
+     *
+     * @param sources the files the run summarizes
+     * @return the orphaned summaries, sorted by path; empty when the output root does not exist
+     * @throws IOException if the output root cannot be walked
+     */
+    public List<Path> orphanedSummaries(final Collection<Path> sources) throws IOException {
+        final Path root = outputRoot.normalize();
+        final List<Path> orphans = new ArrayList<>();
+        if (!Files.isDirectory(root)) {
+            return orphans;
+        }
+        final Set<Path> produced = new HashSet<>();
+        for (final Path source : sources) {
+            produced.add(targetFile(source));
+        }
+        final List<Path> summaries = new ArrayList<>();
+        Files.walkFileTree(root, new SimpleFileVisitor<Path>() {
+            @Override
+            public FileVisitResult visitFile(final Path file, final BasicFileAttributes attributes) {
+                if (attributes.isRegularFile() && isFileSummaryName(file) && !produced.contains(file)) {
+                    summaries.add(file);
+                }
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult visitFileFailed(final Path file, final IOException e) {
+                LOGGER.warn("Cannot read {} of the output directory, so it is kept: {}", file, e.toString());
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult postVisitDirectory(final Path directory, final @Nullable IOException e) {
+                if (e != null) {
+                    LOGGER.warn("Cannot read {} of the output directory, so it is kept: {}", directory, e.toString());
+                }
+                return FileVisitResult.CONTINUE;
+            }
+        });
+        summaries.sort(BY_PATH);
+        for (final Path summary : summaries) {
+            final String nodeType;
+            try {
+                nodeType = headerCodec.read(summary).nodeType();
+            } catch (final IOException e) {
+                LOGGER.warn("Cannot read the header of {}, so it is kept: {}", summary, e.toString());
+                continue;
+            }
+            if (AiMdHeaderCodec.NODE_TYPE_FILE.equals(nodeType)) {
+                orphans.add(summary);
+            }
+        }
+        return orphans;
+    }
+
+    /**
+     * Returns whether a file of the output tree may be a file summary by its name: an {@code .ai.md}, not
+     * the package or the project file in any case, and no marker file.
+     *
+     * @param file the file
+     * @return {@code true} when its header is worth reading
+     */
+    private static boolean isFileSummaryName(final Path file) {
+        final Path namePath = file.getFileName();
+        if (namePath == null) {
+            return false;
+        }
+        final String name = namePath.toString();
+        return name.endsWith(AiMdHeaderCodec.AI_MD_EXTENSION)
+                && !name.equalsIgnoreCase(AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME)
+                && !name.equalsIgnoreCase(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME)
+                && !name.startsWith(AiMdHeaderCodec.GENERATED_BY_PREFIX);
     }
 
     /**

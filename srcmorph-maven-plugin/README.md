@@ -446,8 +446,8 @@ The keys of the file under `srcMorph` (`baseDirectory`, `subtrees`, `outputDirec
 `fileNames`, `fileInterpreters`, `contentHeadChars`, `excludes`, `minFileSizeBytes` /
 `maxFileSizeBytes`, `generationProvider`, `modelDirectory`,
 `profileDirectory`, `promptDefinitions`, `factDefinitions`, `aiDefinitions`, `rules`,
-`force`, `regenerateOn`, `planOnly`, `aiVersion`, `projectName`, `runRecordFile`, `partsDirectory`) are
-described in
+`force`, `regenerateOn`, `planOnly`, `pruneOrphans`, `aiVersion`, `projectName`, `runRecordFile`,
+`partsDirectory`) are described in
 [`srcmorph-cli/README.md`](../srcmorph-cli/README.md) and [`srcmorph/README.md`](../srcmorph/README.md).
 A configured subtree that does not exist, or lies outside the base directory, fails the goal; file
 extensions match with their dot and in any case. `fileNames` adds files by name, for those without an
@@ -460,6 +460,13 @@ skipped with a warning. `contentHeadChars` (default 16,384, at least 256) is how
 comes after a long license header; the head is never read past the file's end. A source file
 is read as UTF-8, or as UTF-16 when it starts with that byte order mark; a byte order mark is not
 part of the text the model and the fact counters see.
+
+The `generate` plan lists the **orphaned summaries**: the file summaries (`X: file`) below the output
+directory that no file of the plan is summarized into, of a source that was deleted, renamed or newly
+excluded, or that a skip rule takes now. The package and project phases would go on reading them.
+`pruneOrphans: true` (default `false`) deletes them before the run generates, each with a log line;
+a `planOnly` run and `srcmorph:check` delete nothing. Leave it off while you narrow the subtrees for a
+single run: the summaries of the subtrees left out are orphans of that run too.
 
 ### Per-model `aiDefinitions` parameters
 

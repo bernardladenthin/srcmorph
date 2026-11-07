@@ -85,7 +85,9 @@ public class CConfiguration {
   (scripts without an extension, by their `#!` line), `contentHeadChars`,
   `minFileSizeBytes` / `maxFileSizeBytes`, `generationProvider`, `promptDefinitions`,
   `profileDirectory`, `aiDefinitions`, `modelDirectory`, `rules` (the file rules),
-  `factDefinitions`, `force`, `regenerateOn`, `planOnly`, `aiVersion`, `projectName`,
+  `factDefinitions`, `force`, `regenerateOn`, `planOnly`, `pruneOrphans` (deletes the file summaries
+  no file of the plan is summarized into; default `false`, the plan lists them either way), `aiVersion`,
+  `projectName`,
   `runRecordFile` and `partsDirectory` (below). A
   relative directory or `runRecordFile` resolves
   against the file's directory, a relative `modelPath` against `modelDirectory`, a relative

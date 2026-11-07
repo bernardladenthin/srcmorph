@@ -154,6 +154,7 @@ public final class IndexPlan {
     private final Map<Path, Integer> chunkRoomRefused = new LinkedHashMap<>();
     private final Map<Path, Integer> chunkRoomEstimated = new LinkedHashMap<>();
     private final Set<String> calibratedModels = new HashSet<>();
+    private final List<Path> orphans = new ArrayList<>();
 
     /** Creates an empty plan. */
     public IndexPlan() {
@@ -263,6 +264,25 @@ public final class IndexPlan {
      */
     public void addUnmatched(final Path file) {
         unmatched.add(file);
+    }
+
+    /**
+     * Records an orphaned summary: a file summary below the output directory that no routed file of this
+     * plan is summarized into.
+     *
+     * @param summary the {@code .ai.md} file
+     */
+    public void addOrphan(final Path summary) {
+        orphans.add(summary);
+    }
+
+    /**
+     * Returns the orphaned summaries, in the order they were recorded.
+     *
+     * @return the orphaned summaries
+     */
+    public List<Path> orphans() {
+        return orphans;
     }
 
     /**
@@ -417,9 +437,10 @@ public final class IndexPlan {
 
     /**
      * Renders the plan as a Markdown document for the build log: a summary, one section + table per
-     * model (file → prompt → rough time estimate) with a per-model subtotal, a grand total, and the
-     * skipped / unmatched lists. Markdown so it can be copied straight out of the console. Paths are
-     * relative to {@code baseDir}; the time column is a rough estimate (see {@code GenerationTimeEstimator}).
+     * model (file → prompt → rough time estimate) with a per-model subtotal, a grand total, the
+     * skipped / unmatched lists and the orphaned summaries. Markdown so it can be copied straight out of
+     * the console. Paths are relative to {@code baseDir}; the time column is a rough estimate (see
+     * {@code GenerationTimeEstimator}).
      *
      * @param baseDir directory to relativize file paths against for readability
      * @return the Markdown document
@@ -490,6 +511,16 @@ public final class IndexPlan {
             }
         }
         appendWindowExceededSection(sb, baseDir);
+        if (!orphans.isEmpty()) {
+            sb.append("\n### Orphaned summaries (")
+                    .append(orphans.size())
+                    .append(")\n\nFile summaries no file of this plan is summarized into (a deleted, renamed or")
+                    .append(" excluded source); the package and project phases still read them, and")
+                    .append(" pruneOrphans: true deletes them.\n\n");
+            for (final Path file : orphans) {
+                sb.append("- ").append(relativize(baseDir, file)).append("\n");
+            }
+        }
         return sb.toString();
     }
 

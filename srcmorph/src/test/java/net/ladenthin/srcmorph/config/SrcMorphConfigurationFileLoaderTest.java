@@ -120,6 +120,23 @@ public class SrcMorphConfigurationFileLoaderTest {
         assertThat(content.getSrcMorph().isForce(), is(true));
     }
 
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = {"srcmorph.json", "srcmorph.yaml"})
+    public void load_pruneOrphans_isBound(final String name) throws IOException {
+        // arrange
+        final String text = name.endsWith(".json")
+                ? "{\"srcMorph\": {\"pruneOrphans\": true}}"
+                : "srcMorph:\n  pruneOrphans: true\n";
+        final Path file = write(name, text);
+
+        // act
+        final SrcMorphConfigurationFile content =
+                SrcMorphConfigurationFileLoader.load(file, defaultBase(), NO_PROPERTIES);
+
+        // assert
+        assertThat(content.getSrcMorph().isPruneOrphans(), is(true));
+    }
+
     @Test
     public void load_anEmptyFile_isEveryDefault() throws IOException {
         // act

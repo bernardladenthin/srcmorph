@@ -178,7 +178,23 @@ public final class GenerateEngine {
         //    run uses to trim — see InputWindowCalculator).
         final IndexPlan plan = fileIndexer.classify(
                 candidates, rules, modelDefinitionSupport, promptPreparationSupport, config.getGenerationProvider());
+        // 2b. The file summaries below the output directory no file of this plan is summarized into: listed in
+        //     the plan always, deleted only by a run that generates with pruneOrphans (step 3d).
+        final boolean planOnly = !checkOnly && config.isPlanOnly();
+        final boolean prune = config.isPruneOrphans() && !planOnly && !checkOnly;
+        for (final Path orphan : fileIndexer.orphanedSummaries(routedFiles(plan))) {
+            plan.addOrphan(orphan);
+        }
         LOGGER.info("AI index plan (Markdown):\n{}", plan.renderMarkdown(basePath));
+        if (!plan.orphans().isEmpty()) {
+            LOGGER.warn(
+                    "{} file summary(ies) below the output directory belong to no file of this plan (see 'Orphaned"
+                            + " summaries' in the plan above); {}",
+                    plan.orphans().size(),
+                    prune
+                            ? "pruneOrphans deletes them before the run"
+                            : "the package and project phases still read them, and pruneOrphans: true deletes them");
+        }
 
         // 3. A file that matched no rule and no fallback is a fatal misconfiguration.
         if (!plan.unmatched().isEmpty()) {
@@ -223,7 +239,6 @@ public final class GenerateEngine {
         // present and running for real elsewhere. Stat'ing the file is not loading it, but failing the
         // plan on a missing model would break that workflow all the same -- and Plan is the CLI's
         // default command. check() is the plan with this check, for the machine that runs.
-        final boolean planOnly = !checkOnly && config.isPlanOnly();
         if (!planOnly) {
             EngineSupport.validateRoutedModelPaths(config.getGenerationProvider(), modelDefinitionSupport, rules);
         }
@@ -234,6 +249,12 @@ public final class GenerateEngine {
                                     + " model loaded, nothing written."
                             : "planOnly=true: stopping after the plan; no model loaded, nothing generated.");
             return GenerateResult.planned();
+        }
+
+        // 3d. The orphaned summaries go before the run, so the package and project phases after it no
+        //     longer read them.
+        if (prune) {
+            deleteOrphans(plan.orphans());
         }
 
         // 4. Execute model group by model group: load each model once, index its files, close.
@@ -382,6 +403,39 @@ public final class GenerateEngine {
             LOGGER.info("Kept the map-reduce answers of {}: {}", relative, target);
         } catch (final IOException e) {
             LOGGER.warn("Keeping the map-reduce answers of {} in {} failed: {}", relative, target, e.toString());
+        }
+    }
+
+    /**
+     * Returns the routed files of a plan, the sources whose summaries the run writes or keeps.
+     *
+     * @param plan the plan
+     * @return the files
+     */
+    private static List<Path> routedFiles(final IndexPlan plan) {
+        final List<Path> files = new ArrayList<>();
+        for (final List<IndexPlan.Route> entries : plan.routesByModel().values()) {
+            for (final IndexPlan.Route entry : entries) {
+                files.add(entry.file());
+            }
+        }
+        return files;
+    }
+
+    /**
+     * Deletes the orphaned summaries ({@code pruneOrphans}), each with a log line; one that cannot be
+     * deleted is a warning, not the end of the run.
+     *
+     * @param orphans the orphaned summaries
+     */
+    private static void deleteOrphans(final List<Path> orphans) {
+        for (final Path orphan : orphans) {
+            try {
+                Files.deleteIfExists(orphan);
+                LOGGER.info("Deleted the orphaned summary {}", orphan);
+            } catch (final IOException e) {
+                LOGGER.warn("Deleting the orphaned summary {} failed: {}", orphan, e.toString());
+            }
         }
     }
 
@@ -569,6 +623,7 @@ public final class GenerateEngine {
         }
         LOGGER.info("Force           : {}", config.isForce());
         LOGGER.info("Regenerate on   : {}", config.getRegenerateOn());
+        LOGGER.info("Prune orphans   : {}", config.isPruneOrphans());
         LOGGER.info("Provider        : {}", config.getGenerationProvider());
     }
 

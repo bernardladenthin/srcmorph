@@ -8,6 +8,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.lessThan;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -215,6 +216,45 @@ public class IndexPlanTest {
         assertThat(plan.renderMarkdown(Paths.get("")).contains("Source tokens by directory"), is(false));
     }
 
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="orphans">
+    @Test
+    public void renderMarkdown_orphanedSummaries_listsThemInTheirOwnSectionAfterTheOthers() {
+        // arrange
+        final IndexPlan plan = new IndexPlan();
+        plan.addRoute("m", Paths.get("base/src/Foo.java"), rule("p"), 1);
+        plan.addSkipped(Paths.get("base/src/Skip.java"));
+        plan.addOrphan(Paths.get("base/out/Gone.java.ai.md"));
+        plan.addOrphan(Paths.get("base/out/a/Old.java.ai.md"));
+
+        // act
+        final String markdown = plan.renderMarkdown(Paths.get("base"));
+
+        // assert
+        assertThat(
+                plan.orphans(),
+                is(equalTo(
+                        Arrays.asList(Paths.get("base/out/Gone.java.ai.md"), Paths.get("base/out/a/Old.java.ai.md")))));
+        assertThat(
+                markdown,
+                containsString("\n### Orphaned summaries (2)\n\nFile summaries no file of this plan is summarized into"
+                        + " (a deleted, renamed or excluded source); the package and project phases still read"
+                        + " them, and pruneOrphans: true deletes them.\n\n- out/Gone.java.ai.md\n"
+                        + "- out/a/Old.java.ai.md\n"));
+        assertThat(markdown.indexOf("### Skipped"), is(lessThan(markdown.indexOf("### Orphaned"))));
+    }
+
+    @Test
+    public void renderMarkdown_noOrphanedSummary_noOrphanSection() {
+        // arrange
+        final IndexPlan plan = new IndexPlan();
+        plan.addRoute("m", Paths.get("Foo.java"), rule("p"), 1);
+
+        // act, assert
+        assertThat(plan.orphans().isEmpty(), is(true));
+        assertThat(plan.renderMarkdown(Paths.get("")), not(containsString("Orphaned")));
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="oversize rendering and path display">

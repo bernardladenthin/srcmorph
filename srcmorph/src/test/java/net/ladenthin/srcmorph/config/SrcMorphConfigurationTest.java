@@ -27,6 +27,8 @@ public class SrcMorphConfigurationTest {
         assertThat(c.getOutputDirectory(), is(new File(SrcMorphConfiguration.DEFAULT_OUTPUT_DIRECTORY)));
         assertThat(c.isForce(), is(false));
         assertThat(c.isPlanOnly(), is(false));
+        assertThat(c.isPruneOrphans(), is(SrcMorphConfiguration.DEFAULT_PRUNE_ORPHANS));
+        assertThat(SrcMorphConfiguration.DEFAULT_PRUNE_ORPHANS, is(false));
         assertThat(c.getGenerationProvider(), is(SrcMorphConfiguration.DEFAULT_GENERATION_PROVIDER));
         assertThat(c.getAiVersion(), is(SrcMorphConfiguration.DEFAULT_AI_VERSION));
         assertThat(c.getMinFileSizeBytes(), is(0L));
@@ -124,6 +126,20 @@ public class SrcMorphConfigurationTest {
 
         // assert
         assertThat(c.isForce(), is(true));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="pruneOrphans">
+    @Test
+    public void pruneOrphans_set_roundTrips() {
+        // arrange
+        final SrcMorphConfiguration c = new SrcMorphConfiguration();
+
+        // act
+        c.setPruneOrphans(true);
+
+        // assert
+        assertThat(c.isPruneOrphans(), is(true));
     }
     // </editor-fold>
 
