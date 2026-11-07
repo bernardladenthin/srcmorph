@@ -4,8 +4,10 @@
 #
 # Java fact counters: one per line, label TAB pattern (Java regex). srcmorph counts the pattern's
 # matches over the whole source file and writes them as exact facts before the AI summary.
-# These are regex heuristics, so the labels are honest: methods are "(approx)" (includes the
-# constructors, subtract them), and the field count only sees fields with a strong modifier
+# These are regex heuristics, so the labels are honest: methods are "(approx)" (a constructor with an
+# access modifier counts as a method too, public Foo(int a) {; one without, package-private or an
+# enum's, Foo(int a) {, does not, so subtracting "constructors" does not give the methods), a name
+# may hold a $ (FormatMessageW$MH), and the field count only sees fields with a strong modifier
 # (final-only and package-private fields are not counted, to skip final local variables); an
 # annotation may stand before or after that modifier (@Nullable private String a;, private final
 # @NonNull List<String> c;), one on an array dimension (int @Nullable [] d;) is not read. A parameter
@@ -14,8 +16,9 @@
 # (@Override public void run(), @Entity public class Order), type parameters may nest three deep
 # (<T extends Comparable<T>>), an annotation element counts with its default (String value() default
 # "";), a switch expression's yield and a record header are no method, and an
-# enum constant with a body (PLUS("+") {, NEG() {) is no constructor: a constructor's first
-# parameter is a type and a name, and one without parameters and without an access modifier has a
+# enum constant with a body (PLUS("+") {, NEG() {) is no constructor: a constructor's name starts
+# with a capital, _ or $, its first parameter is a type (its type arguments nested three deep,
+# Map<String, List<T>> m) and a name, and one without parameters and without an access modifier has a
 # lower-case letter in its name (so a package-private DAO() { does not count either; the [ignore]
 # line turns PLUS("+") into PLUS( ) first). "type declarations" counts nested and private types,
 # records and @interface too. Type arguments are read within one line and a field initializer up to
@@ -38,6 +41,6 @@ type declarations	(?m)^[ \t]*(?:(?:public|protected|private|static|final|abstrac
 public declarations	\bpublic\b
 [raw] TODO/FIXME	\b(?:TODO|FIXME)\b
 @Override	@(?:java\.lang\.)?Override\b
-methods (approx)	(?m)^[ \t]*(?:(?:public|private|protected|static|final|abstract|default|synchronized|native|strictfp|@(?!interface\b)[A-Za-z_$][\w$.]*+(?:\((?:[^()\n]|\([^()\n]*+\))*+\))?)[ \t]+){0,64}(?:<(?:[^<>\n]|<(?:[^<>\n]|<[^<>\n]*+>)*+>)*+>[ \t]*)?(?!(?:if|for|while|switch|catch|return|new|else|do|try|synchronized|assert|throw|yield|record)\b)[A-Za-z_$][\w$.]*(?:<[^;{}=\n]*>)?(?:\[\])*[ \t]+([A-Za-z_$]\w*)[ \t]*\((?:[^();{]++|\([^();{]*+\))*+\)(?:[ \t\r\n]*+throws[ \t\r\n][\w$., \t\r\n]++)?(?:[ \t]++default\b[^;\n]*+)?[ \t\r\n]*+[{;]
-constructors	(?m)^[ \t]*+(?!(?:@(?!interface\b)[A-Za-z_$][\w$.]*+(?:\((?:[^()\n]|\([^()\n]*+\))*+\))?[ \t]+)*+[A-Z][A-Z0-9_$]*+[ \t]*\([ \t\r\n]*+\))(?:(?:public|private|protected|@(?!interface\b)[A-Za-z_$][\w$.]*+(?:\((?:[^()\n]|\([^()\n]*+\))*+\))?)[ \t]+){0,64}([A-Z][A-Za-z0-9_$]*)[ \t]*\((?=[ \t\n]*+\)|[ \t\n]*+(?:(?:final|@[A-Za-z_$][\w$.]*+(?:\([^()\n]*+\))?)[ \t]+){0,64}(?!new\b)[A-Za-z_$][\w$.]*+(?:<[^()\n]*+>)?(?:\[\])*(?:\.\.\.)?[ \t]+[A-Za-z_$])(?:[^();{]++|\([^();{]*+\))*+\)(?:[ \t\r\n]*+throws[ \t\r\n][\w$., \t\r\n]++)?[ \t\r\n]*+\{
-field declarations (w/ modifier)	(?m)^[ \t]*(?:(?:public|private|protected|static|transient|volatile|final|@(?!interface\b)[A-Za-z_$][\w$.]*+(?:\((?:[^()\n]|\([^()\n]*+\))*+\))?)[ \t]+){0,64}(?:public|private|protected|static|transient|volatile)[ \t]+(?:(?:public|private|protected|static|transient|volatile|final|@(?!interface\b)[A-Za-z_$][\w$.]*+(?:\((?:[^()\n]|\([^()\n]*+\))*+\))?)[ \t]+){0,64}(?!class\b|interface\b|enum\b|record\b|void\b|new\b)[A-Za-z_$][\w$.]*(?:<[^;{}=\n]*>)?(?:\[\])*[ \t]+([A-Za-z_$]\w*(?:[ \t]*,[ \t]*[A-Za-z_$]\w*)*)[ \t]*(?:=[^;]{0,10000}+)?;
+methods (approx)	(?m)^[ \t]*(?:(?:public|private|protected|static|final|abstract|default|synchronized|native|strictfp|@(?!interface\b)[A-Za-z_$][\w$.]*+(?:\((?:[^()\n]|\([^()\n]*+\))*+\))?)[ \t]+){0,64}(?:<(?:[^<>\n]|<(?:[^<>\n]|<[^<>\n]*+>)*+>)*+>[ \t]*)?(?!(?:if|for|while|switch|catch|return|new|else|do|try|synchronized|assert|throw|yield|record)\b)[A-Za-z_$][\w$.]*(?:<[^;{}=\n]*>)?(?:\[\])*[ \t]+([A-Za-z_$][\w$]*)[ \t]*\((?:[^();{]++|\([^();{]*+\))*+\)(?:[ \t\r\n]*+throws[ \t\r\n][\w$., \t\r\n]++)?(?:[ \t]++default\b[^;\n]*+)?[ \t\r\n]*+[{;]
+constructors	(?m)^[ \t]*+(?!(?:@(?!interface\b)[A-Za-z_$][\w$.]*+(?:\((?:[^()\n]|\([^()\n]*+\))*+\))?[ \t]+)*+[A-Z][A-Z0-9_$]*+[ \t]*\([ \t\r\n]*+\))(?:(?:public|private|protected|@(?!interface\b)[A-Za-z_$][\w$.]*+(?:\((?:[^()\n]|\([^()\n]*+\))*+\))?)[ \t]+){0,64}([A-Z_$][\w$]*)[ \t]*\((?=[ \t\n]*+\)|[ \t\n]*+(?:(?:final|@[A-Za-z_$][\w$.]*+(?:\([^()\n]*+\))?)[ \t]+){0,64}(?!new\b)[A-Za-z_$][\w$.]*+(?:<(?:[^<>()\n]|<(?:[^<>()\n]|<[^<>()\n]*+>)*+>)*+>)?(?:\[\])*(?:\.\.\.)?[ \t]+[A-Za-z_$])(?:[^();{]++|\([^();{]*+\))*+\)(?:[ \t\r\n]*+throws[ \t\r\n][\w$., \t\r\n]++)?[ \t\r\n]*+\{
+field declarations (w/ modifier)	(?m)^[ \t]*(?:(?:public|private|protected|static|transient|volatile|final|@(?!interface\b)[A-Za-z_$][\w$.]*+(?:\((?:[^()\n]|\([^()\n]*+\))*+\))?)[ \t]+){0,64}(?:public|private|protected|static|transient|volatile)[ \t]+(?:(?:public|private|protected|static|transient|volatile|final|@(?!interface\b)[A-Za-z_$][\w$.]*+(?:\((?:[^()\n]|\([^()\n]*+\))*+\))?)[ \t]+){0,64}(?!class\b|interface\b|enum\b|record\b|void\b|new\b)[A-Za-z_$][\w$.]*(?:<[^;{}=\n]*>)?(?:\[\])*[ \t]+([A-Za-z_$][\w$]*(?:[ \t]*,[ \t]*[A-Za-z_$][\w$]*)*)[ \t]*(?:=[^;]{0,10000}+)?;

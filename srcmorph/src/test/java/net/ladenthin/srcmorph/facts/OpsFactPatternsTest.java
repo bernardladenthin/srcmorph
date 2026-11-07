@@ -194,6 +194,68 @@ public class OpsFactPatternsTest {
         assertThat(count(OPENAPI, "parameters (approx)", yaml), is(2));
         assertThat(count(OPENAPI, "security schemes", yaml), is(1));
     }
+
+    @Test
+    public void openapi_schemaPropertiesNamedLikeMethods_areNoOperations() {
+        // arrange
+        final String yaml = "paths:\n"
+                + "  /status:\n"
+                + "    parameters:\n"
+                + "      - name: verbose\n"
+                + "        in: query\n"
+                + "    get:\n"
+                + "      operationId: status\n"
+                + "      responses:\n"
+                + "        '200':\n"
+                + "          content:\n"
+                + "            application/json:\n"
+                + "              schema:\n"
+                + "                type: object\n"
+                + "                properties:\n"
+                + "                  options:\n"
+                + "                    type: string\n"
+                + "                  head:\n"
+                + "                    type: string\n"
+                + "components:\n"
+                + "  schemas:\n"
+                + "    Probe:\n"
+                + "      properties:\n"
+                + "        get:\n"
+                + "          type: object\n"
+                + "        trace:\n"
+                + "          type: string\n";
+
+        // act, assert
+        // the get of /status; not the properties options, head, get and trace
+        assertThat(count(OPENAPI, "operations (approx)", yaml), is(1));
+    }
+
+    @Test
+    public void openapi_pathItemKeysBeforeAndBetweenTheOperations_countEachOperation() {
+        // arrange
+        final String yaml = "paths:\n"
+                + "  '/orders/{id}':\n"
+                + "    summary: One order\n"
+                + "    parameters:\n"
+                + "    - name: id\n"
+                + "      in: path\n"
+                + "    get:\n"
+                + "      operationId: get\n"
+                + "\n"
+                + "    x-internal: true\n"
+                + "    'delete':\n"
+                + "      operationId: remove\n"
+                + "  /health:\n"
+                + "    $ref: './health.yaml'\n"
+                + "  /ping:\n"
+                + "    head: {responses: {}}\n"
+                + "    options: &probe\n"
+                + "      responses: {}\n";
+
+        // act, assert
+        // get and delete of /orders/{id}, head and options of /ping; /health has none of its own
+        assertThat(count(OPENAPI, "operations (approx)", yaml), is(4));
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="k8s-facts">
@@ -379,6 +441,57 @@ public class OpsFactPatternsTest {
         assertThat(count(ACTIONS, "steps (approx)", workflow), is(2));
         assertThat(count(ACTIONS, "matrices", workflow), is(1));
         assertThat(count(ACTIONS, "jobs on a runner", workflow), is(1));
+    }
+
+    @Test
+    public void actions_inputsAndOutputsNamedLikeJobKeys_areNoRunnersNorMatrices() {
+        // arrange
+        final String workflow = "on:\n"
+                + "  workflow_call:\n"
+                + "    inputs:\n"
+                + "      runs-on:\n"
+                + "        description: The runner\n"
+                + "        type: string\n"
+                + "        default: ubuntu-latest\n"
+                + "    outputs:\n"
+                + "      matrix:\n"
+                + "        description: The matrix\n"
+                + "        value: ${{ jobs.setup.outputs.matrix }}\n"
+                + "jobs:\n"
+                + "  setup:\n"
+                + "    runs-on: ${{ inputs.runs-on }}\n"
+                + "    outputs:\n"
+                + "      matrix: ${{ steps.set.outputs.matrix }}\n"
+                + "    steps:\n"
+                + "      - id: set\n"
+                + "        run: echo \"matrix=[1,2]\" >> \"$GITHUB_OUTPUT\"\n"
+                + "  build:\n"
+                + "    needs: setup\n"
+                + "    runs-on: ubuntu-latest\n"
+                + "    strategy:\n"
+                + "      matrix: ${{ fromJSON(needs.setup.outputs.matrix) }}\n"
+                + "    steps:\n"
+                + "      - run: echo ${{ matrix.n }}\n";
+        final String action = "inputs:\n  runs-on:\n    description: x\nruns:\n  using: composite\n";
+
+        // act, assert
+        // setup and build; not the input runs-on
+        assertThat(count(ACTIONS, "jobs on a runner", workflow), is(2));
+        // the strategy's; not the outputs named matrix
+        assertThat(count(ACTIONS, "matrices", workflow), is(1));
+        assertThat(count(ACTIONS, "steps (approx)", workflow), is(2));
+        assertThat(count(ACTIONS, "jobs on a runner", action), is(0));
+    }
+
+    @Test
+    public void actions_cronEntriesInFlowStyle_count() {
+        // arrange
+        final String inline = "on:\n  schedule: [{cron: \"0 3 * * *\"}, { \"cron\": '0 4 * * 1' }]\n";
+        final String items = "on:\n  schedule:\n    - {cron: '30 1 * * *'}\n    - cron: '0 2 * * *'\n";
+
+        // act, assert
+        assertThat(count(ACTIONS, "cron schedules", inline), is(2));
+        assertThat(count(ACTIONS, "cron schedules", items), is(2));
     }
     // </editor-fold>
 
@@ -923,6 +1036,32 @@ public class OpsFactPatternsTest {
         assertThat(count(ANSIBLE, "loops", play), is(2));
         // item.name and greeting, which Ansible renders in the script; not the commented-out one
         assertThat(count(ANSIBLE, "template expressions", play), is(2));
+    }
+
+    @Test
+    public void ansible_dottedVariablesOfARolesDefaults_areNoModuleCalls() {
+        // arrange
+        final String defaults = "---\n"
+                + "net.ipv4.ip_forward: 1\n"
+                + "app.config.path: /etc/app\n"
+                + "sysctl_settings:\n"
+                + "  net.core.somaxconn: 1024\n";
+        final String tasks = "---\n"
+                + "- name: Forward\n"
+                + "  ansible.posix.sysctl:\n"
+                + "    name: net.ipv4.ip_forward\n"
+                + "    value: '1'\n"
+                + "- when: forward | bool\n"
+                + "  name: Open the port\n"
+                + "  community.general.ufw:\n"
+                + "    rule: allow\n"
+                + "- ansible.builtin.debug:\n"
+                + "    msg: done\n";
+
+        // act, assert
+        assertThat(count(ANSIBLE, "FQCN module calls", defaults), is(0));
+        // sysctl below its - name:, ufw below a name: as deep as it, debug as the list item
+        assertThat(count(ANSIBLE, "FQCN module calls", tasks), is(3));
     }
     // </editor-fold>
 
@@ -1523,6 +1662,24 @@ public class OpsFactPatternsTest {
         assertThat(count(BATCH, "conditionals (approx)", script), is(1));
         assertThat(count(BATCH, "variables set", script), is(0));
         assertThat(count(BATCH, "labels", script), is(2));
+    }
+
+    @Test
+    public void batch_labelEndingInErrorLevel_isNoErrorLevelCheck() {
+        // arrange: lines of the stock gradlew.bat
+        final String script = "if %ERRORLEVEL% equ 0 goto mainEnd\n"
+                + ":fail\n"
+                + "set EXIT_CODE=%ERRORLEVEL%\n"
+                + "if %EXIT_CODE% equ 0 set EXIT_CODE=1\n"
+                + "call :exitWithErrorLevel %EXIT_CODE%\n"
+                + ":mainEnd\n"
+                + "goto :eof\n"
+                + ":exitWithErrorLevel\n"
+                + "exit /b %1\n";
+
+        // act, assert
+        // the two %ERRORLEVEL%; not the label :exitWithErrorLevel nor the call to it
+        assertThat(count(BATCH, "error level checks", script), is(2));
     }
     // </editor-fold>
 

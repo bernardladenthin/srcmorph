@@ -73,6 +73,19 @@ public class ViewFactPatternsTest {
     }
 
     @Test
+    public void jsp_springFormChoiceAndHiddenTags_countAsInputFields() {
+        // arrange
+        final String page = "<form:checkboxes path=\"roles\" items=\"${roles}\"/>\n"
+                + "<form:radiobutton path=\"g\" value=\"m\"/>\n"
+                + "<form:radiobuttons path=\"size\" items=\"${sizes}\"/>\n"
+                + "<form:hidden path=\"id\"/>\n"
+                + "<form:checkbox path=\"ok\"/>\n";
+
+        // act, assert
+        assertThat(count(JSP, "input fields", page), is(5));
+    }
+
+    @Test
     public void jsp_tagFileAttributesAndAnUnclosedComment_countTheAttributeAndRunToTheEnd() {
         // act, assert
         assertThat(count(JSP, "tag file attributes", "<%@ attribute name=\"total\" required=\"true\" %>\n"), is(1));

@@ -111,6 +111,16 @@ public class JavaStructureFactPatternsTest {
 
     /** A switch expression's yield and a record header have a method's shape, but are none. */
     @Test
+    public void method_nameWithADollar_counts() {
+        // arrange
+        final String source = "    public static MethodHandle FormatMessageW$MH() {\n    }\n"
+                + "    static int a$b(int x) {\n    }\n";
+
+        // act, assert
+        assertThat(count(METHODS, source), is(2));
+    }
+
+    @Test
     public void method_yieldAndARecordHeader_doNotCount() {
         // act, assert
         assertThat(
@@ -255,6 +265,16 @@ public class JavaStructureFactPatternsTest {
         // act, assert
         // FactExtractor counts matches (statements), so "int a, b, c;" is ONE field declaration.
         assertThat(count(FIELDS, "    private int a, b, c;"), is(1));
+    }
+
+    @Test
+    public void field_nameWithADollar_counts() {
+        // arrange
+        final String source =
+                "    private static final MethodHandle FormatMessageW$MH = null;\n" + "    private int a$b, c$d;\n";
+
+        // act, assert
+        assertThat(count(FIELDS, source), is(2));
     }
 
     @Test
@@ -448,6 +468,43 @@ public class JavaStructureFactPatternsTest {
 
         // act, assert
         assertThat(count(CONSTRUCTORS, source), is(3));
+    }
+
+    @Test
+    public void ctor_genericFirstParameter_counts() {
+        // arrange
+        final String source = "    public Reg(List<String> names) {\n    }\n"
+                + "    public Metadata(Map<String, String> d) {\n    }\n"
+                + "    Cache(Map<String, List<Integer>> m, int n) {\n    }\n";
+
+        // act, assert
+        assertThat(count(CONSTRUCTORS, source), is(3));
+    }
+
+    @Test
+    public void ctor_nameWithADollarOrStartingWithOne_counts() {
+        // arrange
+        final String source = "    public $Proxy1(InvocationHandler h) {\n    }\n"
+                + "    private FormatMessageW$MH(int a) {\n    }\n";
+
+        // act, assert
+        assertThat(count(CONSTRUCTORS, source), is(2));
+    }
+
+    /**
+     * The header's boundary: a constructor with an access modifier reads as a method whose return type is
+     * the modifier, one without (package-private, an enum's) does not, so the methods do not hold every
+     * constructor.
+     */
+    @Test
+    public void ctor_onlyTheOneWithAnAccessModifier_countsAsAMethodToo() {
+        // arrange
+        final String source = "class Foo {\n    public Foo(int a) {\n    }\n    Foo(String s) {\n    }\n}\n"
+                + "enum E {\n    A(1);\n    E(int n) {\n    }\n}\n";
+
+        // act, assert
+        assertThat(count(CONSTRUCTORS, source), is(3));
+        assertThat(count(METHODS, source), is(1));
     }
     // </editor-fold>
 

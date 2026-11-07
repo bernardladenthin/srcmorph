@@ -12,7 +12,8 @@
 # "type declarations" counts every class, trait, object and enum declared at the start of a line,
 # case classes, companions and package objects too; "methods (approx)" every def at the start of a
 # line (members, local and extension methods, Scala 3's infix def too); "givens and implicits" a
-# given instance or an implicit val, def, object or class; "type aliases" a type with an = (its
+# given instance or an implicit val, def, object or class, also with modifiers after the implicit
+# (implicit final class, implicit override def, implicit lazy val); "type aliases" a type with an = (its
 # type parameters nested up to three levels, the right side on the next line too, an opaque type
 # with an upper bound), not an abstract type member (type T, type T <: AnyRef). Counts are regex
 # heuristics: a declaration after another on the same line is not counted. JvmFactPatternsTest pins every case; ProfileFactPatternsLinearityTest measures that every
@@ -23,7 +24,7 @@ case classes and case objects	\bcase[ \t]++(?:class|object)[ \t]++[A-Za-z_`]
 traits	(?m)^[ \t]*+(?:(?:private|protected|sealed|transparent)(?:\[[\w.]*+\])?[ \t]++)*+trait[ \t]++[A-Za-z_`]
 methods (approx)	(?m)^[ \t]*+(?:@[\w.]++(?:\([^()\n]*+\))?[ \t]++)*+(?:(?:private|protected|final|override|implicit|inline|transparent|abstract|infix)(?:\[[\w.]*+\])?[ \t]++)*+def[ \t]++[A-Za-z_`+\-*/<>=!~^&|%:?]
 extension methods	(?m)^[ \t]*+extension\b[ \t]*+[(\[]
-givens and implicits	(?m)^[ \t]*+(?:(?:private|protected|final|override|inline)(?:\[[\w.]*+\])?[ \t]++)*+(?:given\b|implicit[ \t]++(?:lazy[ \t]++)?(?:val|def|object|class|var)\b)
+givens and implicits	(?m)^[ \t]*+(?:(?:private|protected|final|override|inline)(?:\[[\w.]*+\])?[ \t]++)*+(?:given\b|implicit[ \t]++(?:(?:lazy|final|override|private|protected|sealed|abstract|case|inline)(?:\[[\w.]*+\])?[ \t]++)*+(?:val|def|object|class|var)\b)
 vals and vars at the start of a line (members and locals)	(?m)^[ \t]*+(?:@[\w.]++(?:\([^()\n]*+\))?[ \t]++)*+(?:(?:private|protected|final|override|implicit|lazy)(?:\[[\w.]*+\])?[ \t]++)*+(?:val|var)[ \t]++[A-Za-z_`(]
 type aliases	(?m)^[ \t]*+(?:(?:private|protected|opaque|override)(?:\[[\w.]*+\])?[ \t]++)*+type[ \t]++(?:[A-Za-z_$][\w$]*+|`[^`\n]++`)(?:\[(?:[^\[\]\n]++|\[(?:[^\[\]\n]++|\[[^\[\]\n]*+\])*+\])*+\])?(?:[ \t]*+[<>]:(?:[^=\n]++|=>)*+)?[ \t]*+=(?!>)
 imports	(?m)^[ \t]*+import[ \t]++

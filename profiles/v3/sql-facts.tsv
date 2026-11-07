@@ -31,7 +31,9 @@
 # a MERGE or a trigger's event list; SQLite's INSERT OR REPLACE and a view inside a mysqldump /*!50001
 # */ comment are not seen. A TYPE BODY, a MATERIALIZED VIEW LOG, a DATABASE LINK and a DATABASE
 # SCOPED CREDENTIAL are not counted; MariaDB's CREATE OR REPLACE TABLE, PostgreSQL's CREATE FOREIGN
-# TABLE and T-SQL's COLUMNSTORE indexes are. "VALUES rows (approx)" counts the row tuples of VALUES
+# TABLE, Oracle's PRIVATE TEMPORARY TABLE and T-SQL's COLUMNSTORE indexes are, PostgreSQL's TEMP and
+# RECURSIVE views and Oracle's NOFORCE and EDITIONING views too, an EVENT TRIGGER with the triggers
+# and a DOMAIN with the types. "VALUES rows (approx)" counts the row tuples of VALUES
 # lists (a tuple after VALUES or after "),"), so a multi-row INSERT counts every row, but not the
 # VALUES(col) function of MySQL's ON DUPLICATE KEY UPDATE (after an =); rows an INSERT ... SELECT
 # reads from a table are not seen, and a tuple nested inside a row counts once more.
@@ -39,12 +41,12 @@
 [ignore] comments and string literals	(?sm)--[^\n]*|'(?:[^'\\]++|''|\\(?!'[ \t]*+(?:[,);+|\r\n]|\z)).|\\)*+(?:'|\z)|/\*(?![!+])(?:.*?\*/|.*)|\$((?:[A-Za-z_]\w*+)?)\$[^\n]*?\$\1\$|(?<![\w$])[nN]?[qQ]'(?:\[(?:[^\]]++|\](?!'))*+\]'|\{(?:[^}]++|\}(?!'))*+\}'|\((?:[^)]++|\)(?!'))*+\)'|<(?:[^>]++|>(?!'))*+>'|([^\s\[{(<\w])(?:(?!\2').)*+\2'|.*)|(?<![\w$#@"])"[^"'\n]*+'[^"\n]*+"|(?:^|(?<=[ \t;]))#(?![\w#@$>-])[^\n]*|^[ \t]*+(?i:REM(?:A(?:RK?)?)?|PRO(?:M(?:PT?)?)?)(?![^ \t\r\n])[^\n]*+|^[ \t]*+(?i:COPY\b[^;\n]*?[ \t)]FROM[ \t]++STDIN\b)(?:.*?^\\\.$|.*)
 INSERT statements	(?im)^[ \t]*(?:INSERT(?:\s+/\*\+.*?\*/)?(?:\s+(?:IGNORE|LOW_PRIORITY|DELAYED|HIGH_PRIORITY))*(?:\s+/\*\+.*?\*/)?\s+(?:INTO\b|ALL\b|FIRST\b|(?!(?:VALUES|SELECT|OR|ON|AS|SET|WITH|WHEN|THEN)\b)[A-Za-z_"`\[#@][\w"`\[\].$#@]*)|REPLACE(?:\s+(?:LOW_PRIORITY|DELAYED))*\s+INTO\b)
 VALUES rows (approx)	(?i)(?:(?<!=[ \t]{0,8})\bVALUES|\),)\s*\(
-tables	(?im)^[ \t]*CREATE\s+(?:OR\s+REPLACE\s+)?(?:(?:GLOBAL\s+|LOCAL\s+)?(?:TEMP|TEMPORARY)\s+|UNLOGGED\s+|FOREIGN\s+)?TABLE\b
-views	(?im)^[ \t]*CREATE\s+(?:OR\s+(?:REPLACE|ALTER)\s+)?(?:ALGORITHM\s*=\s*\w+\s+)?(?:DEFINER\s*=\s*\S+\s+)?(?:SQL\s+SECURITY\s+\w+\s+)?(?:(?:NO\s+)?FORCE\s+)?(?:(?:NON)?EDITIONABLE\s+)?(?:MATERIALIZED\s+)?VIEW\b(?!\s+LOG\b)
+tables	(?im)^[ \t]*CREATE\s+(?:OR\s+REPLACE\s+)?(?:(?:GLOBAL\s+|LOCAL\s+|PRIVATE\s+)?(?:TEMP|TEMPORARY)\s+|UNLOGGED\s+|FOREIGN\s+)?TABLE\b
+views	(?im)^[ \t]*CREATE\s+(?:OR\s+(?:REPLACE|ALTER)\s+)?(?:ALGORITHM\s*=\s*\w+\s+)?(?:DEFINER\s*=\s*\S+\s+)?(?:SQL\s+SECURITY\s+\w+\s+)?(?:(?:NO\s*)?FORCE\s+)?(?:(?:NON)?EDITIONABLE\s+)?(?:EDITIONING\s+)?(?:(?:TEMP|TEMPORARY)\s+)?(?:RECURSIVE\s+)?(?:MATERIALIZED\s+)?VIEW\b(?!\s+LOG\b)
 indexes	(?im)^[ \t]*CREATE\s+(?:UNIQUE\s+|FULLTEXT\s+|SPATIAL\s+|BITMAP\s+)?(?:CLUSTERED\s+|NONCLUSTERED\s+)?(?:COLUMNSTORE\s+)?INDEX\b
 functions/procedures	(?im)^[ \t]*CREATE\s+(?:OR\s+(?:REPLACE|ALTER)\s+)?(?:(?:NON)?EDITIONABLE\s+)?(?:DEFINER\s*=\s*\S+\s+)?(?:FUNCTION|PROCEDURE|PROC)\b
-triggers	(?im)^[ \t]*CREATE\s+(?:OR\s+(?:REPLACE|ALTER)\s+)?(?:(?:NON)?EDITIONABLE\s+)?(?:DEFINER\s*=\s*\S+\s+)?(?:CONSTRAINT\s+)?TRIGGER\b
-types	(?im)^[ \t]*CREATE\s+(?:OR\s+REPLACE\s+)?(?:(?:NON)?EDITIONABLE\s+)?TYPE\b(?!\s+BODY\b)
+triggers	(?im)^[ \t]*CREATE\s+(?:OR\s+(?:REPLACE|ALTER)\s+)?(?:(?:NON)?EDITIONABLE\s+)?(?:DEFINER\s*=\s*\S+\s+)?(?:CONSTRAINT\s+|EVENT\s+)?TRIGGER\b
+types	(?im)^[ \t]*CREATE\s+(?:OR\s+REPLACE\s+)?(?:(?:NON)?EDITIONABLE\s+)?(?:TYPE\b(?!\s+BODY\b)|DOMAIN\b)
 ALTER TABLE	(?im)^[ \t]*ALTER\s+TABLE\b
 sequences	(?im)^[ \t]*CREATE\s+(?:(?:TEMP|TEMPORARY|UNLOGGED)\s+)?SEQUENCE\b
 extensions	(?im)^[ \t]*CREATE\s+EXTENSION\b

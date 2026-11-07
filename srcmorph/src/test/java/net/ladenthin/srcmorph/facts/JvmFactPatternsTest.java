@@ -185,6 +185,17 @@ public class JvmFactPatternsTest {
     }
 
     @Test
+    public void kotlin_actualConstructorProperties_count() {
+        // arrange
+        final String source = "public actual annotation class F(public actual val v: String)\n"
+                + "actual class H(actual val x: Int, private actual var y: Int)\n";
+
+        // act, assert
+        // v, x and y
+        assertThat(count(KOTLIN, "constructor properties (approx)", source), is(3));
+    }
+
+    @Test
     public void kotlin_unclosedRawStringAndBlockComment_areBlankedToTheEnd() {
         // act, assert
         assertThat(count(KOTLIN, "functions (approx)", "fun a() = 1\nval s = \"\"\"\nfun b() = 2\n"), is(1));
@@ -312,6 +323,18 @@ public class JvmFactPatternsTest {
 
         // act, assert
         assertThat(count(GROOVY, "methods (approx)", source), is(5));
+    }
+
+    @Test
+    public void groovy_methodsWithNestedTypeParameters_count() {
+        // arrange
+        final String source = "class Lists {\n"
+                + "    static <T extends Comparable<T>> T max(List<T> xs) {\n        xs.max()\n    }\n"
+                + "    public <K, V extends Map<K, List<V>>> void put(K k, V v) {\n    }\n"
+                + "}\n";
+
+        // act, assert
+        assertThat(count(GROOVY, "methods (approx)", source), is(2));
     }
 
     @Test
@@ -551,6 +574,19 @@ public class JvmFactPatternsTest {
         // act, assert
         // F, G, Handler, Callback and Pos; not the abstract T, U and V
         assertThat(count(SCALA, "type aliases", source), is(5));
+    }
+
+    @Test
+    public void scala_implicitsWithModifiersAfterTheImplicit_count() {
+        // arrange
+        final String source = "object Syntax {\n"
+                + "  implicit final class RichInt(val i: Int) extends AnyVal\n"
+                + "  implicit override def ord: Ordering[Int] = Ordering.Int\n"
+                + "  implicit private[this] lazy val codec: Codec = Codec.utf8\n"
+                + "}\n";
+
+        // act, assert
+        assertThat(count(SCALA, "givens and implicits", source), is(3));
     }
 
     @Test

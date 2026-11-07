@@ -17,7 +17,7 @@
 # line, after annotations (@Inject constructor(...) : this(...)) and a visibility, not the primary
 # constructor on the class's line (class A @Inject constructor(...)), but one wrapped onto the next
 # line; "constructor properties" every val or var after "(" or ",", also after vararg, final,
-# override and a visibility, which is a primary constructor's property and, rarely, a lambda's
+# override, expect, actual and a visibility, which is a primary constructor's property and, rarely, a lambda's
 # destructuring, but not the subject of a when (val y = ...). Counts are regex heuristics: a
 # declaration that starts after another on the same line, or a string template nested more than one
 # level, is not read as the compiler reads it. JvmFactPatternsTest pins every case;
@@ -31,7 +31,7 @@ functions (approx)	(?m)^[ \t]*+(?:@[\w.:]++(?:\((?:[^()\n]++|\([^()\n]*+\))*+\))
 extension functions	\bfun[ \t]++(?:<(?:[^<>\n]++|<[^<>\n]*+>)*+>[ \t]*+)?[A-Za-z_][\w.]*(?:<(?:[^<>\n]++|<[^<>\n]*+>)*+>)?\??\.[A-Za-z_`]
 suspend functions	\bsuspend[ \t]++(?:[a-z]++[ \t]++){0,8}?fun\b
 secondary constructors	(?m)^[ \t]*+(?:@[\w.:]++(?:\((?:[^()\n]++|\([^()\n]*+\))*+\))?[ \t]++)*+(?:(?:public|private|internal|protected)[ \t]++)?constructor[ \t]*+\(
-constructor properties (approx)	(?:(?<!\bwhen[ \t]{0,16})\(|,)[ \t\n]*+(?:@[\w.:]++(?:\((?:[^()\n]++|\([^()\n]*+\))*+\))?[ \t\n]++)*+(?:(?:public|private|internal|protected|open|override|final|vararg)[ \t]++)*+(?:val|var)[ \t]++[A-Za-z_`]
+constructor properties (approx)	(?:(?<!\bwhen[ \t]{0,16})\(|,)[ \t\n]*+(?:@[\w.:]++(?:\((?:[^()\n]++|\([^()\n]*+\))*+\))?[ \t\n]++)*+(?:(?:public|private|internal|protected|open|override|final|vararg|expect|actual)[ \t]++)*+(?:val|var)[ \t]++[A-Za-z_`]
 const vals	\bconst[ \t]++val\b
 lateinit properties	\blateinit[ \t]++var\b
 imports	(?m)^import[ \t]++

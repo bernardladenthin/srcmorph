@@ -10,8 +10,9 @@
 # A region that is never closed runs to the end of the file (a quoted string and a slashy regex
 # only to the end of its line). A Spock feature method is named by a string, "def 'reads an order'()": the string is
 # blanked, so it counts as "def ()". "methods (approx)" counts typed and def methods with a body,
-# after modifiers and annotations on their line (@Override String toString() {), with a generic
-# return type nested up to three levels (Map<String, List<Integer>> f() {) and the brace on the
+# after modifiers and annotations on their line (@Override String toString() {), with type
+# parameters and a generic return type nested up to three levels (static <T extends Comparable<T>> T
+# max(List<T> xs) {, Map<String, List<Integer>> f() {) and the brace on the
 # same or a following line (up to 64 modifiers and annotations: the bound keeps java.util.regex
 # from overflowing its stack);
 # "closures with parameters" a closure that names its parameters before "->". Counts are regex
@@ -20,7 +21,7 @@
 # every pattern reads linearly.
 [ignore] comments and string literals	(?s)\A#![^\n]*+|//[^\n]*+|/\*.*?(?:\*/|\z)|""".*?(?:"""|\z)|'''.*?(?:'''|\z)|\$/.*?(?:/\$|\z)|"(?:[^"\\\n]|\\.)*+"?+|'(?:[^'\\\n]|\\.)*+'?+|(?<=[=(,:\[!&|?~][ \t]{0,16})/(?![/*])(?:[^/\\\n]|\\.)++/
 type declarations	(?m)^[ \t]*+(?:@[\w.]++(?:\([^()\n]*+\))?[ \t]++)*+(?:(?:public|protected|private|static|final|abstract|sealed|non-sealed|strictfp)[ \t]++)*+(?:class|interface|@interface|enum|trait|record)[ \t]++[A-Za-z_$]
-methods (approx)	(?m)^[ \t]*+(?:(?:public|private|protected|static|final|abstract|synchronized|default|def|@(?!interface\b)[\w.]++(?:\([^()\n]*+\))?)[ \t]++){0,64}(?:<[^>\n]++>[ \t]*+)?(?!(?:if|for|while|switch|catch|return|new|else|do|try|throw|assert)\b)[A-Za-z_$][\w$.]*+(?:<(?:[^<>\n]++|<(?:[^<>\n]++|<[^<>\n]*+>)*+>)*+>)?(?:\[\])*+[ \t]++([A-Za-z_$][\w$]*+)[ \t]*+\((?:[^();{]++|\([^();{]*+\))*+\)(?:[ \t]*+throws[ \t][\w$., \t]++)?[ \t\r\n]*+\{
+methods (approx)	(?m)^[ \t]*+(?:(?:public|private|protected|static|final|abstract|synchronized|default|def|@(?!interface\b)[\w.]++(?:\([^()\n]*+\))?)[ \t]++){0,64}(?:<(?:[^<>\n]|<(?:[^<>\n]|<[^<>\n]*+>)*+>)*+>[ \t]*+)?(?!(?:if|for|while|switch|catch|return|new|else|do|try|throw|assert)\b)[A-Za-z_$][\w$.]*+(?:<(?:[^<>\n]++|<(?:[^<>\n]++|<[^<>\n]*+>)*+>)*+>)?(?:\[\])*+[ \t]++([A-Za-z_$][\w$]*+)[ \t]*+\((?:[^();{]++|\([^();{]*+\))*+\)(?:[ \t]*+throws[ \t][\w$., \t]++)?[ \t\r\n]*+\{
 Spock feature methods	(?m)^[ \t]*+(?:def|void)[ \t]++\([ \t]*+\)
 Spock blocks	(?m)^[ \t]*+(?:given|when|then|expect|where|setup|cleanup)[ \t]*+:
 closures with parameters (approx)	\{[ \t]*+(?:[A-Za-z_$][\w$]*+[ \t]++)?[A-Za-z_$][\w$]*+(?:[ \t]*+,[ \t]*+(?:[A-Za-z_$][\w$]*+[ \t]++)?[A-Za-z_$][\w$]*+)*+[ \t]*+->

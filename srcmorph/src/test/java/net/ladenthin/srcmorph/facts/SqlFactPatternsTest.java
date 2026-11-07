@@ -568,6 +568,14 @@ public class SqlFactPatternsTest {
     }
 
     @Test
+    public void tables_oraclePrivateTemporary_counts() {
+        // act, assert
+        assertThat(
+                count("tables", "CREATE PRIVATE TEMPORARY TABLE ora$ptt_x (id NUMBER) ON COMMIT DROP DEFINITION;\n"),
+                is(1));
+    }
+
+    @Test
     public void tables_alterDropAndAComment_doNotCount() {
         // act, assert
         assertThat(
@@ -595,6 +603,21 @@ public class SqlFactPatternsTest {
         // act, assert
         assertThat(
                 count("views", "CREATE OR REPLACE FORCE EDITIONABLE VIEW \"S\".\"V\" AS SELECT 1 FROM dual;\n"), is(1));
+    }
+
+    @Test
+    public void views_postgresTemporaryAndRecursiveAndOracleNoforceAndEditioning_count() {
+        // act, assert
+        assertThat(
+                count(
+                        "views",
+                        "CREATE TEMP VIEW a AS SELECT 1;\n"
+                                + "CREATE OR REPLACE TEMPORARY VIEW b AS SELECT 1;\n"
+                                + "CREATE RECURSIVE VIEW c (n) AS VALUES (1);\n"
+                                + "CREATE OR REPLACE NOFORCE VIEW d AS SELECT 1 FROM dual;\n"
+                                + "CREATE OR REPLACE EDITIONING VIEW e AS SELECT * FROM t;\n"
+                                + "CREATE OR REPLACE EDITIONABLE EDITIONING VIEW f AS SELECT * FROM t;\n"),
+                is(6));
     }
 
     @Test
@@ -733,6 +756,14 @@ public class SqlFactPatternsTest {
     }
 
     @Test
+    public void triggers_postgresEventTrigger_counts() {
+        // act, assert
+        assertThat(
+                count("triggers", "CREATE EVENT TRIGGER ddl_log ON ddl_command_end EXECUTE FUNCTION log_ddl();\n"),
+                is(1));
+    }
+
+    @Test
     public void triggers_theTriggerFunctionItself_isAFunctionNotATrigger() {
         // arrange
         final String sql =
@@ -753,6 +784,16 @@ public class SqlFactPatternsTest {
                         "types",
                         "CREATE TYPE status AS ENUM ('ACTIVE', 'RETIRED');\nCREATE TYPE pair AS (a INT, b INT);\n"),
                 is(2));
+    }
+
+    @Test
+    public void types_domain_counts() {
+        // act, assert
+        assertThat(
+                count(
+                        "types",
+                        "CREATE DOMAIN email AS TEXT CHECK (VALUE LIKE '%@%');\nALTER DOMAIN email SET NOT NULL;\n"),
+                is(1));
     }
 
     @Test

@@ -10,7 +10,8 @@
 # at the start of a line (a call or goto target); "variables set" every set, set /a and set /p, also
 # after an if or in a for body; "conditionals (approx)" every if; "for loops" a for over a %variable,
 # with its options or the root of a /r; "exits" an exit command, not a label :exit nor a goto to it;
-# "error level checks" every errorlevel. OpsFactPatternsTest pins every case;
+# "error level checks" every errorlevel as a word (%ERRORLEVEL% too), not a label that ends in it
+# (:exitWithErrorLevel, call :exitWithErrorLevel). OpsFactPatternsTest pins every case;
 # ProfileFactPatternsLinearityTest measures that every pattern reads linearly.
 [ignore] REM and :: comment lines, echoed text	(?im)^[ \t]*+(?:@[ \t]*+)?(?:rem\b|::)[^\n]*+|(?<=&)[ \t]*+rem\b[^\n]*+|(?<![\w.%-])echo(?![\w-])[^\n&|<>]*+
 labels	(?m)^[ \t]*+:[A-Za-z_][\w.-]*+
@@ -21,4 +22,4 @@ conditionals (approx)	(?i)\bif[ \t]++
 for loops	(?i)\bfor[ \t]++(?:/[dflr][ \t]++(?:(?:"[^"\n]*+"|[^\s%"]++)[ \t]++)?)?%%?[A-Za-z]
 local scopes	(?i)\bsetlocal\b
 exits	(?i)(?<![\w.:%-])exit\b(?<!\bgoto[ \t]{1,8}exit)(?![ \t]*+=)
-error level checks	(?i)errorlevel\b
+error level checks	(?i)\berrorlevel\b
