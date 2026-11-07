@@ -52,11 +52,11 @@ cost are from the card's run, as in the charts.
 
 | Use | Model | Quality | Range | s/file | USD per MB of source |
 |---|---|---|---|---|---|
-| Hosted, best quality (public code only) | **Muse Spark 1.3 (Contributor)** | 99.8 % | 99.4–100 | 10.1 | 0.083 |
+| Hosted, best quality (public code only) | **Muse Spark 1.3 (Contributor)** | 99.8 % | 99.4–100 | 10.1 | 0.081 |
 | Hosted, best quality | **Qwen3.8-27B, reasoning off** | 98.7 % | 98.6–98.9 | 7.7 | 0.34 |
 | Hosted, best per dollar | **gpt-oss-20b** | 96.8 % | 96.1–97.8 | 11.8 | 0.052 |
 | Hosted, fast and cheap | **GPT-6 Luna** | 96.2 % | 93.6–99.0 | 6.9 | 0.095 |
-| Hosted, fastest | **Mercury 3** | 96.6 % | one run | 2.6 | 0.12 |
+| Hosted, fastest | **Mercury 3** | 96.6 % | one run | 2.6 | 0.11 |
 | Local, best quality | **gpt-oss-20b (MXFP4)** | 95.8 % | one run | 33.1 | – |
 | Local, 8 GB GPU, fast | **Gemma 4 E4B, thinking off** | 93.0 % | 92.8–93.2 | 11.1 | – |
 | With a GitHub Copilot plan | **Claude Haiku 5.5** | 98.2 % | one run | 6.8 | Copilot plan |
@@ -74,8 +74,8 @@ both stand level with Muse and above Qwen3.8-27B; the other models have not been
   on its prompts, as third-party sources report; OpenRouter refuses it until the account allows
   providers that train on paid requests, in both its privacy settings and the workspace guardrail.
   Fine for public code like this corpus, not for code that must not leave the company.
-- **Qwen3.8-27B with reasoning off** is the best in every one of its three runs and the steadiest
-  of the hosted models; in the search measurement it moves most between runs (86 to 98 % first,
+- **Qwen3.8-27B with reasoning off** is the best in every one of its three runs after Muse Spark
+  1.3 (whose tier is for public code only) and the steadiest of the hosted models; in the search measurement it moves most between runs (86 to 98 % first,
   93 % on average; the other repeated configurations average 93 to 96 %). It costs 3.5 times as
   much as Luna (0.34 USD per MB), so a 10 MB
   repository costs about 3.40 USD. With reasoning on it cost 18 times as much as Luna.
@@ -87,13 +87,14 @@ both stand level with Muse and above Qwen3.8-27B; the other models have not been
   clean format), but it was its best of three: the other two scored 96 % and 94 %. It is among the
   fastest of the top group (6.9 s per file; Claude Haiku 5.5 6.8 s, Mercury 3 2.6 s) and costs about
   0.10 USD per MB.
-- **Mercury 3** (Inception's diffusion model; 96.6 %, 2.6 s per file, 0.12 USD per MB) is twice as
+- **Mercury 3** (Inception's diffusion model; 96.6 %, 2.6 s per file, 0.11 USD per MB) is twice as
   fast as any other OpenRouter run (Qwen2.5-Coder-7B on Hugging Face's router takes 3.9 s). SQL recall is full with all four seed counts, other files 98 %, Java 88 %;
   one package summary was cut off at 4096 tokens; it searches 93 % first.
-- **Nemotron 3.5 Super VL with reasoning off** (97.9 %, 10.7 s per file, 0.14 USD per MB) has full
+- **Nemotron 3.5 Super VL with reasoning off** (97.9 %, 10.7 s per file, 0.13 USD per MB) has full
   Java recall; with reasoning `low` it scored 90.4 % (finding 1).
-- **Qwen3.5-35B-A3B with reasoning off** is fast (5.2 s per file) at twice Luna's price. It writes the
-  longest Java summaries (compaction 3.22).
+- **Qwen3.5-35B-A3B with reasoning off** is fast (5.2 s per file) at twice Luna's price. It writes long
+  Java summaries (compaction 3.22, as Mercury 3; only Grok 4.7, Nemotron 3.5 Super VL with
+  reasoning and Granite 4.2 8B write longer ones).
 - **Nemotron 3.5 Lightning with reasoning off** is the cheapest OpenRouter model (0.050 USD per MB).
   Its quality (90 %) is held back by Java recall (81 %). It names every member of the large files,
   but leaves names out of the small ones, for example the type name in `AiGenerationProvider`. In
@@ -172,7 +173,7 @@ both stand level with Muse and above Qwen3.8-27B; the other models have not been
     wants me to index the provided SQL file.", "Synthesizing a package summary from the provided
     per-file summaries."), sometimes on the lead's own line. That is its reasoning summary arriving
     as answer text through this route; it costs the format share almost entirely. Its index is the
-    longest of all runs (111 KB), and it searches 86 % first, below all runs but two. On
+    longest of all runs (105 KB of summary text), and it searches 86 % first, below all runs but two. On
     OpenRouter (`x-ai/grok-4.7`, reasoning mandatory) xAI refused the run after 8 files with
     `403 This service is not available in your region`.
 - **Avoid for this task:**
@@ -255,7 +256,7 @@ both stand level with Muse and above Qwen3.8-27B; the other models have not been
    no seed counts. Profile v2 (`profiles/v2/` in commit `b89d028`, see
    [`profiles/README.md`](../../profiles/README.md)) adds one instruction per kind, with
    example names that occur nowhere in this corpus; the package and project prompts are unchanged.
-   Three runs each on OpenRouter (`run.py --prompts v2`, outputs under
+   Three runs each on OpenRouter (`run.py --profile v2 --profile-dir` on the `profiles/` of `b89d028`, outputs under
    [`prompt-v2-2026-10/`](prompt-v2-2026-10/)):
 
    | | Quality: run 1 / 2 / 3 | Mean | Reader hit@1 | Mean | s/file | USD |
@@ -442,7 +443,8 @@ measurement below (about 0.02 USD), so that run's own cost is not known.
   0.4 points.
 - **Hosted runs move by 0.3 to 5.4 points.** A difference of one to three points between two
   single runs of the top group is within that, so the card's first ranking (Luna 99.0 %, then
-  Qwen3.8 98.6 %, then gpt-oss 96.1 %) did not hold. Qwen3.8-27B was best in every run.
+  Qwen3.8 98.6 %, then gpt-oss 96.1 %) did not hold. Qwen3.8-27B was best in every run after
+  Muse Spark 1.3, which ran above it in all three.
 - **Luna's drops come from two files.** In runs 2 and 3, `rotate_backups.sh` keeps 2 of its 5
   expected names. In run 3 Luna describes the 88 getters and setters of `AiGenerationConfig.java`
   as groups and names 3 of them, which costs 9 points of Java recall: the per-file mean weighs
@@ -540,7 +542,7 @@ by up to 7 points at hit@3, so part of a run's change is the reader's own varian
   size with the reader's result is +0.13 with hit@1 and +0.15 with the MRR
   ([`modelcard/correlate.py`](modelcard/correlate.py)), that is none: Qwen3.8-27B writes one of the
   longest indexes (72 KB for the 24 files) and finds every answer first, gpt-oss-20b writes 50 KB
-  and finds 98 %, Granite 4.2 8B writes the longest (85 KB) and finds 91 %.
+  and finds 98 %, Granite 4.2 8B writes the longest of them (85 KB) and finds 91 %.
 - One answer was corrected after the first scoring: "Can a single model definition use a different
   backend than the one the run names?" now also accepts `AiGenerationConfig.java`, whose
   `getProvider()` documents exactly that. Before the correction 18 of 20 runs missed it.
