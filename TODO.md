@@ -29,10 +29,11 @@ repository.
 
 - **PR #269** (branch `feat/profiles-v3-kinds-and-safety`): CI green but the Claude review action;
   the owner merges, then this line goes.
-- The plugin's self-test routes the kinds measured on real projects (C4, 2026-11-06); still only in
-  the Luna example, because no real project of theirs was measured: persistence and integration XML,
-  WSDL, Facelets, OpenAPI, AsyncAPI, Avro, GraphQL, Camel YAML, Compose, Ansible, Gradle, properties,
-  PowerShell, batch, Kotlin, Groovy, Scala and the Java EE classes.
+- The self-test routes every kind of the Luna example since the real-project runs of 2026-11-07
+  ([`remeasure-2026-11-07/`](docs/ai-index-benchmark/remeasure-2026-11-07/README.md)). Open from
+  them: GPT-6 Luna summarises a Log4j 2 file's dotted keys as groups with the ops prompt (properties
+  93 % against 100 % through the fallback; the Luna example keeps the ops rule), and gpt-oss-20b
+  leaves a batch file's `goto` labels out with either prompt (37 %).
 
 ### TypeScript measurement of 2026-11-05 (internal; the data stays out of the repository)
 
@@ -40,7 +41,8 @@ repository.
   tools and dependencies in four runs (Luna 43 to 45 each time), with the fallback prompt. `run.py`
   routes it to the ops prompt with `npm-facts` (scripts, dependencies, engines, workspaces) now; that
   rule is measured (C1): with a line for a manifest in the ops prompt gpt-oss-20b names 36 of 45 on
-  average (fallback 25), Luna all; `pyproject.toml` is not measured.
+  average (fallback 25), Luna all; a `pyproject.toml` takes the ops prompt since 2026-11-07 (97 %
+  against 87 %), without counters of its own.
 
 ### Audit of 2026-11-01 (PR #261)
 

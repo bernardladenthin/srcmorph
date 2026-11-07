@@ -72,6 +72,21 @@ srcMorph:
     - ".proto"
     - ".tf"
     - ".hcl"
+    - ".kt"
+    - ".kts"
+    - ".groovy"
+    - ".gvy"
+    - ".gradle"
+    - ".scala"
+    - ".avsc"
+    - ".graphql"
+    - ".graphqls"
+    - ".gql"
+    - ".properties"
+    - ".ps1"
+    - ".psm1"
+    - ".bat"
+    - ".cmd"
   fileNames:
     - "Dockerfile"
     - "Dockerfile.*"
@@ -79,6 +94,10 @@ srcMorph:
     - "Containerfile"
     - "Jenkinsfile"
     - "package.json"
+    - "openapi*.json"
+    - "swagger*.json"
+    - "asyncapi*.json"
+    - "pyproject.toml"
   excludes:
     - "**/package-info.java"
     - "**/module-info.java"
@@ -389,7 +408,7 @@ srcMorph:
       reducePromptKey: reduce-parts
       factsKey: xml-facts
       condition:
-        extensions: [".xml", ".xsd", ".xsl", ".xslt", ".wsdl", ".xhtml"]
+        extensions: [".xml", ".xsd", ".xsl", ".xslt"]          # .wsdl and .xhtml have rules of their own
     - id: typescript                         # the oop prompt names more of a TypeScript file's API than
       promptKey: file-body-oop               # the fallback (measured 2026-11-05); no counters of its own
       onIncomplete: retryOnce
@@ -547,6 +566,231 @@ srcMorph:
           conditions:
             - extensions: [".yml", ".yaml"]
             - fileNames: ["Jenkinsfile", ".gitlab-ci.yml"]
+    - id: kotlin                             # the prompt Java, Kotlin, Groovy, Scala share
+      promptKey: file-body-oop
+      onIncomplete: retryOnce
+      aiDefinitionKey: "${ai.model}"
+      factsKey: kotlin-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".kt", ".kts"]
+    - id: groovy
+      promptKey: file-body-oop
+      onIncomplete: retryOnce
+      aiDefinitionKey: "${ai.model}"
+      factsKey: groovy-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".groovy", ".gvy"]
+    - id: scala
+      promptKey: file-body-oop
+      onIncomplete: retryOnce
+      aiDefinitionKey: "${ai.model}"
+      factsKey: scala-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".scala"]
+    - id: persistence
+      promptKey: file-body-xml
+      onIncomplete: retryOnce
+      aiDefinitionKey: "${ai.model}"
+      priority: 10
+      factsKey: persistence-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        fileNames: ["persistence.xml", "orm.xml", "*.hbm.xml"]
+    - id: integration                        # Camel, Spring Integration, Mule, Synapse; over jee, so a
+      promptKey: file-body-xml               # Spring application.xml with Camel routes gets these counters
+      onIncomplete: retryOnce
+      aiDefinitionKey: "${ai.model}"
+      priority: 11
+      factsKey: integration-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        and:
+          conditions:
+            - extensions: [".xml"]
+            - contentMatches: 'camel\.apache\.org/schema|springframework\.org/schema/integration|mulesoft\.org/schema/mule|ws\.apache\.org/ns/synapse'
+    - id: wsdl
+      promptKey: file-body-xml
+      onIncomplete: retryOnce
+      aiDefinitionKey: "${ai.model}"
+      priority: 10
+      factsKey: wsdl-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".wsdl"]
+    - id: facelets
+      promptKey: file-body-view
+      onIncomplete: retryOnce
+      aiDefinitionKey: "${ai.model}"
+      factsKey: facelets-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".xhtml"]
+    - id: openapi
+      promptKey: file-body-contract
+      onIncomplete: retryOnce
+      aiDefinitionKey: "${ai.model}"
+      priority: 10
+      factsKey: openapi-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        or:
+          conditions:
+            - and:
+                conditions:
+                  - extensions: [".yml", ".yaml"]
+                  - contentMatches: '(?m)^["'']?(?:openapi|swagger)["'']?[ \t]*:'
+            - fileNames: ["openapi*.json", "swagger*.json"]
+    - id: asyncapi
+      promptKey: file-body-contract
+      onIncomplete: retryOnce
+      aiDefinitionKey: "${ai.model}"
+      priority: 10
+      factsKey: asyncapi-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        or:
+          conditions:
+            - and:
+                conditions:
+                  - extensions: [".yml", ".yaml"]
+                  - contentMatches: '(?m)^["'']?asyncapi["'']?[ \t]*:'
+            - fileNames: ["asyncapi*.json"]
+    - id: avro
+      promptKey: file-body-contract
+      onIncomplete: retryOnce
+      aiDefinitionKey: "${ai.model}"
+      factsKey: avro-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".avsc"]
+    - id: graphql
+      promptKey: file-body-contract
+      onIncomplete: retryOnce
+      aiDefinitionKey: "${ai.model}"
+      factsKey: graphql-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".graphql", ".graphqls", ".gql"]
+    - id: camel-yaml                         # Camel routes in the YAML DSL
+      promptKey: file-body-ops
+      onIncomplete: retryOnce
+      aiDefinitionKey: "${ai.model}"
+      priority: 10
+      factsKey: camel-yaml-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        and:
+          conditions:
+            - extensions: [".yml", ".yaml"]
+            - contentMatches: '(?m)^-[ \t]+(?:route|routeTemplate|templatedRoute|from|rest)[ \t]*:'
+    - id: compose
+      promptKey: file-body-ops
+      onIncomplete: retryOnce
+      aiDefinitionKey: "${ai.model}"
+      priority: 10
+      factsKey: compose-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        fileNames: ["docker-compose*.{yml,yaml}", "compose*.{yml,yaml}"]
+    - id: gradle                             # build scripts of both DSLs; .gradle.kts over the Kotlin rule
+      promptKey: file-body-ops
+      onIncomplete: retryOnce
+      aiDefinitionKey: "${ai.model}"
+      priority: 10
+      factsKey: gradle-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        or:
+          conditions:
+            - extensions: [".gradle"]
+            - fileNames: ["*.gradle.kts"]
+    - id: properties
+      promptKey: file-body-ops
+      onIncomplete: retryOnce
+      aiDefinitionKey: "${ai.model}"
+      factsKey: properties-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".properties"]
+    - id: powershell                         # no prompt of its own: the fallback prompt with counters
+      promptKey: file-body-fallback
+      onIncomplete: retryOnce
+      aiDefinitionKey: "${ai.model}"
+      factsKey: powershell-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".ps1", ".psm1"]
+    - id: batch
+      promptKey: file-body-fallback
+      onIncomplete: retryOnce
+      aiDefinitionKey: "${ai.model}"
+      factsKey: batch-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".bat", ".cmd"]
+    - id: pyproject                          # a Python project's manifest: the ops prompt keeps more of
+      promptKey: file-body-ops               # its names than the fallback (97 % against 87 %, 2026-11-07)
+      onIncomplete: retryOnce
+      aiDefinitionKey: "${ai.model}"
+      priority: 10
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        fileNames: ["pyproject.toml"]
+    - id: ansible                            # playbooks and the YAML of a role: gpt-oss-20b names more of
+      promptKey: file-body-fallback          # their modules with the fallback prompt than with the ops prompt
+      onIncomplete: retryOnce                # and counters (95 % against 86 %, measured 2026-11-07)
+      aiDefinitionKey: "${ai.model}"
+      priority: 5
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        or:
+          conditions:
+            - pathGlob: "**/roles/*/{tasks,handlers,defaults,vars,meta}/*.{yml,yaml}"
+            - and:
+                conditions:
+                  - extensions: [".yml", ".yaml"]
+                  - contentMatches: '(?m)^-[ \t]++(?:name[ \t]*+:[^\n]*+\n[ \t]++)?hosts[ \t]*+:'
     - id: fallback                      # the rule for every file no other rule matches
       promptKey: file-body-fallback
       onIncomplete: retryOnce

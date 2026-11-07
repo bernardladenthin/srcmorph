@@ -549,10 +549,10 @@ prompt and each counter exists once in the repository:
 - `file-body-shell`, `file-body-perl`, `file-body-xml` — the same for shell scripts, Perl and XML
 - `file-body-fallback` — generic multi-language summary for any other source file
 - `file-body-view`, `file-body-contract`, `file-body-ops` — JSP and Facelets views; API contracts
-  (OpenAPI, Protobuf, ...); CI, Docker, Kubernetes and other deploy files. The self-test routes the
-  kinds measured on real projects (JSP, Protocol Buffers, GitHub Actions, Kubernetes, Dockerfiles,
-  Terraform, npm manifests); `examples/copilot-api-gateway/srcmorph-luna.yaml` routes all of them,
-  with their fact counters
+  (OpenAPI, Protobuf, ...); CI, Docker, Kubernetes and other deploy files. The self-test routes
+  every kind `examples/copilot-api-gateway/srcmorph-luna.yaml` routes but the Java EE classes (the
+  `java` rule takes their prompt), each measured on real projects, with their fact counters;
+  Ansible goes to `file-body-fallback` there, where the self-test's model names more of a play
 - `package-body` — synthesizes a package summary from the already-generated file summaries
 - `project-body` — (optional) synthesizes the short project `#### Overview` paragraph from the package leads
 - `map-chunk`, `reduce-parts` — not prompts of their own: a chunked rule's `mapPromptKey` /

@@ -402,10 +402,15 @@ The entries below hold the details; what a 1.4.0 user changes:
   derived from the sources, two runs each): with the kinds' rules gpt-oss-20b names 97.3 % of the
   names, with every file through the fallback prompt 81.2 %; GPT-6 Luna 97.7 % against 92.2 %. No
   kind is worse with its rule for gpt-oss-20b; for Luna the Spring XML files through the `xml` rule
-  are (90 % against 100 %). The kinds not measured on a real project (persistence and integration
-  XML, WSDL, Facelets, OpenAPI, AsyncAPI, Avro, GraphQL, Camel YAML, Compose, Ansible, Gradle,
-  properties, PowerShell, batch, Kotlin, Groovy, Scala, Java EE classes) stay out of the self-test.
-  The Luna example routes `package.json` too.
+  are (90 % against 100 %). The remaining kinds followed on 2026-11-07, measured the same way on 16
+  open-source projects and 12 Python projects' `pyproject.toml` (272 files of 20 kinds, 2046 names):
+  persistence and integration XML, WSDL and Facelets (which leave the `xml` rule), OpenAPI, AsyncAPI,
+  Avro, GraphQL, Camel YAML, Compose, Gradle, properties, PowerShell, batch, Kotlin, Groovy, Scala and
+  `pyproject.toml` (the ops prompt, 97 % against 87 %) take the Luna example's rules; Ansible takes
+  `file-body-fallback` without counters, where gpt-oss-20b names 95 % against 86 % with the ops
+  prompt; the Java EE classes stay on the `java` rule (`file-body-oop` either way). Over all kinds
+  gpt-oss-20b names 88.9 % with the rules against 79.7 % through the fallback, Luna 96.6 % against
+  88.6 %. The Luna example routes `package.json` and `pyproject.toml` too.
 
 - **The self-test's `big-pom` rule takes `file-body-xml`** instead of the generic prompt: on a real
   590 KB POM Granite H-Tiny invents no names with it and about half of them with the generic one, at

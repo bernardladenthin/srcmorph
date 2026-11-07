@@ -107,6 +107,7 @@ srcMorph:
     - "swagger*.json"
     - "asyncapi*.json"
     - "package.json"
+    - "pyproject.toml"
   # Scripts without an extension (bin/deploy, a Git hook), by the interpreter their #! line names; a
   # name also matches its versions (python matches python3 and python3.12).
   fileInterpreters:
@@ -657,6 +658,16 @@ srcMorph:
       reducePromptKey: reduce-parts
       condition:
         fileNames: ["package.json"]
+    - id: pyproject                          # a Python project's manifest: the ops prompt keeps more of
+      promptKey: file-body-ops               # its names than the fallback (97 % against 87 %, 2026-11-07)
+      onIncomplete: retryOnce
+      aiDefinitionKey: luna
+      priority: 10
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        fileNames: ["pyproject.toml"]
     - id: ops                                # every other YAML, Jenkinsfile
       promptKey: file-body-ops
       onIncomplete: retryOnce

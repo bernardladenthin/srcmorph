@@ -230,7 +230,7 @@ public class ExamplesConfigBindingTest {
             }
         }
         // the kinds profile v3 has no counters for
-        assertThat(withoutFacts, is(List.of("typescript", "ops", "fallback")));
+        assertThat(withoutFacts, is(List.of("typescript", "pyproject", "ops", "fallback")));
         assertPromptFilesResolve(directory, configuration, "copilot-api-gateway/srcmorph-luna.yaml");
     }
     // </editor-fold>

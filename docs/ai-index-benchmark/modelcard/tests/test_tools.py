@@ -220,7 +220,7 @@ class RulesTest(unittest.TestCase):
         ours = {r["id"]: r for r in run.file_rules(run.PROFILES / "v3", "m", facts=True)}
 
         for kind in ("persistence", "integration", "wsdl", "facelets", "openapi", "asyncapi", "avro", "graphql",
-                     "camel-yaml", "compose", "ansible", "gradle", "properties", "powershell", "batch", "kotlin",
+                     "camel-yaml", "compose", "ansible", "gradle", "properties", "powershell", "batch", "pyproject", "kotlin",
                      "groovy", "scala", "java-ee"):
             for field in ("condition", "promptKey", "factsKey"):
                 self.assertEqual(ours[kind].get(field), theirs[kind].get(field), f"{kind} {field}")

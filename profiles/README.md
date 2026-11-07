@@ -239,7 +239,12 @@ On 2026-11-06 the kinds ran on three open-source projects (jpetstore-6, microser
 camunda-bpm-examples; 218 files of 13 kinds, [`remeasure-2026-11-06/`](../docs/ai-index-benchmark/remeasure-2026-11-06/README.md)):
 with their rules gpt-oss-20b named 97.3 % of the names derived from the sources, through the fallback
 81.2 %, GPT-6 Luna 97.7 % against 92.2 %; Protocol Buffers, DMN and Terraform ran there for the
-first time. The self-test routes those kinds since. That run counted with `--facts`, so the counters
+first time. The self-test routes those kinds since. On 2026-11-07 the remaining kinds ran on 16
+open-source projects and 12 Python projects' `pyproject.toml` (272 files of 20 kinds,
+[`remeasure-2026-11-07/`](../docs/ai-index-benchmark/remeasure-2026-11-07/README.md)): gpt-oss-20b
+88.9 % with their rules against 79.7 % through the fallback, Luna 96.6 % against 88.6 %; every kind
+at least level for gpt-oss-20b but Ansible, which the self-test therefore sends to the fallback
+prompt, and a `pyproject.toml` takes the ops prompt (97 % against 87 %). That run counted with `--facts`, so the counters
 of its kinds ran in a model run, `proto-facts`, `dmn-facts` and `terraform-facts` among them; but a
 facts line is written in front of every summary of its rule and reaches the model only in a reduce
 call, and the scores read names, not counts, so no model run checks a count. The counters of the

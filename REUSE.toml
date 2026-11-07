@@ -86,6 +86,8 @@ path = [
     "docs/ai-index-benchmark/remeasure-2026-11-04b/*/*/meta/*.json",
     "docs/ai-index-benchmark/remeasure-2026-11-06/*/*/meta/*.json",
     "docs/ai-index-benchmark/remeasure-2026-11-06/*/facts.json",
+    "docs/ai-index-benchmark/remeasure-2026-11-07/*/*/meta/*.json",
+    "docs/ai-index-benchmark/remeasure-2026-11-07/*/facts.json",
 ]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>"
