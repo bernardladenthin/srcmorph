@@ -192,6 +192,18 @@ class RulesTest(unittest.TestCase):
         self.assertIn(f"contentMatches: '{pattern}'", selftest)
         self.assertTrue(re.search(pattern, "a=1\nsigning.password = x\n"))
         self.assertFalse(re.search(pattern, "spring.datasource.password=${DB_PASSWORD}\n# token=x\n"))
+        # and a Kubernetes Secret by its kind, whatever its name, but not a Helm chart's template
+        kinds = [c for c in secrets["condition"]["or"]["conditions"]
+                 if c.get("and", {}).get("conditions", [{}])[0] == {"extensions": run.YAML_EXTENSIONS}]
+        self.assertEqual(len(kinds), 1)
+        kind, helm = kinds[0]["and"]["conditions"][1:]
+        self.assertEqual(kind, {"contentMatches": run.K8S_SECRET})
+        self.assertEqual(helm, {"not": run.HELM_TEMPLATE})
+        self.assertIn("contentMatches: '" + run.K8S_SECRET.replace("'", "''") + "'", selftest)
+        for manifest in ("apiVersion: v1\nkind: Secret\ndata:\n  password: eA==\n", 'kind: "Secret"\n'):
+            self.assertTrue(re.search(run.K8S_SECRET, manifest), manifest)
+        for other in ("kind: SecretProviderClass\n", "kind: Deployment\n", "title: x\n  kind: Secret\n"):
+            self.assertFalse(re.search(run.K8S_SECRET, other), other)
         # the hashes of the files the rules name pass the skip rule by
         self.assertIn("file-body-oop.md", run.profile_hashes(run.PROFILES / "v3", rules))
 

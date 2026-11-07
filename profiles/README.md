@@ -324,6 +324,12 @@ names with the XML prompt and 4 with the generic one. `huge-xml` (Granite H-1B, 
 chunks): on a 1.15 MB catalog H-1B wrote one correct sentence with the XML prompt, while with the
 generic one its final answer ran to the output limit and the file failed, in every run. The runs are
 under [`remeasure-2026-11-02/`](../docs/ai-index-benchmark/remeasure-2026-11-02/README.md).
+The two tiers take what the `xml` rule takes (`.xml`, `.xsd`, `.xsl`, `.xslt`) and leave out every
+file an XML kind rule takes by its name or content (`jee`, `persistence`, a `.bpmn20.xml`, `mybatis`,
+`integration`; the conditions are copied from those rules), as `.wsdl` and `.xhtml` by their
+extension: at priority 100 and 200 they outrank the kind rules (10 and 11), and up to 2026-11-07 a
+300 KB `persistence.xml`, MyBatis mapper or WSDL got the generic `xml-facts` from them instead of
+its kind's counters. Such a file now stays with its kind rule on gpt-oss, which map-reduces it.
 `big-pom` takes `file-body-xml` too since 2026-11-06: on a real POM of the tier (netty-parent
 4.2.0.Final, 590 KB, 54 modules, 30 profiles, 15 build plugins; three runs each, which wrote the same
 bytes) Granite H-Tiny named 6 of its 99 names with the XML prompt and invented none, 4 with the

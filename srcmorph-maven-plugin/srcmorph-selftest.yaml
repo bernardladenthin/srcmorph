@@ -176,13 +176,14 @@ srcMorph:
       repeatPenalty: 1.0
       reasoningEffort: ""
 
-  # By priority, the most specific wins: huge (>1 MB) -> H-1B over sampled chunks, big
-  # (~260 KB .. 1 MB) -> H-Tiny map-reduce, then gpt-oss for Java, SQL and every other file.
-  # gpt-oss reads about 270,000 characters of source (the 96K window less the output budget and the
-  # prompt), so the tiers start at 260,000 (a size condition measures the source's bytes with \n
-  # line endings). Every gpt-oss rule map-reduces a file that still exceeds the window (one denser
-  # than the plan's 3 characters per token below a tier, or a kind without tiers: shell, Perl,
-  # TypeScript, ... the fallback) instead of failing the run.
+  # By priority, the most specific wins. Java, SQL, POM and plain XML files have size tiers: huge
+  # (>1 MB) -> H-1B over sampled chunks, big (~260 KB .. 1 MB) -> H-Tiny map-reduce; below them, and
+  # every other kind at any size, gpt-oss. gpt-oss reads about 270,000 characters of source (the 96K
+  # window less the output budget and the prompt), so the tiers start at 260,000 (a size condition
+  # measures the source's bytes with \n line endings). Every gpt-oss rule map-reduces a file that
+  # still exceeds the window (one denser than the plan's 3 characters per token below a tier, or a
+  # kind without tiers: shell, Perl, Kotlin, a descriptor or mapper of an XML kind, ... the fallback)
+  # instead of failing the run.
   rules:
     # Files that hold credentials are never sent to a model, whatever their extension: the highest
     # priority, so no other rule takes them. The prompts name a secret and never copy it; this keeps
@@ -216,6 +217,18 @@ srcMorph:
                 conditions:
                   - extensions: [".properties"]
                   - contentMatches: '(?im)^[ \t]*+[\w.\-]*?(?:password|passwd|secret|token|api[._-]?key)[ \t]*+[=:][ \t]*+(?!\$\{)\S'
+            # A Kubernetes Secret, whatever its name (deploy/postgres.yaml): its data are the
+            # credentials. Not a Helm chart's template, which names the values it renders. Read in the
+            # file's head, so a Secret in a later document of a long multi-document file is not seen.
+            - and:
+                conditions:
+                  - extensions: [".yml", ".yaml"]
+                  - contentMatches: '(?m)^kind:[ \t]*["'']?Secret\b'
+                  - not:
+                      and:
+                        conditions:
+                          - pathGlob: "**/templates/**"
+                          - contentMatches: '\{\{'
             # A file named for a vault, secrets or credentials, but not a CI workflow or action
             # (secret-scan.yml), a Helm chart's template (it names the values it renders) or a
             # Kubernetes manifest of another kind than Secret (vault-deployment.yaml).
@@ -316,8 +329,16 @@ srcMorph:
       factsKey: sql-facts
       condition:
         extensions: [".sql"]
-    - id: huge-xml                      # big XML data takes the Java/SQL size tiers too, with the XML
-                                        # prompt: three runs each per tier (MODEL-CARD finding 7)
+    # Big plain XML data takes the Java/SQL size tiers too, with the XML prompt: three runs each per
+    # tier (MODEL-CARD finding 7). Only what the xml rule takes: the tiers outrank every kind rule
+    # (priority 100 and 200 against 10 and 11), so they leave out the files a kind rule takes, and a
+    # big descriptor, mapper or route file keeps its kind's counters on gpt-oss, which map-reduces it.
+    # By extension: .wsdl and .xhtml are not in the list (the wsdl and facelets rules). By name or
+    # content: the `not` holds the conditions of jee, mybatis, bpmn (its .bpmn20.xml), persistence and
+    # integration, copied from those rules in their order (ExamplesConfigBindingTest compares them); a
+    # new XML kind rule that matches by name or content adds its condition there, in both tiers. A POM
+    # takes the POM tiers, one priority higher.
+    - id: huge-xml
       promptKey: file-body-xml
       onIncomplete: retryOnce
       aiDefinitionKey: granite-4.0-h-1b-fastchunk
@@ -330,8 +351,16 @@ srcMorph:
       condition:
         and:
           conditions:
-            - extensions: [".xml", ".xsd", ".xsl", ".xslt", ".wsdl", ".xhtml"]
+            - extensions: [".xml", ".xsd", ".xsl", ".xslt"]
             - size: {min: 1000000}
+            - not:                           # the XML kind rules' own conditions, as in big-xml
+                or:
+                  conditions:
+                    - fileNames: ["web.xml", "web-fragment.xml", "ejb-jar.xml", "application.xml"]   # jee
+                    - contentMatches: 'mybatis\.org//DTD Mapper'                                     # mybatis
+                    - fileNames: ["*.bpmn20.xml"]                                                    # bpmn
+                    - fileNames: ["persistence.xml", "orm.xml", "*.hbm.xml"]                         # persistence
+                    - contentMatches: 'camel\.apache\.org/schema|springframework\.org/schema/integration|mulesoft\.org/schema/mule|ws\.apache\.org/ns/synapse'
     - id: big-xml
       promptKey: file-body-xml
       onIncomplete: retryOnce
@@ -344,8 +373,16 @@ srcMorph:
       condition:
         and:
           conditions:
-            - extensions: [".xml", ".xsd", ".xsl", ".xslt", ".wsdl", ".xhtml"]
+            - extensions: [".xml", ".xsd", ".xsl", ".xslt"]
             - size: {min: 260000}
+            - not:                           # the XML kind rules' own conditions, as in huge-xml
+                or:
+                  conditions:
+                    - fileNames: ["web.xml", "web-fragment.xml", "ejb-jar.xml", "application.xml"]   # jee
+                    - contentMatches: 'mybatis\.org//DTD Mapper'                                     # mybatis
+                    - fileNames: ["*.bpmn20.xml"]                                                    # bpmn
+                    - fileNames: ["persistence.xml", "orm.xml", "*.hbm.xml"]                         # persistence
+                    - contentMatches: 'camel\.apache\.org/schema|springframework\.org/schema/integration|mulesoft\.org/schema/mule|ws\.apache\.org/ns/synapse'
     - id: huge-pom                      # a big POM takes the XML tiers one step higher, with the Maven counters
       promptKey: file-body-fallback
       onIncomplete: retryOnce

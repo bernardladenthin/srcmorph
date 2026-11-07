@@ -212,6 +212,10 @@ LANGUAGES = (("shell", {"extensions": [".sh", ".bash", ".ksh"]}, "shell", 0),
              ("npm", {"fileNames": ["package.json"]}, "ops", 10),
              ("pyproject", {"fileNames": ["pyproject.toml"]}, "ops", 10),
              ("ops", {"extensions": YAML_EXTENSIONS}, "ops", 0))
+# A Kubernetes manifest of the kind Secret, quoted or not, as the secrets rule reads it.
+K8S_SECRET = r"""(?m)^kind:[ \t]*["']?Secret\b"""
+# A Helm chart's template: it names the values it renders, it holds none.
+HELM_TEMPLATE = _and({"pathGlob": "**/templates/**"}, {"contentMatches": r"\{\{"})
 # Files that hold credentials never reach a model: the secrets rule of the self-test and the examples,
 # at the highest priority, so no other rule takes them.
 SECRETS_RULE = {"id": "secrets", "skip": True, "priority": 1000, "condition": _or(
@@ -222,14 +226,16 @@ SECRETS_RULE = {"id": "secrets", "skip": True, "priority": 1000, "condition": _o
     # a properties file that gives a password, secret, token or API key a value (not a ${...} reference)
     _and({"extensions": [".properties"]},
          {"contentMatches": r"(?im)^[ \t]*+[\w.\-]*?(?:password|passwd|secret|token|api[._-]?key)[ \t]*+[=:][ \t]*+(?!\$\{)\S"}),
+    # a Kubernetes Secret, whatever its name (deploy/postgres.yaml), but not a Helm chart's template
+    _and({"extensions": YAML_EXTENSIONS}, {"contentMatches": K8S_SECRET}, {"not": HELM_TEMPLATE}),
     # named for a vault, secrets or credentials, but not a CI workflow or action, a Helm chart's template
     # or a Kubernetes manifest of another kind than Secret
     _and({"fileNames": ["vault*.{yml,yaml}",
                         "*{secret,secrets,credential,credentials}*.{yml,yaml,properties,json,xml,conf,env,hcl}"]},
          {"not": _or({"pathGlob": "**/.github/**"},
-                     _and({"pathGlob": "**/templates/**"}, {"contentMatches": r"\{\{"}),
+                     HELM_TEMPLATE,
                      _and({"contentMatches": r"(?m)^kind:[ \t]*[\"']?[A-Z]"},
-                          {"not": {"contentMatches": r"(?m)^kind:[ \t]*[\"']?Secret\b"}}))}))}
+                          {"not": {"contentMatches": K8S_SECRET}}))}))}
 PHASES = ("GenerateFileIndex", "AggregatePackages", "AggregateProject")
 WORK_MARKER = ".srcmorph-benchmark-work"
 OVERSIZE = ("fail", "sample", "mapReduce", "sampleChunks", "deterministic")

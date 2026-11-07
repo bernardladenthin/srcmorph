@@ -13,6 +13,8 @@ import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
@@ -21,12 +23,16 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import net.ladenthin.srcmorph.cli.configuration.CCommand;
 import net.ladenthin.srcmorph.cli.configuration.CConfiguration;
+import net.ladenthin.srcmorph.config.ConditionGroup;
 import net.ladenthin.srcmorph.config.ModelDefinition;
 import net.ladenthin.srcmorph.config.PromptDefinition;
 import net.ladenthin.srcmorph.config.RoutingRule;
+import net.ladenthin.srcmorph.config.RuleCondition;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
+import net.ladenthin.srcmorph.config.SrcMorphConfigurationFileLoader;
 import net.ladenthin.srcmorph.prompt.PromptTemplateLoader;
 import net.ladenthin.srcmorph.routing.FileContext;
 import net.ladenthin.srcmorph.routing.RuleSelector;
@@ -265,6 +271,10 @@ public class ExamplesConfigBindingTest {
             {"ci.properties", "ossrhPassword=x\ngithub.token: ghp_x\n"},
             {"client.properties", "  client-secret=x\n"},
             {"api.properties", "maps.api-key=x\n"},
+            // a Kubernetes Secret, whatever its name, its kind quoted or not
+            {"deploy/postgres.yaml", "apiVersion: v1\nkind: Secret\ndata:\n  password: eA==\n"},
+            {"deploy/registry.yml", "apiVersion: v1\nkind: \"Secret\"\ntype: kubernetes.io/dockerconfigjson\n"},
+            {"deploy/all.yaml", "apiVersion: apps/v1\nkind: Deployment\n---\napiVersion: v1\nkind: Secret\n"},
         };
         final String[][] sources = {
             {"SecretManager.java", "class SecretManager {}\n"},
@@ -280,8 +290,16 @@ public class ExamplesConfigBindingTest {
             {".github/workflows/vault.yml", "on: push\n"},
             // a Helm chart's template names the values it renders
             {"charts/shop/templates/secret.yaml", "kind: Secret\ndata:\n  password: {{ .Values.password | b64enc }}\n"},
-            // a Kubernetes manifest of another kind
+            {
+                "charts/shop/templates/postgres.yaml",
+                "apiVersion: v1\nkind: Secret\ndata:\n  password: {{ .Values.pw }}\n"
+            },
+            // a Kubernetes manifest of another kind, by any name
             {"k8s/vault-deployment.yaml", "apiVersion: apps/v1\nkind: Deployment\n"},
+            {"deploy/postgres-deployment.yaml", "apiVersion: apps/v1\nkind: Deployment\n"},
+            {"deploy/provider.yaml", "apiVersion: secrets-store.csi.x-k8s.io/v1\nkind: SecretProviderClass\n"},
+            // a word Secret that is no manifest's kind
+            {"docs/notes.yaml", "title: Secret handling\n  kind: Secret\n"},
             // an Android preference screen
             {"app/src/main/res/xml/settings.xml", "<PreferenceScreen xmlns:android=\"x\"/>\n"},
             // a properties file whose secret is a reference, a comment, empty, or a key that only starts so
@@ -309,6 +327,151 @@ public class ExamplesConfigBindingTest {
                 assertThat(config + ": " + source[0], rule != null && !rule.isSkip(), is(true));
             }
         }
+    }
+
+    /**
+     * The self-test's XML size tiers outrank every kind rule, so they leave out what a kind rule takes:
+     * a big descriptor, mapper, route file or WSDL keeps its kind's rule (its counters, on gpt-oss with
+     * map-reduce), a big POM its own tiers, and only plain XML data moves to Granite. Read through the
+     * CLI twin, which {@link BuildYourOwnJarSelfTestParityTest} holds equal to the self-test.
+     *
+     * @throws Exception if the example cannot be read
+     */
+    @Test
+    public void select_selfTestXmlTiers_leaveALargeFileOfAnXmlKindToItsKindRule() throws Exception {
+        // arrange
+        final List<RoutingRule> rules = Main.fromYaml(
+                        Main.readString(EXAMPLES_DIRECTORY.resolve("build-your-own-jar/srcmorph.yaml")))
+                .srcMorph
+                .getRules();
+        final RuleSelector selector = new RuleSelector();
+        selector.validate(rules);
+        final String mapper = "<!DOCTYPE mapper PUBLIC \"-//mybatis.org//DTD Mapper 3.0//EN\">\n<mapper/>\n";
+        final String routes = "<beans><camelContext xmlns=\"http://camel.apache.org/schema/spring\"/></beans>\n";
+        final Object[][] cases = {
+            {"META-INF/persistence.xml", "<persistence/>\n", 300_000L, "persistence"},
+            {"mapping/Shipment.hbm.xml", "<class name=\"Shipment\"/>\n", 300_000L, "persistence"},
+            {"mapper/CustomerMapper.xml", mapper, 300_000L, "mybatis"},
+            {"mapper/CustomerMapper.xml", mapper, 1_200_000L, "mybatis"},
+            {"wsdl/Stock.wsdl", "<definitions/>\n", 300_000L, "wsdl"},
+            {"wsdl/Stock.wsdl", "<definitions/>\n", 1_200_000L, "wsdl"},
+            {"webapp/checkout.xhtml", "<ui:composition/>\n", 300_000L, "facelets"},
+            {"src/main/webapp/WEB-INF/web.xml", "<web-app/>\n", 300_000L, "jee"},
+            {"camel/routes.xml", routes, 300_000L, "integration"},
+            {"process/order.bpmn20.xml", "<definitions/>\n", 300_000L, "bpmn"},
+            {"pom.xml", "<project/>\n", 300_000L, "big-pom"},
+            {"pom.xml", "<project/>\n", 1_200_000L, "huge-pom"},
+            {"data/catalog.xml", "<catalog/>\n", 300_000L, "big-xml"},
+            {"data/catalog.xsd", "<xs:schema/>\n", 300_000L, "big-xml"},
+            {"data/catalog.xml", "<catalog/>\n", 1_200_000L, "huge-xml"},
+            {"data/catalog.xml", "<catalog/>\n", 100_000L, "xml"},
+        };
+
+        // act, assert
+        for (final Object[] c : cases) {
+            final String path = (String) c[0];
+            final RoutingRule rule = selector.select(
+                    rules, new FileContext(path.substring(path.lastIndexOf('/') + 1), path, (Long) c[2], 3, 0L, (String)
+                            c[1]));
+            assertThat(path + " at " + c[2] + " bytes", rule == null ? null : rule.getId(), is(equalTo(c[3])));
+        }
+    }
+
+    /**
+     * The XML tiers leave out a kind's file by the kind rule's own conditions, copied into their
+     * {@code not}: every name or content condition of every rule that takes an XML file by name or by
+     * content, in rule order. A kind rule added or changed without its copy in the tiers fails here.
+     *
+     * @throws Exception if the example cannot be read
+     */
+    @Test
+    public void rules_selfTestXmlTiers_leaveOutExactlyTheXmlKindRulesConditions() throws Exception {
+        // arrange
+        final List<RoutingRule> rules = Main.fromYaml(
+                        Main.readString(EXAMPLES_DIRECTORY.resolve("build-your-own-jar/srcmorph.yaml")))
+                .srcMorph
+                .getRules();
+        final ObjectMapper json = SrcMorphConfigurationFileLoader.newJsonMapper();
+        final Set<String> notKinds = Set.of("huge-xml", "big-xml", "xml", "huge-pom", "big-pom");
+        final List<JsonNode> kindConditions = new ArrayList<>();
+        for (final RoutingRule rule : rules) {
+            final RuleCondition condition = rule.getCondition();
+            if (rule.isSkip() || condition == null || notKinds.contains(rule.getId()) || !takesXml(condition)) {
+                continue;
+            }
+            for (final RuleCondition leaf : leaves(condition)) {
+                if (leaf.getFileNames() != null || leaf.getContentMatches() != null) {
+                    kindConditions.add(json.valueToTree(leaf));
+                }
+            }
+        }
+
+        // pre-assert
+        assertThat("jee, mybatis, bpmn, persistence, integration", kindConditions.size(), is(5));
+
+        // act, assert
+        for (final RoutingRule rule : rules) {
+            if (!List.of("huge-xml", "big-xml").contains(rule.getId())) {
+                continue;
+            }
+            final List<RuleCondition> conditions = Objects.requireNonNull(
+                            Objects.requireNonNull(rule.getCondition()).getAnd())
+                    .getConditions();
+            final RuleCondition not = Objects.requireNonNull(conditions)
+                    .get(conditions.size() - 1)
+                    .getNot();
+            final List<JsonNode> leftOut = new ArrayList<>();
+            for (final RuleCondition child : Objects.requireNonNull(
+                    Objects.requireNonNull(Objects.requireNonNull(not).getOr()).getConditions())) {
+                leftOut.add(json.valueToTree(child));
+            }
+            assertThat(rule.getId(), leftOut, is(equalTo(kindConditions)));
+        }
+    }
+
+    /**
+     * Whether a condition can take an XML file of the tiers by its own name or content: it names the
+     * {@code .xml} extension or a file name ending in it.
+     *
+     * @param condition the rule's condition
+     * @return whether it names an XML file
+     */
+    private static boolean takesXml(final RuleCondition condition) {
+        for (final RuleCondition leaf : leaves(condition)) {
+            final List<String> extensions = leaf.getExtensions();
+            final List<String> fileNames = leaf.getFileNames();
+            if ((extensions != null && extensions.contains(".xml"))
+                    || (fileNames != null && fileNames.stream().anyMatch(name -> name.endsWith(".xml")))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * The leaves of a condition tree, through its and, or and not groups, in order.
+     *
+     * @param condition the condition tree
+     * @return its leaf conditions
+     */
+    private static List<RuleCondition> leaves(final RuleCondition condition) {
+        final List<RuleCondition> found = new ArrayList<>();
+        final RuleCondition not = condition.getNot();
+        if (not != null) {
+            found.addAll(leaves(not));
+            return found;
+        }
+        for (final @Nullable ConditionGroup group :
+                Arrays.<@Nullable ConditionGroup>asList(condition.getAnd(), condition.getOr())) {
+            if (group != null) {
+                for (final RuleCondition child : Objects.requireNonNull(group.getConditions())) {
+                    found.addAll(leaves(child));
+                }
+                return found;
+            }
+        }
+        found.add(condition);
+        return found;
     }
 
     @Test

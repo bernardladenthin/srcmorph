@@ -42,8 +42,9 @@ srcMorph:
   outputDirectory: "/path/to/project/target/srcmorph-ai"
   subtrees:
     - "."                                    # the whole project, the root pom.xml too
-  # A kind without an extension here (or a name under fileNames) is not indexed. C, Python,
-  # JavaScript and every other kind without a prompt of its own take the fallback rule.
+  # A kind without an extension here (or a name under fileNames) is not indexed: JavaScript (.js),
+  # for one, is not. C and Python, listed at the end, have no prompt of their own and take the
+  # fallback rule.
   fileExtensions:
     - ".java"
     - ".sql"
@@ -201,6 +202,18 @@ srcMorph:
                 conditions:
                   - extensions: [".properties"]
                   - contentMatches: '(?im)^[ \t]*+[\w.\-]*?(?:password|passwd|secret|token|api[._-]?key)[ \t]*+[=:][ \t]*+(?!\$\{)\S'
+            # A Kubernetes Secret, whatever its name (deploy/postgres.yaml): its data are the
+            # credentials. Not a Helm chart's template, which names the values it renders. Read in the
+            # file's head, so a Secret in a later document of a long multi-document file is not seen.
+            - and:
+                conditions:
+                  - extensions: [".yml", ".yaml"]
+                  - contentMatches: '(?m)^kind:[ \t]*["'']?Secret\b'
+                  - not:
+                      and:
+                        conditions:
+                          - pathGlob: "**/templates/**"
+                          - contentMatches: '\{\{'
             # A file named for a vault, secrets or credentials, but not a CI workflow or action
             # (secret-scan.yml), a Helm chart's template (it names the values it renders) or a
             # Kubernetes manifest of another kind than Secret (vault-deployment.yaml).
