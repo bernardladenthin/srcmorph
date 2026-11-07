@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.srcmorph.indexer;
 
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.is;
@@ -11,15 +12,28 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.FileSystems;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.AclEntry;
+import java.nio.file.attribute.AclEntryPermission;
+import java.nio.file.attribute.AclEntryType;
+import java.nio.file.attribute.AclFileAttributeView;
+import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
+import java.nio.file.attribute.UserPrincipal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -42,6 +56,7 @@ import net.ladenthin.srcmorph.prompt.PromptCatalog;
 import net.ladenthin.srcmorph.prompt.PromptPreparer;
 import net.ladenthin.srcmorph.provider.MockGenerationProvider;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 
 public class SourceFileIndexerTest {
 
@@ -211,6 +226,168 @@ public class SourceFileIndexerTest {
                         .collectCandidates(sourceRoot)
                         .size(),
                 is(equalTo(0)));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="collectCandidates -- the walk">
+    /**
+     * Takes the permission to list a directory away until the returned handle is closed: on POSIX its
+     * mode bits (the test does not run as root), on Windows an access control entry that denies the
+     * current user the listing.
+     */
+    private static AutoCloseable unlistable(final Path directory) throws Exception {
+        if (FileSystems.getDefault().supportedFileAttributeViews().contains("posix")) {
+            Files.setPosixFilePermissions(directory, Collections.<PosixFilePermission>emptySet());
+            return () -> Files.setPosixFilePermissions(directory, PosixFilePermissions.fromString("rwx------"));
+        }
+        final AclFileAttributeView view = Files.getFileAttributeView(directory, AclFileAttributeView.class);
+        assumeTrue(view != null, "the file system supports neither POSIX permissions nor access control lists");
+        final List<AclEntry> before = view.getAcl();
+        final UserPrincipal user = directory
+                .getFileSystem()
+                .getUserPrincipalLookupService()
+                .lookupPrincipalByName(System.getProperty("user.name"));
+        final List<AclEntry> denied = new ArrayList<>();
+        denied.add(AclEntry.newBuilder()
+                .setType(AclEntryType.DENY)
+                .setPrincipal(user)
+                .setPermissions(AclEntryPermission.LIST_DIRECTORY)
+                .build());
+        denied.addAll(before);
+        view.setAcl(denied);
+        return () -> view.setAcl(before);
+    }
+
+    /** Captures the indexer's log lines until {@link #release}. */
+    private static ListAppender<ILoggingEvent> captureLog() {
+        final ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        ((Logger) LoggerFactory.getLogger(SourceFileIndexer.class)).addAppender(appender);
+        return appender;
+    }
+
+    private static void release(final ListAppender<ILoggingEvent> appender) {
+        ((Logger) LoggerFactory.getLogger(SourceFileIndexer.class)).detachAppender(appender);
+        appender.stop();
+    }
+
+    private static List<String> warnings(final ListAppender<ILoggingEvent> appender) {
+        final List<String> warnings = new ArrayList<>();
+        for (final ILoggingEvent event : appender.list) {
+            if (event.getLevel() == Level.WARN) {
+                warnings.add(event.getFormattedMessage());
+            }
+        }
+        return warnings;
+    }
+
+    @Test
+    public void enterDirectory_aDirectoryAnExcludeTakesWhole_isSkippedAndAnyOtherEntered() throws Exception {
+        // arrange
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final SourceFileIndexer indexer =
+                indexer(temp, temp.resolve("out"), Arrays.asList("**/generated/**", "**/*.txt"), 0L, 0L);
+
+        // act, assert
+        assertThat(indexer.enterDirectory(temp.resolve("src/main/generated")), is(FileVisitResult.SKIP_SUBTREE));
+        assertThat(indexer.enterDirectory(temp.resolve("src/main/java")), is(FileVisitResult.CONTINUE));
+        assertThat(indexer.enterDirectory(temp), is(FileVisitResult.CONTINUE));
+    }
+
+    @Test
+    public void walkFailed_aPathThatCannotBeRead_goesOnWarningUnlessAnExcludeTakesIt() throws Exception {
+        // arrange
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final SourceFileIndexer indexer = indexer(temp, temp.resolve("out"), Arrays.asList("**/generated/**"), 0L, 0L);
+        final ListAppender<ILoggingEvent> log = captureLog();
+
+        // act
+        final FileVisitResult read;
+        final FileVisitResult excluded;
+        try {
+            read = indexer.walkFailed(temp.resolve("src/main/java"), new AccessDeniedException("java"));
+            excluded = indexer.walkFailed(temp.resolve("src/generated"), new AccessDeniedException("generated"));
+        } finally {
+            release(log);
+        }
+
+        // assert
+        assertThat(read, is(FileVisitResult.CONTINUE));
+        assertThat(excluded, is(FileVisitResult.CONTINUE));
+        assertThat(warnings(log).size(), is(equalTo(1)));
+        assertThat(warnings(log).get(0), containsString("Cannot read " + temp.resolve("src/main/java")));
+    }
+
+    @Test
+    public void collectCandidates_aDirectoryThatCannotBeListed_isWarnedAboutAndTheWalkGoesOn() throws Exception {
+        // arrange
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path sourceRoot = temp.resolve("src/main/java");
+        writeJava(sourceRoot.resolve("a/A.java"), "class A {}\n");
+        writeJava(sourceRoot.resolve("locked/L.java"), "class L {}\n");
+        writeJava(sourceRoot.resolve("z/Z.java"), "class Z {}\n");
+        final SourceFileIndexer indexer = indexer(temp, temp.resolve("out"), Collections.<String>emptyList(), 0L, 0L);
+        final ListAppender<ILoggingEvent> log = captureLog();
+
+        // act
+        final List<String> selected;
+        try (AutoCloseable locked = unlistable(sourceRoot.resolve("locked"))) {
+            selected = names(indexer.collectCandidates(sourceRoot));
+        } finally {
+            release(log);
+        }
+
+        // assert
+        assertThat(selected, is(equalTo(Arrays.asList("A.java", "Z.java"))));
+        assertThat(warnings(log).size(), is(equalTo(1)));
+        assertThat(warnings(log).get(0), containsString("Cannot read " + sourceRoot.resolve("locked")));
+    }
+
+    @Test
+    public void collectCandidates_aDirectoryAnExcludeTakesWhole_isNotEntered() throws Exception {
+        // arrange: a directory below the excluded one that cannot be listed is reached only by entering it
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path sourceRoot = temp.resolve("src/main/java");
+        writeJava(sourceRoot.resolve("a/A.java"), "class A {}\n");
+        writeJava(sourceRoot.resolve("generated/G.java"), "class G {}\n");
+        writeJava(sourceRoot.resolve("generated/locked/L.java"), "class L {}\n");
+        final SourceFileIndexer indexer = indexer(temp, temp.resolve("out"), Arrays.asList("**/generated/**"), 0L, 0L);
+        final ListAppender<ILoggingEvent> log = captureLog();
+
+        // act
+        final List<String> selected;
+        try (AutoCloseable locked = unlistable(sourceRoot.resolve("generated/locked"))) {
+            selected = names(indexer.collectCandidates(sourceRoot));
+        } finally {
+            release(log);
+        }
+
+        // assert
+        assertThat(selected, is(equalTo(Arrays.asList("A.java"))));
+        assertThat(warnings(log), is(equalTo(Collections.<String>emptyList())));
+    }
+
+    @Test
+    public void collectCandidates_anExcludedDirectoryThatCannotBeListed_isLeftOutWithoutAWarning() throws Exception {
+        // arrange
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path sourceRoot = temp.resolve("src/main/java");
+        writeJava(sourceRoot.resolve("a/A.java"), "class A {}\n");
+        writeJava(sourceRoot.resolve("generated/G.java"), "class G {}\n");
+        final SourceFileIndexer indexer = indexer(temp, temp.resolve("out"), Arrays.asList("**/generated/**"), 0L, 0L);
+        final ListAppender<ILoggingEvent> log = captureLog();
+
+        // act
+        final List<String> selected;
+        try (AutoCloseable locked = unlistable(sourceRoot.resolve("generated"))) {
+            selected = names(indexer.collectCandidates(sourceRoot));
+        } finally {
+            release(log);
+        }
+
+        // assert
+        assertThat(selected, is(equalTo(Arrays.asList("A.java"))));
+        assertThat(warnings(log), is(equalTo(Collections.<String>emptyList())));
     }
     // </editor-fold>
 

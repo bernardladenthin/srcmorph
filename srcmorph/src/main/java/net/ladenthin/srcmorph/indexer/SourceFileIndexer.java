@@ -5,15 +5,17 @@ package net.ladenthin.srcmorph.indexer;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
 import lombok.ToString;
 import net.ladenthin.srcmorph.config.ModelDefinition;
 import net.ladenthin.srcmorph.config.ModelRegistry;
@@ -38,7 +40,6 @@ import net.ladenthin.srcmorph.routing.ConditionEvaluator;
 import net.ladenthin.srcmorph.routing.FileContext;
 import net.ladenthin.srcmorph.routing.RuleSelector;
 import net.ladenthin.srcmorph.support.ChecksumSupport;
-import net.ladenthin.srcmorph.support.Java8CompatibilityHelper;
 import net.ladenthin.srcmorph.support.Shebang;
 import net.ladenthin.srcmorph.support.SourceExcludeFilter;
 import net.ladenthin.srcmorph.support.SourceLines;
@@ -117,7 +118,6 @@ public final class SourceFileIndexer {
     private final ChecksumSupport checksumSupport = new ChecksumSupport();
     private final AiMdRewritePolicy headerSupport;
     private final AiMdDocumentCodec documentCodec = new AiMdDocumentCodec();
-    private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
     private final RuleSelector fieldGenerationSelector = new RuleSelector();
     private final ConditionEvaluator conditionEvaluator = new ConditionEvaluator();
     private final GenerationTimeEstimator timeEstimator = new GenerationTimeEstimator();
@@ -233,37 +233,101 @@ public final class SourceFileIndexer {
      * <p>The files come sorted by their path with {@code /} separators, not in the order the file system
      * lists them, so the plan, the run and its record name them in the same order on every machine.</p>
      *
+     * <p>The walk does not enter a directory an exclude takes as a whole ({@link #enterDirectory(Path)}),
+     * and a file or directory it cannot read is left out with a warning
+     * ({@link #walkFailed(Path, IOException)}), not the end of the run.</p>
+     *
      * @param sourceRoot source root directory to walk
      * @return the matching candidate files, sorted by path
-     * @throws IOException if the tree cannot be walked or a file size or first line cannot be read
+     * @throws IOException if a file size cannot be read
      */
     public List<Path> collectCandidates(final Path sourceRoot) throws IOException {
-        final List<Path> candidates = new ArrayList<>();
-        try (Stream<Path> stream = Files.walk(sourceRoot)) {
-            for (final Path path : compatibilityHelper.toList(
-                    stream.filter(Files::isRegularFile).sorted(BY_PATH))) {
-                final boolean byName = matchesExtension(path);
-                if (!byName && !mayNameAnInterpreter(path)) {
-                    continue;
-                }
-                if (!matchesSubtree(path)) {
-                    continue;
-                }
-                if (isExcluded(path)) {
-                    LOGGER.debug("Excluded from indexing: {}", path);
-                    continue;
-                }
-                if (!matchesSize(path)) {
-                    LOGGER.debug("Outside configured size band, skipped: {}", path);
-                    continue;
-                }
-                if (!byName && !namesAnInterpreter(path)) {
-                    continue;
-                }
-                candidates.add(path);
+        final List<Path> files = new ArrayList<>();
+        Files.walkFileTree(sourceRoot, new SimpleFileVisitor<Path>() {
+            @Override
+            public FileVisitResult preVisitDirectory(final Path directory, final BasicFileAttributes attributes) {
+                return enterDirectory(directory);
             }
+
+            @Override
+            public FileVisitResult visitFile(final Path file, final BasicFileAttributes attributes) {
+                // a link to a file is taken, as the walk took it before: the attributes are the link's own
+                if (Files.isRegularFile(file)) {
+                    files.add(file);
+                }
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult visitFileFailed(final Path file, final IOException e) {
+                return walkFailed(file, e);
+            }
+
+            @Override
+            public FileVisitResult postVisitDirectory(final Path directory, final @Nullable IOException e) {
+                return e != null ? walkFailed(directory, e) : FileVisitResult.CONTINUE;
+            }
+        });
+        files.sort(BY_PATH);
+        final List<Path> candidates = new ArrayList<>();
+        for (final Path path : files) {
+            final boolean byName = matchesExtension(path);
+            if (!byName && !mayNameAnInterpreter(path)) {
+                continue;
+            }
+            if (!matchesSubtree(path)) {
+                continue;
+            }
+            if (isExcluded(path)) {
+                LOGGER.debug("Excluded from indexing: {}", path);
+                continue;
+            }
+            if (!matchesSize(path)) {
+                LOGGER.debug("Outside configured size band, skipped: {}", path);
+                continue;
+            }
+            if (!byName && !namesAnInterpreter(path)) {
+                continue;
+            }
+            candidates.add(path);
         }
         return candidates;
+    }
+
+    /**
+     * Returns whether the walk enters a directory: not one an exclude takes as a whole
+     * ({@link SourceExcludeFilter#isExcludedDirectory(String)}), since no file below it could be a
+     * candidate; the walk opens no directory below it.
+     *
+     * @param directory the directory the walk reached
+     * @return {@link FileVisitResult#SKIP_SUBTREE} for an excluded directory, {@link FileVisitResult#CONTINUE}
+     *         otherwise
+     */
+    FileVisitResult enterDirectory(final Path directory) {
+        if (excludeFilter.isExcludedDirectory(baseRelative(directory))) {
+            LOGGER.debug("Excluded from indexing, not entered: {}", directory);
+            return FileVisitResult.SKIP_SUBTREE;
+        }
+        return FileVisitResult.CONTINUE;
+    }
+
+    /**
+     * Goes on with the walk after a file or a directory could not be read (a directory without the
+     * permission to list it, a file that vanished during the walk): nothing below it is a candidate, with a
+     * warning, or only a debug line for a directory an exclude takes as a whole, whose files would not be
+     * candidates anyway.
+     *
+     * @param path the file or directory
+     * @param e    why it could not be read
+     * @return {@link FileVisitResult#CONTINUE}
+     */
+    FileVisitResult walkFailed(final Path path, final IOException e) {
+        if (excludeFilter.isExcludedDirectory(baseRelative(path))) {
+            LOGGER.debug("Cannot read the excluded {}: {}", path, e.toString());
+        } else {
+            LOGGER.warn("Cannot read {}, so nothing of it is indexed: {}", path, e.toString());
+        }
+        return FileVisitResult.CONTINUE;
     }
 
     /**
@@ -665,8 +729,18 @@ public final class SourceFileIndexer {
      * @return {@code true} if the file should be skipped
      */
     private boolean isExcluded(final Path path) {
-        final String relative = baseDirectory.relativize(path).toString().replace('\\', '/');
-        return excludeFilter.isExcluded(relative);
+        return excludeFilter.isExcluded(baseRelative(path));
+    }
+
+    /**
+     * Returns a path relative to {@link #baseDirectory} with {@code /} separators, as the exclude globs
+     * read it.
+     *
+     * @param path a path below the base directory
+     * @return the relative path; {@code ""} for the base directory itself
+     */
+    private String baseRelative(final Path path) {
+        return baseDirectory.relativize(path).toString().replace('\\', '/');
     }
 
     /**

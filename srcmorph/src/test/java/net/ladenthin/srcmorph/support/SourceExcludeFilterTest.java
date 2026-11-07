@@ -210,6 +210,63 @@ public class SourceExcludeFilterTest {
     }
     // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="isExcludedDirectory">
+    @Test
+    public void isExcludedDirectory_trailingDoubleStar_takesTheDirectoryAndEveryOneBelowIt() {
+        // arrange
+        final SourceExcludeFilter filter = new SourceExcludeFilter(Collections.singletonList(" target/** "));
+
+        // act, assert
+        assertThat(filter.isExcludedDirectory("target"), is(true));
+        assertThat(filter.isExcluded("target/a/b.java"), is(true));
+        assertThat(filter.isExcludedDirectory("src"), is(false));
+        assertThat(filter.isExcludedDirectory("src/target"), is(false));
+        assertThat(filter.isExcludedDirectory("targets"), is(false));
+    }
+
+    @Test
+    public void isExcludedDirectory_doubleStarOnBothSidesAndAlternatives_takesEveryDirectoryOfThatName() {
+        // arrange
+        final SourceExcludeFilter filter = new SourceExcludeFilter(Collections.singletonList("**/{target,build}/**"));
+
+        // act, assert
+        assertThat(filter.isExcludedDirectory("target"), is(true));
+        assertThat(filter.isExcludedDirectory("m/build"), is(true));
+        assertThat(filter.isExcludedDirectory("m/src"), is(false));
+    }
+
+    @Test
+    public void isExcludedDirectory_excludesNotEndingInSlashDoubleStar_takeNoDirectory() {
+        // arrange: each excludes files in the directory, none every file below it
+        final SourceExcludeFilter filter =
+                new SourceExcludeFilter(Arrays.asList("target/*", "target**", "target/**/*.java", "**/", "target"));
+
+        // act, assert
+        assertThat(filter.isExcludedDirectory("target"), is(false));
+        assertThat(filter.isExcludedDirectory("target/a"), is(false));
+    }
+
+    @Test
+    public void isExcludedDirectory_theBaseDirectory_isNeverTaken() {
+        // arrange: */** excludes no file at the base root itself, and /** none at all
+        final SourceExcludeFilter filter = new SourceExcludeFilter(Arrays.asList("*/**", "/**"));
+
+        // act, assert
+        assertThat(filter.isExcluded("Foo.java"), is(false));
+        assertThat(filter.isExcludedDirectory(""), is(false));
+        assertThat(filter.isExcludedDirectory("a"), is(true));
+    }
+
+    @Test
+    public void isExcludedDirectory_noExcludes_takesNoDirectory() {
+        // arrange
+        final SourceExcludeFilter filter = new SourceExcludeFilter(null);
+
+        // act, assert
+        assertThat(filter.isExcludedDirectory("target"), is(false));
+    }
+    // </editor-fold>
+
     // <editor-fold defaultstate="collapsed" desc="constructor">
     @Test
     public void constructor_unclosedBrace_throwsException() {
