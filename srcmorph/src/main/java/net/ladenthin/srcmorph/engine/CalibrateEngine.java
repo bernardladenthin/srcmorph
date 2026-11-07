@@ -25,6 +25,7 @@ import net.ladenthin.srcmorph.prompt.PromptCatalog;
 import net.ladenthin.srcmorph.prompt.PromptPreparer;
 import net.ladenthin.srcmorph.provider.GenerationProvider;
 import net.ladenthin.srcmorph.provider.GenerationProviderFactory;
+import net.ladenthin.srcmorph.routing.RuleSelector;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,6 +48,7 @@ public final class CalibrateEngine {
     private static final Logger LOGGER = LoggerFactory.getLogger(CalibrateEngine.class);
 
     private final SrcMorphConfiguration config;
+    private final GenerationProviderFactory providerFactory;
     private final CalibrationRunner calibrationRunner = new CalibrationRunner();
 
     /**
@@ -55,16 +57,31 @@ public final class CalibrateEngine {
      * @param config the run configuration
      */
     public CalibrateEngine(final SrcMorphConfiguration config) {
-        this.config = config;
+        this(config, new GenerationProviderFactory());
     }
 
     /**
-     * Calibrates every distinct model referenced by the configured routing rules.
+     * Creates a new {@link CalibrateEngine} whose models are built by the given factory (a test hands
+     * in one whose provider fails).
+     *
+     * @param config          the run configuration
+     * @param providerFactory builds each calibrated model's provider
+     */
+    CalibrateEngine(final SrcMorphConfiguration config, final GenerationProviderFactory providerFactory) {
+        this.config = config;
+        this.providerFactory = providerFactory;
+    }
+
+    /**
+     * Calibrates every distinct model the configured routing rules route a file to; a skip rule routes
+     * none, so its model is not loaded. The rules are validated as a run validates them first (the rule
+     * set, every routed model defined, every prompt with a template, every model file).
      *
      * @return the calibration report, one measurement per distinct routed model
-     * @throws SrcMorphException if no routable rule is configured, or a model fails to load/generate (any
-     *                            {@link IOException} from the provider is caught per-model and rewrapped
-     *                            with the failing model's key)
+     * @throws SrcMorphException if no routable rule is configured, the rules are invalid, or a model fails
+     *                            to load or generate (any {@link IOException} or {@link RuntimeException}
+     *                            of the provider, a native one too, is caught per model and rewrapped with
+     *                            the failing model's key)
      */
     public CalibrationReport execute() throws SrcMorphException {
         final List<? extends @Nullable RoutingRule> rules = config.getRules();
@@ -78,19 +95,26 @@ public final class CalibrateEngine {
         final ModelRegistry modelDefinitionSupport =
                 EngineSupport.buildAiModelDefinitionSupport(config.getAiDefinitions(), config.getModelDirectory());
         final PromptPreparer promptPreparationSupport = new PromptPreparer(promptSupport);
-        final GenerationProviderFactory providerFactory = new GenerationProviderFactory();
 
-        // Distinct routed models, each mapped to a representative prompt key (skip rules have none).
-        final Map<String, String> modelToPrompt = new LinkedHashMap<>();
+        // the checks of a run, so a calibration fails on what the run would fail on, as a configuration error
+        try {
+            new RuleSelector().validate(rules);
+        } catch (final IllegalArgumentException e) {
+            throw new SrcMorphException("Invalid rules: " + e.getMessage(), e);
+        }
+        final List<RoutingRule> routed = new ArrayList<>(rules.size());
         for (final @Nullable RoutingRule rule : rules) {
-            if (rule == null) {
-                continue;
+            if (rule != null && !rule.isSkip()) {
+                routed.add(rule);
             }
-            final String model = rule.getAiDefinitionKey();
-            final String prompt = rule.getPromptKey();
-            if (model != null && prompt != null) {
-                modelToPrompt.putIfAbsent(model, prompt);
-            }
+        }
+        EngineSupport.requireDefinedModels(modelDefinitionSupport, routed);
+        EngineSupport.requirePrompts(promptSupport, routed);
+
+        // Distinct routed models, each mapped to a representative prompt key; a valid route rule has both.
+        final Map<String, String> modelToPrompt = new LinkedHashMap<>();
+        for (final RoutingRule rule : routed) {
+            modelToPrompt.putIfAbsent(rule.requireAiDefinitionKey(), rule.requirePromptKey());
         }
         if (modelToPrompt.isEmpty()) {
             throw new SrcMorphException("No routable (model + prompt) rule found to calibrate.");
@@ -106,12 +130,7 @@ public final class CalibrateEngine {
         final List<CalibrationReport.ModelMeasurement> measurements = new ArrayList<>(modelToPrompt.size());
         for (final Map.Entry<String, String> entry : modelToPrompt.entrySet()) {
             measurements.add(calibrateModel(
-                    entry.getKey(),
-                    entry.getValue(),
-                    modelDefinitionSupport,
-                    promptSupport,
-                    promptPreparationSupport,
-                    providerFactory));
+                    entry.getKey(), entry.getValue(), modelDefinitionSupport, promptSupport, promptPreparationSupport));
         }
 
         final CalibrationReport report = new CalibrationReport(measurements);
@@ -168,18 +187,43 @@ public final class CalibrateEngine {
      * @param modelDefinitionSupport   model lookup
      * @param promptSupport            prompt lookup (for the provider)
      * @param promptPreparationSupport prompt preparation (for the window calculation)
-     * @param providerFactory          provider factory
      * @return the model's key paired with its measurement
-     * @throws SrcMorphException if the model fails to load or generate
+     * @throws SrcMorphException if the model fails to load or generate: an {@link IOException} and a
+     *                           {@link RuntimeException} (the JNI binding's {@code IllegalStateException}
+     *                           of a model that does not load, say) alike, naming the model
      */
     private CalibrationReport.ModelMeasurement calibrateModel(
             final String modelKey,
             final String promptKey,
             final ModelRegistry modelDefinitionSupport,
             final PromptCatalog promptSupport,
-            final PromptPreparer promptPreparationSupport,
-            final GenerationProviderFactory providerFactory)
+            final PromptPreparer promptPreparationSupport)
             throws SrcMorphException {
+        try {
+            return measureModel(modelKey, promptKey, modelDefinitionSupport, promptSupport, promptPreparationSupport);
+        } catch (final IOException | RuntimeException e) {
+            throw new SrcMorphException("Calibration failed for model '" + modelKey + "': " + e, e);
+        }
+    }
+
+    /**
+     * Loads one model, measures it and logs the result; {@link #calibrateModel} names the model in a failure.
+     *
+     * @param modelKey                 the aiDefinitionKey to calibrate
+     * @param promptKey                a representative prompt key routed to this model
+     * @param modelDefinitionSupport   model lookup
+     * @param promptSupport            prompt lookup (for the provider)
+     * @param promptPreparationSupport prompt preparation (for the window calculation)
+     * @return the model's key paired with its measurement
+     * @throws IOException if the provider fails
+     */
+    private CalibrationReport.ModelMeasurement measureModel(
+            final String modelKey,
+            final String promptKey,
+            final ModelRegistry modelDefinitionSupport,
+            final PromptCatalog promptSupport,
+            final PromptPreparer promptPreparationSupport)
+            throws IOException {
         final ModelDefinition modelConfig = modelDefinitionSupport.definition(modelKey);
         final long windowChars = calibrationRunner.windowChars(modelConfig, promptKey, promptPreparationSupport);
 
@@ -218,8 +262,6 @@ public final class CalibrateEngine {
                         + "cachePrompt/cacheReuse/swaFull are costing KV memory without paying for it)");
             }
             return new CalibrationReport.ModelMeasurement(modelKey, m);
-        } catch (final IOException e) {
-            throw new SrcMorphException("Calibration failed for model '" + modelKey + "': " + e.getMessage(), e);
         }
     }
 }
