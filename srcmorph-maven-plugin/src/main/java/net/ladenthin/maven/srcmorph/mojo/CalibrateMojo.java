@@ -54,8 +54,9 @@ public class CalibrateMojo extends AbstractSrcMorphMojo {
             getLog().info("");
             getLog().info("Paste each calibration: block into its model's entry under aiDefinitions"
                     + " (numbers are per machine).");
-            getLog().info("These are the model's own measured prefill/decode throughput (from the engine's "
-                    + "per-call timings); only the mock/no-timings path falls back to a wall-clock estimate.");
+            getLog().info("These are the model's own measured prefill/decode throughput (from the per-call timings"
+                    + " llamacpp-jni reports); an openai-compatible server reports none, so its numbers are a"
+                    + " wall-clock estimate, with one more (billed) probe request.");
             for (final String line : report.renderPasteBlock().split("\n", -1)) {
                 getLog().info(line);
             }

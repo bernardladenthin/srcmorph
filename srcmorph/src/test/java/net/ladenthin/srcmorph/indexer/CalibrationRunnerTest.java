@@ -55,7 +55,7 @@ public class CalibrationRunnerTest {
     @Test
     public void measure_zeroRateProvider_takesWallClockFallback() throws Exception {
         // arrange
-        // A provider that reports zero rates (like the real JNI path) forces the wall-clock fallback; the
+        // A provider that reports zero rates (like an openai-compatible server) forces the wall-clock fallback; the
         // measured charsPerToken then comes from the config (4), proving the fallback branch ran.
         final GenerationProvider zeroRateProvider = new GenerationProvider() {
             @Override

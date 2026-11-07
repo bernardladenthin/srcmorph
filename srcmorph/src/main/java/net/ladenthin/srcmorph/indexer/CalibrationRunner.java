@@ -104,9 +104,10 @@ public final class CalibrationRunner {
                     near.cachedPromptTokens());
         }
 
-        // Fallback (no reported timings, e.g. mock): estimate by wall-clock. Only now do the decode probe
-        // (a TINY prompt whose prefill KV is reused from the warmup, so its wall-clock is ~pure decode; its
-        // generated text gives the ACTUAL output size).
+        // Fallback (no reported prefill rate: an openai-compatible server reports token counts only; the
+        // llamacpp-jni and mock providers report their rates): estimate by wall-clock. Only now do the decode
+        // probe, a fourth request that a remote server bills too (a TINY prompt whose prefill KV is reused
+        // from the warmup, so its wall-clock is ~pure decode; its generated text gives the ACTUAL output size).
         final long probeStartNanos = System.nanoTime();
         final TimedGeneration probe =
                 provider.generateWithTimings(new GenerationRequest(promptKey, contextFile, tinySource));

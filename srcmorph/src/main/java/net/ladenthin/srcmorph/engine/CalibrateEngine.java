@@ -38,7 +38,8 @@ import org.slf4j.LoggerFactory;
  * module. For each distinct model a {@link GenerateEngine} run would load (the {@code aiDefinitionKey}s
  * referenced by {@link SrcMorphConfiguration#getRules()}), loads the model once (catching a
  * bad path / OOM / wrong native early), runs a couple of representative generations via
- * {@link CalibrationRunner}, and reads the model's own measured prefill/decode throughput. The caller
+ * {@link CalibrationRunner}, and reads the model's own measured prefill/decode throughput (an
+ * {@code openai-compatible} server reports none: its numbers are a wall-clock estimate). The caller
  * pastes {@link CalibrationReport#renderPasteBlock()} into the model's entry under {@code aiDefinitions} so the plan's time
  * estimate reflects <em>this</em> machine instead of the built-in estimate, which is based on GPT-6 Luna.</p>
  */
@@ -251,17 +252,46 @@ public final class CalibrateEngine {
                         m.midPrefillTokensPerSecond(),
                         m.prefillTokensPerSecond()));
             }
-            // The only observable the prefix-reuse settings produce. Reporting it is what turns
-            // cachePrompt/cacheReuse/swaFull from an article of faith into a measurement.
-            if (m.cachedPromptTokens() > 0) {
-                LOGGER.info(
-                        "  (prompt cache: {} prompt token(s) reused from the KV cache - prefix reuse is working)",
-                        m.cachedPromptTokens());
-            } else {
-                LOGGER.warn("  (prompt cache: no prompt tokens were reused on this model; "
-                        + "cachePrompt/cacheReuse/swaFull are costing KV memory without paying for it)");
-            }
+            logPromptCache(modelKey, modelConfig, m.cachedPromptTokens());
             return new CalibrationReport.ModelMeasurement(modelKey, m);
+        }
+    }
+
+    /**
+     * Logs the prompt tokens the model reused, as its provider reuses them.
+     *
+     * <p>For a local model it is the only observable the prefix-reuse settings produce; reporting it is
+     * what turns {@code cachePrompt}/{@code cacheReuse}/{@code swaFull} from an article of faith into a
+     * measurement, so none reused is a warning about them. An {@code openai-compatible} server caches a
+     * prompt (or not) on its own: those settings do not reach it, and none reused names no setting.</p>
+     *
+     * @param modelKey           the calibrated model's key
+     * @param modelConfig        its definition (its own {@code provider} overrides the run's)
+     * @param cachedPromptTokens the prompt tokens the near-window request reused
+     */
+    private void logPromptCache(
+            final String modelKey, final ModelDefinition modelConfig, final int cachedPromptTokens) {
+        final boolean remote = GenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE.equals(
+                GenerationProviderFactory.effectiveProvider(config.getGenerationProvider(), modelConfig.getProvider()));
+        if (remote) {
+            if (cachedPromptTokens > 0) {
+                LOGGER.info(
+                        "  (prompt cache: the server reports {} prompt token(s) of model '{}' read from its cache)",
+                        cachedPromptTokens,
+                        modelKey);
+            } else {
+                LOGGER.info(
+                        "  (prompt cache: the server reports no cached prompt tokens for model '{}'; a remote"
+                                + " server caches on its own, cachePrompt/cacheReuse/swaFull do not reach it)",
+                        modelKey);
+            }
+        } else if (cachedPromptTokens > 0) {
+            LOGGER.info(
+                    "  (prompt cache: {} prompt token(s) reused from the KV cache - prefix reuse is working)",
+                    cachedPromptTokens);
+        } else {
+            LOGGER.warn("  (prompt cache: no prompt tokens were reused on this model; "
+                    + "cachePrompt/cacheReuse/swaFull are costing KV memory without paying for it)");
         }
     }
 }

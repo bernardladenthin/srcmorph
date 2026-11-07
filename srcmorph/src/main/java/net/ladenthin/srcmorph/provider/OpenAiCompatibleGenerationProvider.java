@@ -132,7 +132,10 @@ public final class OpenAiCompatibleGenerationProvider implements GenerationProvi
     /** The usage of the last {@link #generate} call. */
     private GenerationUsage lastUsage = GenerationUsage.NONE;
 
-    /** How often a request that failed with a retryable status or a timeout is sent again. */
+    /**
+     * How often a request that failed with a retryable status, a connect timeout or (the model list only)
+     * a read timeout is sent again.
+     */
     private final int maxRetries;
 
     private final CompletionParser completionParser = new CompletionParser();

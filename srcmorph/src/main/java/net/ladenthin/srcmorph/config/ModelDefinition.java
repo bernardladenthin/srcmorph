@@ -430,10 +430,13 @@ public class ModelDefinition {
     public static final int DEFAULT_REQUESTS_PER_MINUTE = 0;
 
     /**
-     * Default of the {@code openai-compatible} provider's {@code maxRetries}: {@code 3}. A request that
-     * failed with {@code 408}, {@code 429}, a {@code 5xx} status or a timeout is sent again that many times
-     * at most, after the server's {@code Retry-After} or an exponential backoff with jitter; any other
-     * failure is final at once. {@code 0} sends every request once.
+     * Default of the {@code openai-compatible} provider's {@code maxRetries}: {@code 3}. A request answered
+     * with {@code 408}, {@code 429} (not one saying the quota is used up) or a {@code 5xx} status other than
+     * {@code 501} and {@code 505}, one that hit the connect timeout, and a model list ({@code GET
+     * <baseUrl>/models}) that hit the read timeout are sent again that many times at most, after the
+     * server's {@code Retry-After} or an exponential backoff with jitter. A chat request that hit the read
+     * timeout after it was sent is not sent again (the server may still generate and bill it), and any
+     * other failure is final at once. {@code 0} sends every request once.
      */
     public static final int DEFAULT_MAX_RETRIES = 3;
 

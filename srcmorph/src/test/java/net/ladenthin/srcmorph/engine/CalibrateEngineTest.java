@@ -9,9 +9,14 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -20,12 +25,15 @@ import net.ladenthin.srcmorph.config.ModelDefinition;
 import net.ladenthin.srcmorph.config.RoutingRule;
 import net.ladenthin.srcmorph.config.RuleCondition;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
+import net.ladenthin.srcmorph.prompt.GenerationRequest;
 import net.ladenthin.srcmorph.prompt.PromptCatalog;
 import net.ladenthin.srcmorph.provider.GenerationProvider;
 import net.ladenthin.srcmorph.provider.GenerationProviderFactory;
 import net.ladenthin.srcmorph.provider.ProviderConfig;
+import net.ladenthin.srcmorph.provider.TimedGeneration;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.slf4j.LoggerFactory;
 
 public class CalibrateEngineTest {
 
@@ -81,6 +89,49 @@ public class CalibrateEngineTest {
         condition.setExtensions(Collections.singletonList(".java"));
         rule.setCondition(condition);
         return rule;
+    }
+
+    /** A factory whose every provider answers with timings that report no reused prompt token. */
+    private static GenerationProviderFactory noCacheFactory() {
+        return new GenerationProviderFactory() {
+            @Override
+            public GenerationProvider create(
+                    final String providerName, final ProviderConfig providerConfig, final PromptCatalog prompts) {
+                return new GenerationProvider() {
+                    @Override
+                    public String generate(final GenerationRequest request) {
+                        return "answer";
+                    }
+
+                    @Override
+                    public TimedGeneration generateWithTimings(final GenerationRequest request) {
+                        return new TimedGeneration("answer", 100, 0, 500.0d, 10, 50.0d);
+                    }
+                };
+            }
+        };
+    }
+
+    /** Calibrates the default model with {@link #noCacheFactory()} and returns the engine's log lines. */
+    private List<String> promptCacheLogOf(final SrcMorphConfiguration config) throws SrcMorphException {
+        final ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        final Logger logger = (Logger) LoggerFactory.getLogger(CalibrateEngine.class);
+        final Level previousLevel = logger.getLevel();
+        logger.setLevel(Level.INFO);
+        logger.addAppender(appender);
+        try {
+            new CalibrateEngine(config, noCacheFactory()).execute();
+        } finally {
+            logger.detachAppender(appender);
+            logger.setLevel(previousLevel);
+            appender.stop();
+        }
+        final List<String> lines = new ArrayList<>();
+        for (final ILoggingEvent event : appender.list) {
+            lines.add(event.getLevel() + " " + event.getFormattedMessage());
+        }
+        return lines;
     }
 
     // <editor-fold defaultstate="collapsed" desc="execute">
@@ -328,6 +379,51 @@ public class CalibrateEngineTest {
 
         // assert
         assertThat(Files.exists(nested.resolve(CalibrationReport.JSON_FILE_NAME)), is(true));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="execute: the prompt cache line">
+    /** A local model that reused no prompt token is a warning about its own prefix-reuse settings. */
+    @Test
+    public void execute_localModelWithoutReusedTokens_warnsAboutItsKvSettings() throws Exception {
+        // arrange
+        final SrcMorphConfiguration config = baseConfig();
+        config.setRules(fallbackRules());
+
+        // act
+        final List<String> lines = promptCacheLogOf(config);
+
+        // assert
+        assertThat(
+                lines.contains("WARN   (prompt cache: no prompt tokens were reused on this model; "
+                        + "cachePrompt/cacheReuse/swaFull are costing KV memory without paying for it)"),
+                is(true));
+    }
+
+    /**
+     * A remote server caches on its own: none reused is no warning, and it blames no local KV setting,
+     * which never reaches the server.
+     */
+    @Test
+    public void execute_remoteModelWithoutReusedTokens_blamesNoLocalSetting() throws Exception {
+        // arrange
+        final SrcMorphConfiguration config = baseConfig();
+        final ModelDefinition remote = mockModelDefinition(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
+        remote.setProvider("openai-compatible");
+        remote.setBaseUrl("https://models.example.org/v1");
+        config.setAiDefinitions(Collections.singletonList(remote));
+        config.setRules(fallbackRules());
+
+        // act
+        final List<String> lines = promptCacheLogOf(config);
+
+        // assert
+        assertThat(
+                lines.contains("INFO   (prompt cache: the server reports no cached prompt tokens for model '"
+                        + CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT
+                        + "'; a remote server caches on its own, cachePrompt/cacheReuse/swaFull do not reach it)"),
+                is(true));
+        assertThat(lines.toString().contains("costing KV memory"), is(false));
     }
     // </editor-fold>
 }
