@@ -86,7 +86,7 @@ SPDX-License-Identifier: Apache-2.0
         <!-- checker.version also drives the org.checkerframework:checker annotation-processor
              artifact below; the checker-qual dependency version itself is managed by the
              parent's <dependencyManagement> (see comment above <dependencies>). -->
-        <checker.version>4.3.1</checker.version>
+        <checker.version>4.4.0</checker.version>
         <!-- jqwik / Lincheck are no longer dependencies of this module (both moved to srcmorph
              with the config package's tests); see srcmorph/pom.xml for the jqwik "DO NOT UPGRADE
              past 1.9.3" policy note (CLAUDE.md "jqwik prompt-injection in test output"). -->
