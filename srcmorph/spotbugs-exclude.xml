@@ -505,6 +505,7 @@ SPDX-License-Identifier: Apache-2.0
         <Or>
             <Method name="buildPromptSupport"/>
             <Method name="requireDefinedModels"/>
+            <Method name="requirePrompts"/>
             <Method name="validateRoutedModelPaths"/>
         </Or>
         <Bug pattern="OCP_OVERLY_CONCRETE_PARAMETER"/>
@@ -521,11 +522,6 @@ SPDX-License-Identifier: Apache-2.0
         <Class name="net.ladenthin.srcmorph.engine.GenerateEngine"/>
         <Method name="copies"/>
         <Bug pattern="OCP_OVERLY_CONCRETE_COLLECTION_PARAMETER"/>
-    </Match>
-    <Match>
-        <Class name="net.ladenthin.srcmorph.engine.GenerateEngine"/>
-        <Method name="requirePrompts"/>
-        <Bug pattern="OCP_OVERLY_CONCRETE_PARAMETER"/>
     </Match>
     <Match>
         <Class name="net.ladenthin.srcmorph.engine.GenerateEngine"/>
@@ -573,6 +569,20 @@ SPDX-License-Identifier: Apache-2.0
     <Match>
         <Class name="net.ladenthin.srcmorph.config.OversizeStrategy"/>
         <Method name="fromConfig"/>
+        <Bug pattern="IMPROPER_UNICODE"/>
+    </Match>
+
+    <!--
+        IMPROPER_UNICODE on SourceFileIndexer.isFileSummaryName and phaseFileClash, for the reason above:
+        they compare a file name case-insensitively with package.ai.md and project.ai.md, two fixed ASCII
+        names, because a case-insensitive file system makes Package.ai.md the package phase's file too.
+    -->
+    <Match>
+        <Class name="net.ladenthin.srcmorph.indexer.SourceFileIndexer"/>
+        <Or>
+            <Method name="isFileSummaryName"/>
+            <Method name="phaseFileClash"/>
+        </Or>
         <Bug pattern="IMPROPER_UNICODE"/>
     </Match>
 

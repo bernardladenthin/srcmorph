@@ -42,6 +42,7 @@ import net.ladenthin.srcmorph.routing.ConditionEvaluator;
 import net.ladenthin.srcmorph.routing.FileContext;
 import net.ladenthin.srcmorph.routing.RuleSelector;
 import net.ladenthin.srcmorph.support.ChecksumSupport;
+import net.ladenthin.srcmorph.support.Java8CompatibilityHelper;
 import net.ladenthin.srcmorph.support.Shebang;
 import net.ladenthin.srcmorph.support.SourceExcludeFilter;
 import net.ladenthin.srcmorph.support.SourceLines;
@@ -272,7 +273,7 @@ public final class SourceFileIndexer {
             }
         });
         files.sort(BY_PATH);
-        final List<Path> candidates = new ArrayList<>();
+        final List<Path> candidates = new ArrayList<>(files.size());
         for (final Path path : files) {
             final boolean byName = matchesExtension(path);
             if (!byName && !mayNameAnInterpreter(path)) {
@@ -315,34 +316,13 @@ public final class SourceFileIndexer {
         if (!Files.isDirectory(root)) {
             return orphans;
         }
-        final Set<Path> produced = new HashSet<>();
+        final Set<Path> produced = new HashSet<>(new Java8CompatibilityHelper().hashMapCapacityFor(sources.size()));
         for (final Path source : sources) {
             produced.add(targetFile(source));
         }
-        final List<Path> summaries = new ArrayList<>();
-        Files.walkFileTree(root, new SimpleFileVisitor<Path>() {
-            @Override
-            public FileVisitResult visitFile(final Path file, final BasicFileAttributes attributes) {
-                if (attributes.isRegularFile() && isFileSummaryName(file) && !produced.contains(file)) {
-                    summaries.add(file);
-                }
-                return FileVisitResult.CONTINUE;
-            }
-
-            @Override
-            public FileVisitResult visitFileFailed(final Path file, final IOException e) {
-                LOGGER.warn("Cannot read {} of the output directory, so it is kept: {}", file, e.toString());
-                return FileVisitResult.CONTINUE;
-            }
-
-            @Override
-            public FileVisitResult postVisitDirectory(final Path directory, final @Nullable IOException e) {
-                if (e != null) {
-                    LOGGER.warn("Cannot read {} of the output directory, so it is kept: {}", directory, e.toString());
-                }
-                return FileVisitResult.CONTINUE;
-            }
-        });
+        final SummaryCollector collector = new SummaryCollector(produced);
+        Files.walkFileTree(root, collector);
+        final List<Path> summaries = collector.summaries;
         summaries.sort(BY_PATH);
         for (final Path summary : summaries) {
             final String nodeType;
@@ -373,9 +353,58 @@ public final class SourceFileIndexer {
         }
         final String name = namePath.toString();
         return name.endsWith(AiMdHeaderCodec.AI_MD_EXTENSION)
-                && !name.equalsIgnoreCase(AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME)
-                && !name.equalsIgnoreCase(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME)
+                && !AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME.equalsIgnoreCase(name)
+                && !AiMdHeaderCodec.PROJECT_AI_MD_FILENAME.equalsIgnoreCase(name)
                 && !name.startsWith(AiMdHeaderCodec.GENERATED_BY_PREFIX);
+    }
+
+    /**
+     * Goes on with the walk of the output directory after a file or a directory of it could not be read:
+     * what is below it is kept, with a warning.
+     *
+     * @param path the file or directory
+     * @param e    why it could not be read
+     * @return {@link FileVisitResult#CONTINUE}
+     */
+    static FileVisitResult keptUnreadable(final Path path, final IOException e) {
+        LOGGER.warn("Cannot read {} of the output directory, so it is kept: {}", path, e.toString());
+        return FileVisitResult.CONTINUE;
+    }
+
+    /**
+     * Collects the files of the output directory that may be file summaries by their name
+     * ({@link #isFileSummaryName(Path)}) and that no source of the run is summarized into; what it cannot
+     * read it keeps ({@link #keptUnreadable(Path, IOException)}).
+     */
+    private static final class SummaryCollector extends SimpleFileVisitor<Path> {
+
+        /** The summaries the run's sources are summarized into. */
+        private final Set<Path> produced;
+
+        /** The files collected, in the order of the walk. */
+        final List<Path> summaries = new ArrayList<>();
+
+        SummaryCollector(final Set<Path> produced) {
+            this.produced = produced;
+        }
+
+        @Override
+        public FileVisitResult visitFile(final Path file, final BasicFileAttributes attributes) {
+            if (attributes.isRegularFile() && isFileSummaryName(file) && !produced.contains(file)) {
+                summaries.add(file);
+            }
+            return FileVisitResult.CONTINUE;
+        }
+
+        @Override
+        public FileVisitResult visitFileFailed(final Path file, final IOException e) {
+            return keptUnreadable(file, e);
+        }
+
+        @Override
+        public FileVisitResult postVisitDirectory(final Path directory, final @Nullable IOException e) {
+            return e != null ? keptUnreadable(directory, e) : FileVisitResult.CONTINUE;
+        }
     }
 
     /**
@@ -596,10 +625,10 @@ public final class SourceFileIndexer {
             return null;
         }
         final String fileName = name.toString();
-        if (fileName.equalsIgnoreCase(AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME)) {
+        if (AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME.equalsIgnoreCase(fileName)) {
             return PACKAGE_FILE_CLASH;
         }
-        if (fileName.equalsIgnoreCase(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME)
+        if (AiMdHeaderCodec.PROJECT_AI_MD_FILENAME.equalsIgnoreCase(fileName)
                 && outputRoot.normalize().equals(target.getParent())) {
             return PROJECT_FILE_CLASH;
         }

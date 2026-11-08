@@ -181,20 +181,10 @@ public final class GenerateEngine {
         // 2b. The file summaries below the output directory no file of this plan is summarized into: listed in
         //     the plan always, deleted only by a run that generates with pruneOrphans (step 3d).
         final boolean planOnly = !checkOnly && config.isPlanOnly();
-        final boolean prune = config.isPruneOrphans() && !planOnly && !checkOnly;
-        for (final Path orphan : fileIndexer.orphanedSummaries(routedFiles(plan))) {
-            plan.addOrphan(orphan);
-        }
+        final boolean prune = !planOnly && !checkOnly && config.isPruneOrphans();
+        addOrphans(plan, fileIndexer);
         LOGGER.info("AI index plan (Markdown):\n{}", plan.renderMarkdown(basePath));
-        if (!plan.orphans().isEmpty()) {
-            LOGGER.warn(
-                    "{} file summary(ies) below the output directory belong to no file of this plan (see 'Orphaned"
-                            + " summaries' in the plan above); {}",
-                    plan.orphans().size(),
-                    prune
-                            ? "pruneOrphans deletes them before the run"
-                            : "the package and project phases still read them, and pruneOrphans: true deletes them");
-        }
+        warnOrphans(plan, prune);
 
         // 3. A file that matched no rule and no fallback is a fatal misconfiguration.
         if (!plan.unmatched().isEmpty()) {
@@ -253,9 +243,7 @@ public final class GenerateEngine {
 
         // 3d. The orphaned summaries go before the run, so the package and project phases after it no
         //     longer read them.
-        if (prune) {
-            deleteOrphans(plan.orphans());
-        }
+        deleteOrphans(plan.orphans(), prune);
 
         // 4. Execute model group by model group: load each model once, index its files, close.
         //    Progress is the running sum of each finished file's PLAN estimate over the grand total
@@ -423,12 +411,48 @@ public final class GenerateEngine {
     }
 
     /**
-     * Deletes the orphaned summaries ({@code pruneOrphans}), each with a log line; one that cannot be
-     * deleted is a warning, not the end of the run.
+     * Adds the orphaned summaries to the plan: the file summaries below the output directory that no
+     * routed file of the plan is summarized into.
+     *
+     * @param plan        the plan
+     * @param fileIndexer the indexer that walks the output directory
+     * @throws IOException if the output directory cannot be walked
+     */
+    private static void addOrphans(final IndexPlan plan, final SourceFileIndexer fileIndexer) throws IOException {
+        for (final Path orphan : fileIndexer.orphanedSummaries(routedFiles(plan))) {
+            plan.addOrphan(orphan);
+        }
+    }
+
+    /**
+     * Warns about the plan's orphaned summaries, if any, naming whether this run deletes them.
+     *
+     * @param plan  the plan
+     * @param prune whether this run deletes them
+     */
+    private static void warnOrphans(final IndexPlan plan, final boolean prune) {
+        if (!plan.orphans().isEmpty()) {
+            LOGGER.warn(
+                    "{} file summary(ies) below the output directory belong to no file of this plan (see 'Orphaned"
+                            + " summaries' in the plan above); {}",
+                    plan.orphans().size(),
+                    prune
+                            ? "pruneOrphans deletes them before the run"
+                            : "the package and project phases still read them, and pruneOrphans: true deletes them");
+        }
+    }
+
+    /**
+     * Deletes the orphaned summaries when {@code pruneOrphans} applies, each with a log line; one that
+     * cannot be deleted is a warning, not the end of the run.
      *
      * @param orphans the orphaned summaries
+     * @param prune   whether this run deletes them
      */
-    private static void deleteOrphans(final List<Path> orphans) {
+    private static void deleteOrphans(final List<Path> orphans, final boolean prune) {
+        if (!prune) {
+            return;
+        }
         for (final Path orphan : orphans) {
             try {
                 Files.deleteIfExists(orphan);
