@@ -22,6 +22,10 @@ repository.
 | 3 | SonarCloud: the analysis of PR #269 reads, that of `main` does not: `main` was analysed as a short branch (`Branch name: main, type: short` in the run of 2026-11-04), the main branch `master` last three months ago | the owner renamed the main branch to `main` (2026-11-07); left: one analysis of `main` as the long branch (the push of the merge of #269, or a re-run of the last SonarQube run on `main`), then its issues are read | Owner | PR #269 |
 | 38 | Use jllama's `ChatStreamAssembler` (not in `llama` 6.0.0) | switch with its release | External | Other open items |
 | 40 | Merge PR #269 | merge | Owner | PR #269 |
+| 137 | A source with an extension whose content cannot be read ends plan, check and generate (`plan()` reads it unguarded) | warn, keep its summary, leave it out; test | Claude | Review 2026-11-08 (5) |
+| 138 | plot.py divides a `costUsd: null` (a failed cost lookup run.py records) | leave such a run out of the cost charts; test | Claude | Review 2026-11-08 (5) |
+| 139 | The Luna parity test of run.py compares 20 of the kinds both route | compare every shared kind, the known differences listed with a reason | Claude | Review 2026-11-08 (5) |
+| 140 | The self-test's XML tier test reads only rules that take `.xml` by extension or name | every XML extension and `pathGlob` too | Claude | Review 2026-11-08 (5) |
 
 ## Open
 
@@ -34,6 +38,10 @@ repository.
   #269's code smells left: the cognitive complexity of nine methods and an eight-parameter method
   (refactors to report, not to apply), "test methods should not be public" (the owner's guides decide
   the other way) and a few false positives (comments read as code).
+
+### Review 2026-11-08 (5)
+
+The two reviews of 167cc5e0: rows 137 to 140.
 
 ### Known limits, for the next model round (no open work)
 
