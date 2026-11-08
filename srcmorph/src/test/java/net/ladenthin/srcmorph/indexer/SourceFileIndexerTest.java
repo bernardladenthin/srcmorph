@@ -289,9 +289,9 @@ public class SourceFileIndexerTest {
                 indexer(temp, temp.resolve("out"), Arrays.asList("**/generated/**", "**/*.txt"), 0L, 0L);
 
         // act, assert
-        assertThat(indexer.enterDirectory(temp.resolve("src/main/generated")), is(FileVisitResult.SKIP_SUBTREE));
-        assertThat(indexer.enterDirectory(temp.resolve("src/main/java")), is(FileVisitResult.CONTINUE));
-        assertThat(indexer.enterDirectory(temp), is(FileVisitResult.CONTINUE));
+        assertThat(indexer.enterDirectory(temp.resolve("src/main/generated"), temp), is(FileVisitResult.SKIP_SUBTREE));
+        assertThat(indexer.enterDirectory(temp.resolve("src/main/java"), temp), is(FileVisitResult.CONTINUE));
+        assertThat(indexer.enterDirectory(temp, temp), is(FileVisitResult.CONTINUE));
     }
 
     @Test
@@ -307,8 +307,58 @@ public class SourceFileIndexerTest {
 
         // assert
         assertThat(candidates, is(equalTo(Collections.singletonList(temp.resolve("docker/Dockerfile.dev")))));
-        assertThat(indexer.enterDirectory(temp.resolve("out")), is(FileVisitResult.SKIP_SUBTREE));
-        assertThat(indexer.enterDirectory(temp.resolve("out/../docker")), is(FileVisitResult.CONTINUE));
+        assertThat(indexer.enterDirectory(temp.resolve("out"), temp), is(FileVisitResult.SKIP_SUBTREE));
+        assertThat(indexer.enterDirectory(temp.resolve("out/../docker"), temp), is(FileVisitResult.CONTINUE));
+        assertThat(indexer.enterDirectory(temp.resolve("out"), temp.resolve("out")), is(FileVisitResult.CONTINUE));
+    }
+
+    @Test
+    public void collectCandidates_theOutputDirectoryIsTheSubtree_takesItsSourcesButNoSummary() throws Exception {
+        // arrange: the summaries are written next to their sources, the walk starts in the output directory
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path out = temp.resolve("out");
+        writeJava(out.resolve("docker/Dockerfile.dev"), "FROM alpine\n");
+        writeJava(out.resolve("docker/Dockerfile.dev.ai.md"), "### Dockerfile.dev\n");
+        writeJava(out.resolve("docker/Dockerfile.old.AI.MD"), "### Dockerfile.old\n");
+        final SourceFileIndexer indexer = indexerWithNames(temp, Arrays.asList("Dockerfile.*"));
+
+        // act
+        final List<Path> candidates = indexer.collectCandidates(out);
+
+        // assert
+        assertThat(candidates, is(equalTo(Collections.singletonList(out.resolve("docker/Dockerfile.dev")))));
+    }
+
+    @Test
+    public void collectCandidates_theOutputDirectoryIsTheBase_takesItsSourcesButNoSummary() throws Exception {
+        // arrange: the output directory is the base, a subtree below it holds sources and summaries
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        writeJava(temp.resolve("src/main/java/a/Foo.java"), "class Foo {}\n");
+        writeJava(temp.resolve("src/main/java/a/Foo.java.ai.md"), "### Foo.java\n");
+        writeJava(temp.resolve("other/Bar.java.ai.md"), "### Bar.java\n");
+        final SourceFileIndexer indexer = new SourceFileIndexer(
+                temp,
+                temp,
+                Arrays.asList(".java"),
+                Arrays.asList("*.md"),
+                Collections.<String>emptyList(),
+                "1.0.0",
+                "0.0.0",
+                Collections.<Path>emptyList(),
+                Collections.<String>emptyList(),
+                0L,
+                0L,
+                false,
+                new RegenerateOn(),
+                SrcMorphConfiguration.DEFAULT_CONTENT_HEAD_CHARS);
+
+        // act
+        final List<Path> fromSubtree = indexer.collectCandidates(temp.resolve("src/main/java"));
+        final List<Path> fromBase = indexer.collectCandidates(temp);
+
+        // assert
+        assertThat(fromSubtree, is(equalTo(Collections.singletonList(temp.resolve("src/main/java/a/Foo.java")))));
+        assertThat(fromBase, is(equalTo(Collections.singletonList(temp.resolve("src/main/java/a/Foo.java")))));
     }
 
     @Test

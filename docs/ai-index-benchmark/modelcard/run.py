@@ -205,7 +205,8 @@ def condition_matches(condition, rel_path, head):
     if "pathGlob" in condition:
         return path_glob(condition["pathGlob"]).fullmatch(rel_path) is not None
     if "contentMatches" in condition:
-        return re.search(condition["contentMatches"], head) is not None
+        # ASCII, as java.util.regex reads \w, \s, \d and (?i) without UNICODE_CHARACTER_CLASS
+        return re.search(condition["contentMatches"], head, re.ASCII) is not None
     raise ValueError(f"a condition run.py does not read: {condition}")
 
 
@@ -270,7 +271,8 @@ LANGUAGES = (("shell", {"extensions": [".sh", ".bash", ".ksh"]}, "shell", 0),
              ("camel-yaml", _and({"extensions": YAML_EXTENSIONS},
                                 {"contentMatches": r"(?m)^-[ \t]+(?:(?:route|routeTemplate|templatedRoute|rest)[ \t]*:|from[ \t]*:[ \t]*"
                                                  r"""(?:["']?(?!https?:)[a-z][\w+.-]*:|(?:#[^\n]*)?\r?\n"""
-                                                 r"(?:[ \t]+(?:id|description)[ \t]*:[^\n]*\n)*[ \t]+(?:uri|steps|parameters)[ \t]*:))"}),
+                                                 r"(?:[ \t]*+(?:#[^\n]*+)?\r?\n|[ \t]++(?:id|description)[ \t]*+:[^\n]*+\n)*+"
+                                                 r"[ \t]+(?:uri|steps|parameters)[ \t]*:))"}),
               "ops", 10),
              ("compose", {"fileNames": ["docker-compose*.{yml,yaml}", "compose*.{yml,yaml}"]}, "ops", 10),
              ("ansible", _or({"pathGlob": "**/roles/*/{tasks,handlers,defaults,vars,meta}/*.{yml,yaml}"},
@@ -301,12 +303,14 @@ SECRETS_RULE = {"id": "secrets", "skip": True, "priority": 1000, "condition": _o
     # Maven's settings.xml (server passwords) by its root element, not an Android res/xml/settings.xml
     _and({"fileNames": ["settings.xml"]}, {"contentMatches": r"<settings[\s>]"}),
     # a properties file that gives a password, secret, token, API key, private key or credentials, a
-    # secret key too, a value after =, : or a blank (not a ${...} reference, nor a key that only
-    # starts so)
+    # secret key too, a value after =, : or a blank (not a whole ${NAME}, @NAME@ or #{...} placeholder,
+    # a flag, a number or a log level, nor a key that only starts so)
     _and({"extensions": [".properties"]},
-         {"contentMatches": r"(?im)^[ \t]*+[\w.\-]*?(?:password|passwd|pwd|(?<![^._\s-])pass(?:phrase)?|secret"
+         {"contentMatches": r"(?im)^[ \t]*+[\w.\-]*?(?:password|passwd|pwd|passphrase|(?<![^._\s-])pass|secret"
                             r"|token|api[._-]?key|private[._-]?key|credentials?)(?:[._-]?(?:access[._-]?)?key)?"
-                            r"(?![a-z])(?:[ \t]*+[=:]|[ \t]++(?![=:]))[ \t]*+(?!\$\{)\S"}),
+                            r"(?:[ \t]*+[=:]|[ \t]++(?![=:]))[ \t]*+"
+                            r"""(?!["']?\$\{[\w.\-]+\}["']?\s*$|@[\w.\-]+@\s*$|#\{[^}\n]*\}\s*$"""
+                            r"|(?:true|false|yes|no|on|off|\d+|trace|debug|info|warn|error|fatal|all)\s*$)\S"}),
     # a Kubernetes Secret, whatever its name (deploy/postgres.yaml), but not a Helm chart's template
     _and({"extensions": YAML_EXTENSIONS}, {"contentMatches": K8S_SECRET}, {"not": HELM_TEMPLATE}),
     # named for a vault, secrets or credentials, but not a CI workflow or action, a Helm chart's template

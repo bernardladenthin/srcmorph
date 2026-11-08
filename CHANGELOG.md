@@ -196,6 +196,10 @@ The entries below hold the details; what a 1.4.0 user changes:
 - **A large file of an XML kind stays with its kind's rule:** the self-test's `big-xml` and
   `huge-xml` tiers no longer take a `persistence.xml`, MyBatis mapper, WSDL, Facelets page or the
   other XML kinds (see Changed); a copied configuration takes the tiers' new conditions.
+- **A copied secrets rule takes the new properties pattern** of the self-test (see Changed): the
+  old one let a value that only starts with `${` through and skipped a flag or a log level.
+- **A benchmark script that runs `score.py` on an output tree of its own** passes `--meta <dir>`
+  and `--scores <dir>`: without them score.py now refuses an `--out` other than the card's.
 
 ### Added
 
@@ -376,11 +380,16 @@ The entries below hold the details; what a 1.4.0 user changes:
 - **Secrets skip a properties file with a secret key, another spelling or a blank separator:** the
   properties branch of the secrets rule (self-test, CLI twin, Luna example, run.py) also takes
   `aws.secretKey=`, `app.secret-key=`, `aws.secret-access-key=`, `jwt.secret.key=`, `db.pwd=`,
-  `keystore.pass=`, `signing.passphrase=`, `jwt.private-key=`, `credentials=` and
-  `mail.smtp.password hunter2` (a blank is a separator in a properties file). A reference
-  (`password = ${DB_PASSWORD}`), an empty value and a key that only starts so (`password.label`,
-  `token.expiry`, `passwordless`) stay sources; a message bundle that labels a password field
-  (`login.password=Password`) is skipped, as before.
+  `keystore.pass=`, `signing.passphrase=`, `gpgPassphrase=`, `jwt.private-key=`, `credentials=`
+  and `mail.smtp.password hunter2` (a blank is a separator in a properties file), and a value that
+  only starts with a placeholder (`${A}hunter2`) or gives a default (`${DB_PASSWORD:hunter2}`). A
+  whole placeholder (`password = ${DB_PASSWORD}`, `"${X}"`, Maven's `@db.password@`, Spring's
+  `#{...}`), a flag, a number or a log level (`token=false`, `secret=3600`,
+  `logging.level.org.secret=DEBUG`), an empty value and a key that only starts so
+  (`password.label`, `token.expiry`, `passwordless`) stay sources; a message bundle that labels a
+  password field (`login.password=Password`) is skipped, as before. Not seen: a plural or a
+  qualifier after the key (`passwords=`, `password.prod=`), credentials in a URL, an `account-key`
+  and a value on a continuation line. run.py reads `contentMatches` in ASCII, as Java does.
 - **score.py wants `--meta` and `--scores` with an `--out` other than the card's** (breaking for a
   script that left them out): it applied the cut-off lists of the card's runs to any output tree and
   wrote over the card's `scores/`, which it now refuses for another `--out` too. The card's quality
@@ -388,8 +397,9 @@ The entries below hold the details; what a 1.4.0 user changes:
 - **OpenAPI, Camel YAML and Dockerfile rules take no lookalike:** the `openapi` rule wants a version
   after `openapi:` or `swagger:` (a Spring `application.yml` with `swagger: enabled: true` goes to
   `ops`), a Camel route's `- from:` names an endpoint (`timer:`, `kafka:`, not `http:`/`https:`,
-  which no Camel consumer is) or holds `uri:`, `steps:` or `parameters:`, after an `id:` or a
-  `description:` too (a list of redirects `- from: /docs/old` is no route), and the configs and
+  which no Camel consumer is) or holds `uri:`, `steps:` or `parameters:`, after an `id:`, a
+  `description:`, a comment or a blank line too (a list of redirects `- from: /docs/old` is no
+  route), and the configs and
   run.py exclude `**/*.dockerignore`, BuildKit's `Dockerfile.dockerignore` that `Dockerfile.*` took.
 - **Secrets skip a Kubernetes Secret by its kind:** the secrets rule of the self-test, its CLI twin,
   the Luna example and run.py skips a YAML file whose head declares `kind: Secret`, whatever its
@@ -643,7 +653,8 @@ The entries below hold the details; what a 1.4.0 user changes:
   string now opens only at a line's start or after a `:`, `,`, `[`, `{` or `-`.
 - **The file walk does not enter the output directory:** a subtree that holds it (`subtrees: ["."]`
   with the default `src/site/ai`) fed srcmorph's own summaries back in: `Dockerfile.ai.md` matched
-  `Dockerfile.*` and was summarized, one level deeper with every run.
+  `Dockerfile.*` and was summarized, one level deeper with every run. An output directory that is a
+  subtree or the base directory itself is walked, without its `.ai.md` files.
 - **The file walk does not enter an excluded directory and goes on past an unreadable one:** it
   descended everywhere and applied the excludes per file, so a directory it could not list ended the
   run with an `UncheckedIOException`, also when an exclude covered it. A directory an exclude ending

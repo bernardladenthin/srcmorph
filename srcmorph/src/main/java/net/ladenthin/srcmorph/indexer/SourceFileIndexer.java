@@ -16,6 +16,7 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Pattern;
 import lombok.ToString;
@@ -243,8 +244,10 @@ public final class SourceFileIndexer {
      * <p>The files come sorted by their path with {@code /} separators, not in the order the file system
      * lists them, so the plan, the run and its record name them in the same order on every machine.</p>
      *
-     * <p>The walk does not enter a directory an exclude takes as a whole ({@link #enterDirectory(Path)}),
-     * and a file or directory it cannot read is left out with a warning
+     * <p>The walk does not enter a directory an exclude takes as a whole, nor the output directory below
+     * {@code sourceRoot} ({@link #enterDirectory(Path, Path)}); an {@code .ai.md} below the output directory
+     * is no candidate either, also when the output directory is {@code sourceRoot} or holds it. A file or
+     * directory it cannot read is left out with a warning
      * ({@link #walkFailed(Path, IOException)}), not the end of the run.</p>
      *
      * @param sourceRoot source root directory to walk
@@ -256,7 +259,7 @@ public final class SourceFileIndexer {
         Files.walkFileTree(sourceRoot, new SimpleFileVisitor<Path>() {
             @Override
             public FileVisitResult preVisitDirectory(final Path directory, final BasicFileAttributes attributes) {
-                return enterDirectory(directory);
+                return enterDirectory(directory, sourceRoot);
             }
 
             @Override
@@ -281,6 +284,10 @@ public final class SourceFileIndexer {
         files.sort(BY_PATH);
         final List<Path> candidates = new ArrayList<>(files.size());
         for (final Path path : files) {
+            if (isSummaryInOutput(path)) {
+                LOGGER.debug("A summary in the output directory, no source: {}", path);
+                continue;
+            }
             final boolean byName = matchesExtension(path);
             if (!byName && !mayNameAnInterpreter(path)) {
                 continue;
@@ -446,6 +453,22 @@ public final class SourceFileIndexer {
     }
 
     /**
+     * Returns whether a file is a summary in the output directory: an {@code .ai.md}, in any case, below
+     * the output root. It is no source, also where the output root is a subtree or the base directory.
+     *
+     * @param file a file the walk found
+     * @return whether {@code file} is an {@code .ai.md} below the output root
+     */
+    private boolean isSummaryInOutput(final Path file) {
+        final @Nullable Path name = file.getFileName();
+        return name != null
+                && name.toString().toLowerCase(Locale.ROOT).endsWith(AiMdHeaderCodec.AI_MD_EXTENSION)
+                && file.toAbsolutePath()
+                        .normalize()
+                        .startsWith(outputRoot.toAbsolutePath().normalize());
+    }
+
+    /**
      * Returns whether a file of the output tree may be a file summary by its name: an {@code .ai.md}, not
      * the package file in any case nor the project file in the output root (below it, a
      * {@code project.ai.md} is the summary of a source named {@code project}), and no marker file.
@@ -549,19 +572,21 @@ public final class SourceFileIndexer {
     /**
      * Returns whether the walk enters a directory: not one an exclude takes as a whole
      * ({@link SourceExcludeFilter#isExcludedDirectory(String)}), since no file below it could be a
-     * candidate, nor the output directory, which a subtree such as {@code .} holds: its summaries are no
-     * sources ({@code Dockerfile.ai.md} would match {@code Dockerfile.*}). The walk opens no directory
-     * below it.
+     * candidate, nor the output directory below the walk's root, which a subtree such as {@code .} holds:
+     * its summaries are no sources ({@code Dockerfile.ai.md} would match {@code Dockerfile.*}). The output
+     * directory that is the walk's root itself is entered, since its sources sit next to the summaries;
+     * {@link #collectCandidates(Path)} leaves the summaries out. The walk opens no directory below a
+     * skipped one.
      *
-     * @param directory the directory the walk reached
-     * @return {@link FileVisitResult#SKIP_SUBTREE} for an excluded directory or the output directory,
-     *         {@link FileVisitResult#CONTINUE} otherwise
+     * @param directory  the directory the walk reached
+     * @param sourceRoot the root of the walk
+     * @return {@link FileVisitResult#SKIP_SUBTREE} for an excluded directory or the output directory below
+     *         {@code sourceRoot}, {@link FileVisitResult#CONTINUE} otherwise
      */
-    FileVisitResult enterDirectory(final Path directory) {
-        if (directory
-                .toAbsolutePath()
-                .normalize()
-                .equals(outputRoot.toAbsolutePath().normalize())) {
+    FileVisitResult enterDirectory(final Path directory, final Path sourceRoot) {
+        final Path absolute = directory.toAbsolutePath().normalize();
+        if (absolute.equals(outputRoot.toAbsolutePath().normalize())
+                && !absolute.equals(sourceRoot.toAbsolutePath().normalize())) {
             LOGGER.debug("The output directory, not entered: {}", directory);
             return FileVisitResult.SKIP_SUBTREE;
         }

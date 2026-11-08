@@ -227,14 +227,16 @@ srcMorph:
             # A properties file that gives a password, secret, token, API key, private key or credentials
             # a value, whatever its name (gradle.properties, application.properties), a secret key too
             # (aws.secretKey, secret-access-key, jwt.secret.key), also spelled pwd, pass or passphrase,
-            # after =, : or a blank; a value that only names an environment variable or another
-            # property (${DB_PASSWORD}) is none, nor is a key that only starts so (password.label). A
-            # message bundle that labels a password field (login.password=Password) is skipped too.
+            # after =, : or a blank; a whole placeholder (${DB_PASSWORD}, "${X}", @db.password@,
+            # #{...}), a flag, a number or a log level is none, nor is a key that only starts so
+            # (password.label). A message bundle that labels a password field (login.password=Password)
+            # is skipped too. Not seen: a plural or a qualifier after the key (passwords=,
+            # password.prod=), credentials in a URL, an account-key, a value on a continuation line.
             # Read in the file's head.
             - and:
                 conditions:
                   - extensions: [".properties"]
-                  - contentMatches: '(?im)^[ \t]*+[\w.\-]*?(?:password|passwd|pwd|(?<![^._\s-])pass(?:phrase)?|secret|token|api[._-]?key|private[._-]?key|credentials?)(?:[._-]?(?:access[._-]?)?key)?(?![a-z])(?:[ \t]*+[=:]|[ \t]++(?![=:]))[ \t]*+(?!\$\{)\S'
+                  - contentMatches: '(?im)^[ \t]*+[\w.\-]*?(?:password|passwd|pwd|passphrase|(?<![^._\s-])pass|secret|token|api[._-]?key|private[._-]?key|credentials?)(?:[._-]?(?:access[._-]?)?key)?(?:[ \t]*+[=:]|[ \t]++(?![=:]))[ \t]*+(?!["'']?\$\{[\w.\-]+\}["'']?\s*$|@[\w.\-]+@\s*$|#\{[^}\n]*\}\s*$|(?:true|false|yes|no|on|off|\d+|trace|debug|info|warn|error|fatal|all)\s*$)\S'
             # A Kubernetes Secret, whatever its name (deploy/postgres.yaml): its data are the
             # credentials. Not a Helm chart's template, which names the values it renders. Read in the
             # file's head, so a Secret in a later document of a long multi-document file is not seen.
@@ -771,7 +773,7 @@ srcMorph:
         and:
           conditions:
             - extensions: [".yml", ".yaml"]
-            - contentMatches: '(?m)^-[ \t]+(?:(?:route|routeTemplate|templatedRoute|rest)[ \t]*:|from[ \t]*:[ \t]*(?:["'']?(?!https?:)[a-z][\w+.-]*:|(?:#[^\n]*)?\r?\n(?:[ \t]+(?:id|description)[ \t]*:[^\n]*\n)*[ \t]+(?:uri|steps|parameters)[ \t]*:))'
+            - contentMatches: '(?m)^-[ \t]+(?:(?:route|routeTemplate|templatedRoute|rest)[ \t]*:|from[ \t]*:[ \t]*(?:["'']?(?!https?:)[a-z][\w+.-]*:|(?:#[^\n]*)?\r?\n(?:[ \t]*+(?:#[^\n]*+)?\r?\n|[ \t]++(?:id|description)[ \t]*+:[^\n]*+\n)*+[ \t]+(?:uri|steps|parameters)[ \t]*:))'
     - id: compose
       promptKey: file-body-ops
       onIncomplete: retryOnce

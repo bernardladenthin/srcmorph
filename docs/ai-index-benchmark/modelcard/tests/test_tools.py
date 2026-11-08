@@ -230,17 +230,20 @@ class RulesTest(unittest.TestCase):
                       if c.get("and", {}).get("conditions", [{}])[0] == {"extensions": [".properties"]}]
         self.assertEqual(len(properties), 1)
         pattern = properties[0]["and"]["conditions"][1]["contentMatches"]
-        self.assertIn(f"contentMatches: '{pattern}'", selftest)
+        self.assertIn("contentMatches: '" + pattern.replace("'", "''") + "'", selftest)
         self.assertTrue(re.search(pattern, "a=1\nsigning.password = x\n"))
         self.assertFalse(re.search(pattern, "spring.datasource.password=${DB_PASSWORD}\n# token=x\n"))
         for text in ("aws.secretKey=AKIAX\n", "app.secret-key=abc\n", "aws.secret-access-key=x\n",
                      "jwt.secret.key=x\n", "mail.smtp.password hunter2\n", "db.pwd=x\n", "keystore.pass=x\n",
-                     "signing.passphrase=x\n", "jwt.private-key=x\n", "credentials=x\n"):
-            self.assertTrue(re.search(pattern, text), text)
+                     "signing.passphrase=x\n", "jwt.private-key=x\n", "credentials=x\n", "gpgPassphrase=x\n",
+                     "password=${A}hunter2\n", "password=${DB_PASSWORD:hunter2}\n", "password=hunter2\r\n"):
+            self.assertTrue(re.search(pattern, text, re.ASCII), text)
         for text in ("password.label=Password\n", "token.expiry 3600\n", "password=\n",
                      "spring.datasource.password = ${DB_PASSWORD}\n", "db.password : ${X}\n", "password = \n",
-                     "compass=north\n", "passwordless=true\n"):
-            self.assertFalse(re.search(pattern, text), text)
+                     "compass=north\n", "passwordless=true\n", 'password="${DB_PASSWORD}"\n', "api.key='${KEY}'\n",
+                     "db.password=@db.password@\n", "jwt.secret=#{systemEnvironment['JWT']}\n", "token=${TOKEN}\r\n",
+                     "token=false\n", "secret=3600\n", "pwd = 0\n", "logging.level.org.secret=DEBUG\n"):
+            self.assertFalse(re.search(pattern, text, re.ASCII), text)
         # and a Kubernetes Secret by its kind, whatever its name, but not a Helm chart's template
         kinds = [c for c in secrets["condition"]["or"]["conditions"]
                  if c.get("and", {}).get("conditions", [{}])[0] == {"extensions": run.YAML_EXTENSIONS}]
@@ -294,6 +297,23 @@ class RulesTest(unittest.TestCase):
         self.assertFalse(run.path_glob("**/*pom.xml").fullmatch("a/b/POM.xml"))
         with self.assertRaises(ValueError):
             run.condition_matches({"size": {"min": 1}}, "a.java", "")
+
+    def test_contentMatches_readsClassesAndCaseInAsciiAsJavaDoes(self):
+        # java.util.regex: \w, \s and (?i) are ASCII without UNICODE_CHARACTER_CLASS
+        self.assertFalse(run.condition_matches({"contentMatches": r"^\w+$"}, "a.txt", "\u00e9t\u00e9"))
+        self.assertFalse(run.condition_matches({"contentMatches": r"(?i)^k$"}, "a.txt", "\u212a"))
+        self.assertFalse(run.condition_matches({"contentMatches": r"^a\sb$"}, "a.txt", "a\u00a0b"))
+        self.assertTrue(run.condition_matches({"contentMatches": r"(?i)^\w+\s\d$"}, "a.txt", "ABC 1"))
+
+    def test_camelYaml_takesARouteWithCommentsAndBlankLinesBeforeItsUri(self):
+        rules = {r["id"]: r for r in run.file_rules(run.PROFILES / "v3", "m", facts=True)}
+        condition = rules["camel-yaml"]["condition"]
+        for text in ("- from:\n    # the clock\n\n    uri: timer:x\n",
+                     "- from:\n    id: a\n    # b\n    description: c\n    steps:\n",
+                     "- from:\r\n    uri: timer:x\r\n", "- from: timer:tick\n"):
+            self.assertTrue(run.condition_matches(condition, "camel/r.yaml", text), text)
+        for text in ("- from:\n\n- uri: /x\n", "- from: /docs/old\n  to: /docs/new\n", "- from: https://a\n"):
+            self.assertFalse(run.condition_matches(condition, "docs/r.yaml", text), text)
 
     def test_gradleKotlinScripts_takeTheGradleRuleOverKotlin(self):
         rules = {r["id"]: r for r in run.file_rules(run.PROFILES / "v3", "m", facts=True)}

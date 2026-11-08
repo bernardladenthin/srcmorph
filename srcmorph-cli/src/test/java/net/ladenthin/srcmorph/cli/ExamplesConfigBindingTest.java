@@ -284,6 +284,11 @@ public class ExamplesConfigBindingTest {
             {"gpg.properties", "signing.passphrase=x\n"},
             {"jwt-keys.properties", "jwt.private-key=x\n"},
             {"cloud.properties", "credentials=x\n"},
+            {"signing.properties", "gpgPassphrase=x\n"},
+            // a value that only starts with a placeholder or gives a default, and a line ending \r\n
+            {"joined.properties", "password=${A}hunter2\n"},
+            {"default.properties", "password=${DB_PASSWORD:hunter2}\n"},
+            {"crlf.properties", "password=hunter2\r\n"},
             // a message bundle that labels a password field: the rule cannot tell it from a password
             {"messages_de.properties", "login.password=Passwort\n"},
             // a Kubernetes Secret, whatever its name, its kind quoted or not
@@ -326,6 +331,14 @@ public class ExamplesConfigBindingTest {
             // a reference or an empty value with a blank before the separator, a word that only holds pass
             {"spaced.properties", "spring.datasource.password = ${DB_PASSWORD}\ndb.password : ${X}\npassword = \n"},
             {"words.properties", "compass=north\nbypass.cache=true\npasswordless=true\n"},
+            // a whole placeholder of another syntax, quoted, or before \r\n
+            {
+                "placeholders.properties",
+                "password=\"${DB_PASSWORD}\"\napi.key='${KEY}'\ndb.password=@db.password@\n"
+                        + "jwt.secret=#{systemEnvironment['JWT']}\ntoken=${TOKEN}\r\n"
+            },
+            // a flag, a number or a log level
+            {"flags.properties", "token=false\nsecret=3600\npwd = 0\nlogging.level.org.secret=DEBUG\n"},
             {"log4j2.properties", "appender.out.type = Console\n"},
         };
 
@@ -368,6 +381,9 @@ public class ExamplesConfigBindingTest {
             {"camel/orders.yaml", "- route:\n    id: orders\n", "camel-yaml"},
             {"camel/named.yaml", "- from:\n    id: from-1\n    description: x\n    uri: timer:x\n", "camel-yaml"},
             {"camel/noted.yaml", "- from:  # the clock\n    uri: timer:x\n", "camel-yaml"},
+            {"camel/commented.yaml", "- from:\n    # the clock\n\n    uri: timer:x\n", "camel-yaml"},
+            {"camel/mixed.yaml", "- from:\n    id: a\n    # b\n    description: c\n    steps:\n", "camel-yaml"},
+            {"docs/blank.yaml", "- from:\n\n- uri: /x\n", "ops"},
             {"docs/redirects.yaml", "- from: /docs/old\n  to: /docs/new\n", "ops"},
             {"docs/moved.yaml", "- from: https://old.example.com/a\n  to: /new\n", "ops"},
         };

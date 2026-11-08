@@ -57,10 +57,14 @@ rule: a password, private key, token, API key or credentials in a URL is named, 
 `***`. A configuration keeps the files that hold credentials away from the model altogether with a
 `skip` rule; the examples, the self-test and the model-card runs carry one (`id: secrets`: `.env`,
 `*.tfvars`, `*.pkrvars.hcl`, `*.tfstate`, Maven's `settings.xml` by its `<settings>` root, keys, a
-`.properties` file that gives a password, secret, token or API key a value, a Kubernetes `Secret` by
+`.properties` file that gives a password (also `passwd`, `pwd`, `pass`, `passphrase`), secret,
+secret key, token, API key, private key or credentials a value other than a whole placeholder, a
+flag, a number or a log level, a Kubernetes `Secret` by
 its kind, and the `vault*`, `*secret*` and `*credential*` configuration files, `.hcl` too, that are
 no CI workflow under `.github/`, no Helm template and no Kubernetes manifest of another kind than
-`Secret`). A secret in any other file (a password in an `application.yml`) is not recognized.
+`Secret`). A secret in any other file (a password in an `application.yml`) is not recognized, nor
+in a properties file a plural or a qualifier after the key (`passwords=`, `password.prod=`),
+credentials in a URL, an `account-key` or a value on a continuation line.
 
 `map-chunk.md` and `reduce-parts.md` (keys `map-chunk`, `reduce-parts`) are not prompts of their own: a rule's `mapPromptKey` and
 `reducePromptKey` append them to its prompt (after a blank line) in the map and the reduce calls of
