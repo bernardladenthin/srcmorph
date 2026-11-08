@@ -124,8 +124,10 @@ public final class SrcMorphConfigurationFileLoader {
     }
 
     /**
-     * Makes a mapper strict: an unknown key fails, and a key set to nothing ({@code srcMorph:} with no
-     * value, {@code null}) keeps the field's default instead of putting {@code null} into it.
+     * Makes a mapper strict: an unknown key fails, a fraction in a whole-number key
+     * ({@code charsPerToken: 2.5}) fails instead of being cut to {@code 2}, and a key set to nothing
+     * ({@code srcMorph:} with no value, {@code null}) keeps the field's default instead of putting
+     * {@code null} into it.
      *
      * @param mapper the mapper
      * @param <M>    the mapper type
@@ -133,6 +135,7 @@ public final class SrcMorphConfigurationFileLoader {
      */
     private static <M extends ObjectMapper> M strict(final M mapper) {
         mapper.enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+        mapper.disable(DeserializationFeature.ACCEPT_FLOAT_AS_INT);
         // a key set to nothing keeps its default; an empty list item ("- " in YAML) is refused with the list's
         // name instead of reaching the run as a null rule or path
         mapper.setDefaultSetterInfo(JsonSetter.Value.construct(Nulls.SKIP, Nulls.FAIL));

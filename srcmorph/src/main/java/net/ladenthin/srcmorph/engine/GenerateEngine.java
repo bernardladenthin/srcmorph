@@ -158,6 +158,7 @@ public final class GenerateEngine {
 
         final SourceFileIndexer fileIndexer =
                 newFileIndexer(basePath, outputPath, resolvedSubtrees, resolvedExtensions);
+        leaveOutOwnFiles(fileIndexer, outputPath);
 
         // 1. Collect candidate files across the configured subtrees.
         final List<Path> candidates = new ArrayList<>();
@@ -411,6 +412,26 @@ public final class GenerateEngine {
             }
         }
         return files;
+    }
+
+    /**
+     * Leaves the files srcmorph itself writes out of the candidates, where a subtree such as {@code .}
+     * reaches them: the calibration reports in the output directory, the run record and the parts.
+     *
+     * @param fileIndexer the run's file indexer
+     * @param outputPath  the output directory
+     */
+    private void leaveOutOwnFiles(final SourceFileIndexer fileIndexer, final Path outputPath) {
+        fileIndexer.leaveOut(outputPath.resolve(CalibrationReport.JSON_FILE_NAME));
+        fileIndexer.leaveOut(outputPath.resolve(CalibrationReport.YAML_FILE_NAME));
+        final File runRecordFile = config.getRunRecordFile();
+        if (runRecordFile != null) {
+            fileIndexer.leaveOut(runRecordFile.toPath());
+        }
+        final File partsDirectory = config.getPartsDirectory();
+        if (partsDirectory != null) {
+            fileIndexer.leaveOut(partsDirectory.toPath());
+        }
     }
 
     /**

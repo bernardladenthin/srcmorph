@@ -1602,6 +1602,34 @@ public class GenerateEngineTest {
     }
 
     @Test
+    public void execute_aSubtreeHoldingSrcmorphsOwnFiles_takesNoneOfThemAsASource() throws Exception {
+        // arrange: the base directory as the subtree, with a calibration report, a run record and parts
+        // of earlier runs, every extension of them indexed and no fallback rule
+        final SrcMorphConfiguration config = baseConfig();
+        config.setSubtrees(Collections.singletonList("."));
+        config.setFileExtensions(Arrays.asList(".java", ".json", ".yaml", ".md"));
+        final Path out = tempDir.resolve("out");
+        Files.createDirectories(out);
+        Files.write(out.resolve("srcmorph-calibration.json"), "{}\n".getBytes(StandardCharsets.UTF_8));
+        Files.write(out.resolve("srcmorph-calibration.yaml"), "models: []\n".getBytes(StandardCharsets.UTF_8));
+        final Path record = tempDir.resolve("records/run.json");
+        Files.createDirectories(record.getParent());
+        Files.write(record, "{}\n".getBytes(StandardCharsets.UTF_8));
+        config.setRunRecordFile(record.toFile());
+        final Path parts = tempDir.resolve("parts");
+        Files.createDirectories(parts.resolve("x"));
+        Files.write(parts.resolve("x/Foo.java.parts.md"), "## map 1\n".getBytes(StandardCharsets.UTF_8));
+        config.setPartsDirectory(parts.toFile());
+
+        // act
+        final GenerateResult result = new GenerateEngine(config).execute();
+
+        // assert: only Foo.java is a source, so no file is left without a rule
+        assertThat(result.written(), is(1));
+        assertThat(Files.exists(tempDir.resolve("out/main/java/com/example/Foo.java.ai.md")), is(true));
+    }
+
+    @Test
     public void execute_pruneOrphansAndAMissingDefaultSubtree_keepsEverySummary() throws Exception {
         // arrange: the index of an earlier run, then the base directory without its src
         final SrcMorphConfiguration config = baseConfig();

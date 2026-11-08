@@ -92,7 +92,7 @@ class ValidateTest(unittest.TestCase):
             run.validate(parser, args(**overrides), MODELS)
 
     def test_valid(self):
-        run.validate(argparse.ArgumentParser(), args(oversize="sampleChunks", max_chunks=6, chars_per_token=2.5),
+        run.validate(argparse.ArgumentParser(), args(oversize="sampleChunks", max_chunks=6, chars_per_token=2),
                      MODELS)
 
     def test_rejected(self):
@@ -101,6 +101,7 @@ class ValidateTest(unittest.TestCase):
         self.assert_rejected(oversize="sampleChunks")
         self.assert_rejected(oversize="sampleChunks", max_chunks=0)
         self.assert_rejected(chars_per_token=0)
+        self.assert_rejected(chars_per_token=-1)
         self.assert_rejected(models="gpt-oss-20b,gpt-6-lunna")
         self.assert_rejected(models="", backend="nowhere")
 
@@ -378,6 +379,8 @@ class RulesTest(unittest.TestCase):
                        "interpreters:ksh", "interpreters:zsh", "interpreters:dash"}, set()),
             "xml": (set(), {"extensions:.wsdl"}),
         }
+        operators = {"dockerfile": ("fileNames", "fileNames"), "ops": ("extensions", "or"),
+                     "perl": ("extensions", "or"), "shell": ("extensions", "or"), "xml": ("extensions", "extensions")}
         # jspx: JSP documents, a kind no corpus of the card holds
         self.assertEqual(set(theirs) - set(ours), {"jspx"})
         self.assertEqual(set(ours) - set(theirs), set())
@@ -392,6 +395,9 @@ class RulesTest(unittest.TestCase):
                     self.assertIn(extension, run.EXTENSIONS, kind)
                 continue
             theirs_only, ours_only = differences[kind]
+            # the same operator where both sides group their leaves (Luna's or adds an interpreter or a name)
+            mine_op, luna_op = (next(iter(c)) for c in (ours[kind]["condition"], theirs[kind]["condition"]))
+            self.assertEqual(operators[kind], (mine_op, luna_op), kind)
             mine, luna_leaves = self.leaves(ours[kind]["condition"]), self.leaves(theirs[kind]["condition"])
             self.assertEqual((luna_leaves - mine, mine - luna_leaves), (theirs_only, ours_only), kind)
             # a file only Luna's condition names is not collected, or run.py's rule takes it too

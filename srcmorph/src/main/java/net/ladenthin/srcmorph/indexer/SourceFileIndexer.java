@@ -129,6 +129,12 @@ public final class SourceFileIndexer {
      */
     private final List<Path> unreadableSources = new ArrayList<>();
 
+    /**
+     * The files and directories srcmorph itself writes ({@link #leaveOut(Path)}), absolute and normalized:
+     * no candidate is one of them or below one.
+     */
+    private final List<Path> ownPaths = new ArrayList<>();
+
     private final RuleSelector fieldGenerationSelector = new RuleSelector();
     private final ConditionEvaluator conditionEvaluator = new ConditionEvaluator();
     private final GenerationTimeEstimator timeEstimator = new GenerationTimeEstimator();
@@ -252,7 +258,8 @@ public final class SourceFileIndexer {
      *
      * @param sourceRoot source root directory to walk
      * @return the matching candidate files, sorted by path
-     * @throws IOException if a file size cannot be read
+     * @throws IOException if the walk cannot start at {@code sourceRoot}; a file that cannot be read is
+     *                     left out with a warning
      */
     public List<Path> collectCandidates(final Path sourceRoot) throws IOException {
         final List<Path> files = new ArrayList<>();
@@ -284,8 +291,8 @@ public final class SourceFileIndexer {
         files.sort(BY_PATH);
         final List<Path> candidates = new ArrayList<>(files.size());
         for (final Path path : files) {
-            if (isSummaryInOutput(path)) {
-                LOGGER.debug("A summary in the output directory, no source: {}", path);
+            if (isSummaryInOutput(path) || isOwn(path)) {
+                LOGGER.debug("A file srcmorph writes, no source: {}", path);
                 continue;
             }
             final boolean byName = matchesExtension(path);
@@ -299,7 +306,16 @@ public final class SourceFileIndexer {
                 LOGGER.debug("Excluded from indexing: {}", path);
                 continue;
             }
-            if (!matchesSize(path)) {
+            final boolean inBand;
+            try {
+                inBand = matchesSize(path);
+            } catch (final IOException e) {
+                // a file that vanished or turned unreadable after the walk listed it
+                LOGGER.warn("Cannot read the size of {}, so it is not indexed: {}", path, e.toString());
+                keepSummariesBelow(path);
+                continue;
+            }
+            if (!inBand) {
                 LOGGER.debug("Outside configured size band, skipped: {}", path);
                 continue;
             }
@@ -588,6 +604,33 @@ public final class SourceFileIndexer {
     }
 
     /**
+     * Leaves a file or directory srcmorph itself writes out of the candidates, as it leaves out the
+     * summaries below the output directory: a calibration report, the run record, the parts directory.
+     * A subtree such as {@code .} reaches them, and they are no sources.
+     *
+     * @param path the file, or the directory whose files are left out
+     */
+    public void leaveOut(final Path path) {
+        ownPaths.add(path.toAbsolutePath().normalize());
+    }
+
+    /**
+     * Returns whether a file is one srcmorph writes ({@link #leaveOut(Path)}) or lies below one.
+     *
+     * @param file a file the walk found
+     * @return whether it is srcmorph's own
+     */
+    private boolean isOwn(final Path file) {
+        final Path absolute = file.toAbsolutePath().normalize();
+        for (final Path own : ownPaths) {
+            if (absolute.startsWith(own)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Keeps every summary of a source path the run does not see: a file or directory the walk could not
      * read, or a subtree that is missing. {@link #orphanedSummaries(Collection)} lists none of the summaries
      * of the file, or below the output directory of the directory, whose sources are not known.
@@ -632,7 +675,7 @@ public final class SourceFileIndexer {
      * @param candidates the candidate files (typically from {@link #collectCandidates(Path)})
      * @param rules      the routing rules in declaration order
      * @return the routing plan
-     * @throws IOException if a file size or content cannot be read
+     * @throws IOException not for a source that cannot be read, which is left out with a warning
      */
     public IndexPlan classify(final Collection<Path> candidates, final List<RoutingRule> rules) throws IOException {
         return plan(candidates, rules, null, null, "");
@@ -654,7 +697,7 @@ public final class SourceFileIndexer {
      *                                 its prompt's tokens gets a warning, not a failure, for too little chunk
      *                                 room by the estimate
      * @return the routing plan
-     * @throws IOException if a file size or content cannot be read
+     * @throws IOException not for a source that cannot be read, which is left out with a warning
      */
     public IndexPlan classify(
             final Collection<Path> candidates,
@@ -667,9 +710,9 @@ public final class SourceFileIndexer {
     }
 
     /**
-     * Plans the run, with the window check when both supports are given. A candidate whose content
-     * cannot be read is left out with a warning, and its summary is kept
-     * ({@link #keepSummariesBelow(Path)}).
+     * Plans the run, with the window check when both supports are given. A candidate whose content or
+     * modification time cannot be read (no permission, a lock, deleted since the walk) is left out with a
+     * warning, and its summary is kept ({@link #keepSummariesBelow(Path)}).
      *
      * @param candidates               the candidate files
      * @param rules                    the routing rules in declaration order
@@ -677,7 +720,7 @@ public final class SourceFileIndexer {
      * @param promptPreparationSupport prompt-template helper, or {@code null} without the window check
      * @param generationProvider       the run's {@code generationProvider}, {@code ""} without the window check
      * @return the routing plan
-     * @throws IOException if a file size or content cannot be read
+     * @throws IOException not for a source that cannot be read, which is left out with a warning
      */
     private IndexPlan plan(
             final Collection<Path> candidates,
@@ -695,10 +738,13 @@ public final class SourceFileIndexer {
             // the size a rule and the plan see is that of the bytes the checksum is taken over (\n line
             // endings, no byte order mark): the same on a CRLF and an LF checkout
             final byte[] bytes;
+            final long lastModified;
             try {
                 bytes = Files.readAllBytes(file);
+                lastModified = Files.getLastModifiedTime(file).toMillis();
             } catch (final IOException e) {
-                // a file whose attributes the walk read but not its content (no read permission, a lock)
+                // a file whose attributes the walk read but not its content (no read permission, a lock), or
+                // one that vanished since
                 LOGGER.warn("Cannot read {}, so it is not indexed: {}", file, e.toString());
                 keepSummariesBelow(file);
                 continue;
@@ -710,7 +756,6 @@ public final class SourceFileIndexer {
                     contentFiltersUsed ? source.substring(0, Math.min(source.length(), contentHeadChars)) : "";
             final String relativePath =
                     baseDirectory.relativize(file).toString().replace('\\', '/');
-            final long lastModified = Files.getLastModifiedTime(file).toMillis();
             final FileContext context =
                     new FileContext(fileName, relativePath, fileSizeBytes, lineCount, lastModified, head);
 

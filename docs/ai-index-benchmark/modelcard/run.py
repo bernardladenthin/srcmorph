@@ -41,7 +41,7 @@ Options: --profile <profile under profiles/> (default v3; it needs the five prom
          --oversize <fail|sample|mapReduce|sampleChunks|deterministic> and --max-chunks <n> (the
          strategy for a
          file larger than the model's window, on every file rule; the default fails such a file),
-         --chars-per-token <n> (replaces every model's estimate: a data file such as a SQL dump has
+         --chars-per-token <n> (a whole number; replaces every model's estimate: a data file such as a SQL dump has
          fewer characters per token than code, and a window filled at 4 is refused by the provider),
          --model-dir <GGUF dir> (local models), --prepend <jars> (the CLI jar, the CUDA natives),
          --parts <dir> (keeps every map and reduce answer of a chunked file below <dir>/<model key>/,
@@ -67,7 +67,6 @@ import argparse
 import hashlib
 import http.client
 import json
-import math
 import os
 import platform
 import re
@@ -772,8 +771,8 @@ def validate(parser, args, models):
         parser.error("--max-chunks applies only to --oversize sampleChunks (mapReduce reads every chunk)")
     if args.oversize == "sampleChunks" and (args.max_chunks is None or args.max_chunks < 1):
         parser.error("--oversize sampleChunks needs --max-chunks of at least 1")
-    if args.chars_per_token is not None and not (math.isfinite(args.chars_per_token) and args.chars_per_token > 0):
-        parser.error("--chars-per-token must be above 0 (0 would switch srcmorph to the static maxInputChars)")
+    if args.chars_per_token is not None and args.chars_per_token < 1:
+        parser.error("--chars-per-token must be at least 1 (0 would switch srcmorph to the static maxInputChars)")
     known = {m["key"] for m in models["models"]}
     unknown = [k for k in args.models.split(",") if k and k not in known]
     if unknown:
@@ -833,7 +832,8 @@ def main():
     parser.add_argument("--facts", action="store_true")
     parser.add_argument("--oversize", default="", choices=("",) + OVERSIZE)
     parser.add_argument("--max-chunks", type=int, default=None)
-    parser.add_argument("--chars-per-token", type=float, default=None)
+    # a whole number, as srcmorph's charsPerToken is: its loader refuses a fraction
+    parser.add_argument("--chars-per-token", type=int, default=None)
     parser.add_argument("--java-prompt", default=JAVA_PROMPT)
     parser.add_argument("--parts", default="")
     args = absolute_paths(parser.parse_args())

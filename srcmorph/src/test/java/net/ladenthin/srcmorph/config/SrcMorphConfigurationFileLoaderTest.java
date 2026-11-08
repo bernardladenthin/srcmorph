@@ -84,6 +84,34 @@ public class SrcMorphConfigurationFileLoaderTest {
     }
 
     @Test
+    public void load_aFractionInAWholeNumberKey_failsNamingIt() throws IOException {
+        // arrange
+        final String model = "srcMorph:\n  aiDefinitions:\n    - key: m\n      modelPath: m.gguf\n";
+        final Path yaml = write("fraction.yaml", model + "      charsPerToken: 2.5\n");
+        final Path json = write(
+                "fraction.json",
+                "{\"srcMorph\":{\"aiDefinitions\":[{\"key\":\"m\",\"modelPath\":\"m.gguf\",\"charsPerToken\":0.5}]}}");
+        final Path whole = write("whole.yaml", model + "      charsPerToken: 3\n      temperature: 1\n");
+        final File base = defaultBase();
+
+        // act
+        final IOException fromYaml =
+                assertThrows(IOException.class, () -> SrcMorphConfigurationFileLoader.load(yaml, base, NO_PROPERTIES));
+        final IOException fromJson =
+                assertThrows(IOException.class, () -> SrcMorphConfigurationFileLoader.load(json, base, NO_PROPERTIES));
+        final ModelDefinition bound = SrcMorphConfigurationFileLoader.load(whole, base, NO_PROPERTIES)
+                .getSrcMorph()
+                .getAiDefinitions()
+                .get(0);
+
+        // assert
+        assertThat(fromYaml.getMessage(), containsString("charsPerToken"));
+        assertThat(fromJson.getMessage(), containsString("charsPerToken"));
+        assertThat(bound.getCharsPerToken(), is(equalTo(3)));
+        assertThat(bound.getTemperature(), is(equalTo(1.0f)));
+    }
+
+    @Test
     public void load_anotherExtension_isRefused() throws IOException {
         // arrange
         final Path file = write("srcmorph.txt", "");

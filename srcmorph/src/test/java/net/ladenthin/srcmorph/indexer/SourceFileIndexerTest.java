@@ -341,6 +341,51 @@ public class SourceFileIndexerTest {
     }
 
     @Test
+    public void collectCandidates_aFileOrDirectoryLeftOut_isNoCandidate() throws Exception {
+        // arrange: a report file and a directory srcmorph writes, below the walk
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        writeJava(temp.resolve("a/Foo.java"), "class Foo {}\n");
+        writeJava(temp.resolve("a/Report.java"), "class Report {}\n");
+        writeJava(temp.resolve("parts/a/Foo.java"), "class Foo {}\n");
+        writeJava(temp.resolve("partsAside/Bar.java"), "class Bar {}\n");
+        final SourceFileIndexer indexer = indexerWithNames(temp, Collections.<String>emptyList());
+        indexer.leaveOut(temp.resolve("a/../a/Report.java"));
+        indexer.leaveOut(temp.resolve("parts"));
+
+        // act
+        final List<Path> candidates = indexer.collectCandidates(temp);
+
+        // assert
+        assertThat(
+                candidates,
+                is(equalTo(Arrays.asList(temp.resolve("a/Foo.java"), temp.resolve("partsAside/Bar.java")))));
+    }
+
+    @Test
+    public void classify_aSourceDeletedAfterTheWalk_isLeftOutWithAWarning() throws Exception {
+        // arrange
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path gone = temp.resolve("a/Gone.java");
+        final Path open = temp.resolve("a/Open.java");
+        writeJava(gone, "class Gone {}\n");
+        writeJava(open, "class Open {}\n");
+        writeSummary(temp.resolve("out/a/Gone.java.ai.md"), "file", "Gone.");
+        final SourceFileIndexer indexer = indexerWithNames(temp, Collections.<String>emptyList());
+        final List<Path> candidates = indexer.collectCandidates(temp);
+        Files.delete(gone);
+        final ListAppender<ILoggingEvent> log = captureLog();
+
+        // act
+        final IndexPlan plan = indexer.classify(candidates, Arrays.asList(rule("fallback", null, false, true)));
+        final List<Path> orphans = indexer.orphanedSummaries(Collections.singletonList(open));
+
+        // assert
+        assertThat(plan.routedCount(), is(equalTo(1)));
+        assertThat(String.join("\n", warnings(log)), containsString("Cannot read " + gone + ", so it is not indexed"));
+        assertThat(orphans, is(equalTo(Collections.<Path>emptyList())));
+    }
+
+    @Test
     public void collectCandidates_theOutputDirectoryIsTheSubtree_takesItsSourcesButNoSummary() throws Exception {
         // arrange: the summaries are written next to their sources, the walk starts in the output directory
         final Path temp = Files.createTempDirectory("ai-index-test");

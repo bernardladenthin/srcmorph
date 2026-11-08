@@ -200,7 +200,9 @@ The entries below hold the details; what a 1.4.0 user changes:
   old one let a value that only starts with `${` through and skipped a flag or a log level.
 - **A benchmark script that runs `run.py` or `score.py` on an output tree of its own** passes
   `--meta <dir>` (and score.py `--scores <dir>`): without them both now refuse an `--out` other
-  than the card's.
+  than the card's. run.py's `--chars-per-token` takes a whole number of at least 1.
+- **A fraction in a whole-number key fails the run** (breaking): `charsPerToken: 2.5`,
+  `contextSize: 4096.0` and the like were cut to an integer without a word; write the whole number.
 
 ### Added
 
@@ -372,6 +374,10 @@ The entries below hold the details; what a 1.4.0 user changes:
 
 ### Changed
 
+- **The configuration loader refuses a fraction in a whole-number key** (breaking), naming the key:
+  Jackson cut `charsPerToken: 2.5` to `2` and `0.5` to `0`, which switches srcmorph to the static
+  `maxInputChars`; run.py's `--chars-per-token 0.5` reached srcmorph that way. A floating-point key
+  (`temperature: 1`) still takes a whole number.
 - **The XML size tiers leave a kind's file to its rule:** `huge-xml` and `big-xml` take only what the
   `xml` rule takes and leave out every file an XML kind rule takes by name or content (jee, mybatis,
   bpmn, persistence, integration; the conditions copied in rule order, a test holds them equal), and
@@ -659,14 +665,17 @@ The entries below hold the details; what a 1.4.0 user changes:
   with the default `src/site/ai`) fed srcmorph's own summaries back in: `Dockerfile.ai.md` matched
   `Dockerfile.*` and was summarized, one level deeper with every run. The walk leaves out every
   `.ai.md` below the output directory and still takes the sources an output directory holds (summaries
-  next to their sources, `outputDirectory: src`).
+  next to their sources, `outputDirectory: src`); nor are srcmorph's other files a source, the
+  calibration reports `srcmorph-calibration.json`/`.yaml` in the output directory, the
+  `runRecordFile` and the files below `partsDirectory`.
 - **The file walk does not enter an excluded directory and goes on past an unreadable one:** it
   descended everywhere and applied the excludes per file, so a directory it could not list ended the
   run with an `UncheckedIOException`, also when an exclude covered it. A directory an exclude ending
   in `/**` takes as a whole (`target/**`, `**/generated/**`) is no longer entered; a file or
   directory that cannot be read is left out with a warning (a debug line when excluded), and so is a
-  source whose content cannot be read (no read permission, a lock), which ended plan, check and
-  generate; its summary is kept. The candidates and their order are unchanged.
+  source whose content, size or modification time cannot be read (no read permission, a lock,
+  deleted after the walk), which ended plan, check and generate; its summary is kept. The
+  candidates and their order are unchanged.
 - **`All` checks the package and the project phase before the file phase** (their rule, prompts and
   model, as `Check` does), so a missing `packageRules` or a wrong phase rule fails before any file is
   sent and billed, not after the whole file phase; with `planOnly` only the file phase is planned.
