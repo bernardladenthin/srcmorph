@@ -298,6 +298,14 @@ class RulesTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             run.condition_matches({"size": {"min": 1}}, "a.java", "")
 
+    def test_metaDirectory_ofARunIsTheCardsOnlyForTheCardsOutputs(self):
+        self.assertEqual(run.meta_directory(str(run.CARD_OUT), None), str(run.CARD_META))
+        self.assertEqual(run.meta_directory(str(run.CARD_OUT), "mine"), "mine")
+        self.assertEqual(run.meta_directory("elsewhere/out", "elsewhere/runs"), "elsewhere/runs")
+        for meta in (None, str(run.CARD_META)):
+            with self.assertRaises(ValueError):
+                run.meta_directory("elsewhere/out", meta)
+
     def test_contentMatches_readsClassesAndCaseInAsciiAsJavaDoes(self):
         # java.util.regex: \w, \s and (?i) are ASCII without UNICODE_CHARACTER_CLASS
         self.assertFalse(run.condition_matches({"contentMatches": r"^\w+$"}, "a.txt", "\u00e9t\u00e9"))

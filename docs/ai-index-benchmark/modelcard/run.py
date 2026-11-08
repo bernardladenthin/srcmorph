@@ -47,7 +47,8 @@ Options: --profile <profile under profiles/> (default v3; it needs the five prom
          --parts <dir> (keeps every map and reduce answer of a chunked file below <dir>/<model key>/,
          srcmorph's partsDirectory), --commit <git rev of the Java snapshot>, --seed <n> (every model's seed, for repeat runs;
          the OpenAI-compatible provider sends it too), --out (a model's earlier summaries there are
-         deleted, a directory holding anything but .ai.md files is refused), --meta, --work (created
+         deleted, a directory holding anything but .ai.md files is refused), --meta (the card's runs/
+         only with the card's --out, another --out names a directory of its own), --work (created
          by run.py and marked so; an existing directory without the marker is refused, never deleted).
 
 <meta>/<model key>.json holds the model definition as sent (without the key variable), the corpus,
@@ -785,6 +786,22 @@ def validate(parser, args, models):
 # configuration file's directory (the logs below --work), not the working one (--model-dir as the
 # directory of a local model's modelPath).
 PATH_OPTIONS = ("work", "out", "meta", "parts", "model_dir")
+# The card's outputs and run records: report.py renders the card from them, score.py scores them.
+CARD_OUT = HERE.parent / "outputs-2026-10"
+CARD_META = HERE / "runs"
+
+
+def meta_directory(out, meta):
+    """Where the runs' meta files of an --out go: --meta, or for the card's own outputs the card's runs/;
+    another output tree names a directory of its own, so the card's run records are not overwritten."""
+    card = Path(out).resolve() == CARD_OUT.resolve()
+    if meta is None:
+        if card:
+            return str(CARD_META)
+        raise ValueError(f"--out {out} is not the card's outputs: --meta names a directory of its own")
+    if not card and Path(meta).resolve() == CARD_META.resolve():
+        raise ValueError(f"--meta {meta} is the card's: the meta of --out {out} goes to a directory of its own")
+    return meta
 
 
 def absolute_paths(args):
@@ -806,8 +823,9 @@ def main():
     parser.add_argument("--model-dir", default="")
     parser.add_argument("--commit", default=JAVA_COMMIT)
     parser.add_argument("--seed", type=int, default=None)
-    parser.add_argument("--out", default=str(HERE.parent / "outputs-2026-10"))
-    parser.add_argument("--meta", default=str(HERE / "runs"))
+    parser.add_argument("--out", default=str(CARD_OUT))
+    parser.add_argument("--meta", help="where <model key>.json goes (default: the card's runs/, only with"
+                        " the card's --out)")
     parser.add_argument("--work", required=True)
     parser.add_argument("--profile", default="v3")
     parser.add_argument("--profile-dir", default=str(PROFILES))
@@ -819,6 +837,10 @@ def main():
     parser.add_argument("--java-prompt", default=JAVA_PROMPT)
     parser.add_argument("--parts", default="")
     args = absolute_paths(parser.parse_args())
+    try:
+        args.meta = meta_directory(args.out, args.meta)
+    except ValueError as e:
+        parser.error(str(e))
     models = json.loads((HERE / "models.json").read_text(encoding="utf-8"))
     validate(parser, args, models)
 

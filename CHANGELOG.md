@@ -198,8 +198,9 @@ The entries below hold the details; what a 1.4.0 user changes:
   other XML kinds (see Changed); a copied configuration takes the tiers' new conditions.
 - **A copied secrets rule takes the new properties pattern** of the self-test (see Changed): the
   old one let a value that only starts with `${` through and skipped a flag or a log level.
-- **A benchmark script that runs `score.py` on an output tree of its own** passes `--meta <dir>`
-  and `--scores <dir>`: without them score.py now refuses an `--out` other than the card's.
+- **A benchmark script that runs `run.py` or `score.py` on an output tree of its own** passes
+  `--meta <dir>` (and score.py `--scores <dir>`): without them both now refuse an `--out` other
+  than the card's.
 
 ### Added
 
@@ -393,7 +394,8 @@ The entries below hold the details; what a 1.4.0 user changes:
 - **score.py wants `--meta` and `--scores` with an `--out` other than the card's** (breaking for a
   script that left them out): it applied the cut-off lists of the card's runs to any output tree and
   wrote over the card's `scores/`, which it now refuses for another `--out` too. The card's quality
-  metric moved from plot.py to `score.card_metrics`, with a test.
+  metric moved from plot.py to `score.card_metrics`, with a test. run.py likewise wants `--meta`
+  with another `--out`: it wrote that run's records over the card's `runs/`.
 - **OpenAPI, Camel YAML and Dockerfile rules take no lookalike:** the `openapi` rule wants a version
   after `openapi:` or `swagger:` (a Spring `application.yml` with `swagger: enabled: true` goes to
   `ops`), a Camel route's `- from:` names an endpoint (`timer:`, `kafka:`, not `http:`/`https:`,
@@ -651,10 +653,11 @@ The entries below hold the details; what a 1.4.0 user changes:
   and blank the rest of the line, so `"get": {`, `"/orders": {` or `"publish": {` lost their colon
   and counted no path, operation, payload or `deprecated: true`, nor did a double-quoted YAML key. A
   string now opens only at a line's start or after a `:`, `,`, `[`, `{` or `-`.
-- **The file walk does not enter the output directory:** a subtree that holds it (`subtrees: ["."]`
+- **No summary in the output directory is a source:** a subtree that holds it (`subtrees: ["."]`
   with the default `src/site/ai`) fed srcmorph's own summaries back in: `Dockerfile.ai.md` matched
-  `Dockerfile.*` and was summarized, one level deeper with every run. An output directory that is a
-  subtree or the base directory itself is walked, without its `.ai.md` files.
+  `Dockerfile.*` and was summarized, one level deeper with every run. The walk leaves out every
+  `.ai.md` below the output directory and still takes the sources an output directory holds (summaries
+  next to their sources, `outputDirectory: src`).
 - **The file walk does not enter an excluded directory and goes on past an unreadable one:** it
   descended everywhere and applied the excludes per file, so a directory it could not list ended the
   run with an `UncheckedIOException`, also when an exclude covered it. A directory an exclude ending

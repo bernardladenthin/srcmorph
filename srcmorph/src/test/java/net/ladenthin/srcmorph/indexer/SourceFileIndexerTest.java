@@ -289,9 +289,9 @@ public class SourceFileIndexerTest {
                 indexer(temp, temp.resolve("out"), Arrays.asList("**/generated/**", "**/*.txt"), 0L, 0L);
 
         // act, assert
-        assertThat(indexer.enterDirectory(temp.resolve("src/main/generated"), temp), is(FileVisitResult.SKIP_SUBTREE));
-        assertThat(indexer.enterDirectory(temp.resolve("src/main/java"), temp), is(FileVisitResult.CONTINUE));
-        assertThat(indexer.enterDirectory(temp, temp), is(FileVisitResult.CONTINUE));
+        assertThat(indexer.enterDirectory(temp.resolve("src/main/generated")), is(FileVisitResult.SKIP_SUBTREE));
+        assertThat(indexer.enterDirectory(temp.resolve("src/main/java")), is(FileVisitResult.CONTINUE));
+        assertThat(indexer.enterDirectory(temp), is(FileVisitResult.CONTINUE));
     }
 
     @Test
@@ -307,9 +307,37 @@ public class SourceFileIndexerTest {
 
         // assert
         assertThat(candidates, is(equalTo(Collections.singletonList(temp.resolve("docker/Dockerfile.dev")))));
-        assertThat(indexer.enterDirectory(temp.resolve("out"), temp), is(FileVisitResult.SKIP_SUBTREE));
-        assertThat(indexer.enterDirectory(temp.resolve("out/../docker"), temp), is(FileVisitResult.CONTINUE));
-        assertThat(indexer.enterDirectory(temp.resolve("out"), temp.resolve("out")), is(FileVisitResult.CONTINUE));
+    }
+
+    @Test
+    public void collectCandidates_theOutputDirectoryBetweenTheSubtreeAndItsSources_takesTheSourcesButNoSummary()
+            throws Exception {
+        // arrange: the base directory as the subtree, the output directory src holds the sources
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path src = temp.resolve("src");
+        writeJava(src.resolve("main/java/a/Foo.java"), "class Foo {}\n");
+        writeJava(src.resolve("main/java/a/Foo.java.ai.md"), "### Foo.java\n");
+        final SourceFileIndexer indexer = new SourceFileIndexer(
+                temp,
+                src,
+                Arrays.asList(".java"),
+                Arrays.asList("*.md"),
+                Collections.<String>emptyList(),
+                "1.0.0",
+                "0.0.0",
+                Collections.<Path>emptyList(),
+                Collections.<String>emptyList(),
+                0L,
+                0L,
+                false,
+                new RegenerateOn(),
+                SrcMorphConfiguration.DEFAULT_CONTENT_HEAD_CHARS);
+
+        // act
+        final List<Path> candidates = indexer.collectCandidates(temp);
+
+        // assert
+        assertThat(candidates, is(equalTo(Collections.singletonList(src.resolve("main/java/a/Foo.java")))));
     }
 
     @Test
