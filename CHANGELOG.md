@@ -22,6 +22,9 @@ The entries below hold the details; what a 1.4.0 user changes:
   escape for a literal brace; `?` matches it); `$${name}` writes a literal `${name}` (it was left as written); a key
   defined twice in `aiDefinitions`, `promptDefinitions` or `factDefinitions` fails the run instead of
   the last one winning.
+- **A link to a directory below a subtree or in the output directory is no longer walked** (on
+  Windows a junction, which 1.4.0 entered): name a linked directory whose files you want as a subtree
+  of its own; with `pruneOrphans` the summaries 1.4.0 wrote below it are deleted otherwise.
 - **The plugin's `G` is srcmorph's version**, no longer the project's: a reader or a script that took
   the header's `G` for the project version reads `projectName` and the build instead.
 - **The first run rewrites every summary**, one model call each: a summary of 1.4.0 records no `M`
@@ -671,17 +674,19 @@ The entries below hold the details; what a 1.4.0 user changes:
   calibration reports `srcmorph-calibration.json`/`.yaml` in the output directory, the
   `runRecordFile` and the `.parts.md` files below `partsDirectory` (a source there stays one; a
   `*.parts.md` written by hand below it is no source either, and `pruneOrphans` removes its summary).
-- **No walk enters a link to a directory below its root:** on Windows the file walk, the orphan
-  scan of `pruneOrphans` and the project phase entered a junction, and the package phase followed a
-  symbolic link on every system, so a link beside its target summarized every file twice and a link
+- **No walk enters a link to a directory below its root:** on Windows the file walk and the project
+  phase entered a junction (and so did the new orphan scan of `pruneOrphans`), and the package phase
+  followed a symbolic link on every system, so a link beside its target summarized every file twice and a link
   back up looped (64 copies of one file measured; on Linux the package phase failed with `ELOOP`),
   and a link like `docs/latest -> v2` rewrote the target's `package.ai.md` on every run. Such a link
-  is now left out with a warning. The start of a walk (a subtree, the output directory) is entered
+  is now left out with a warning (a debug line when an exclude takes it, or when it is the output
+  directory or a subtree of its own). The start of a walk (a subtree, the output directory) is entered
   when it is a link: the file walk, the orphan scan and the project phase took a symbolic link there
   for a file and found nothing, so a linked output directory got no `project.ai.md`. A link to a file
   is still taken, and a directory with another reparse point (a cloud file placeholder) still counts
   as a directory; a volume mounted into a folder carries a junction's reparse point and is taken for
-  a link. The summaries an earlier run wrote below a link are orphans now.
+  a link. A subtree behind a link inside another subtree is now kept as a subtree of its own (it was
+  dropped as part of the other). The summaries an earlier run wrote below a link are orphans now.
 - **The file walk does not enter an excluded directory and goes on past an unreadable one:** it
   descended everywhere and applied the excludes per file, so a directory it could not list ended the
   run with an `UncheckedIOException`, also when an exclude covered it. A directory an exclude ending

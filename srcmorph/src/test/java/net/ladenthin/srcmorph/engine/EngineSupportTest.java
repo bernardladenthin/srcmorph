@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import net.ladenthin.srcmorph.CommonTestFixtures;
 import net.ladenthin.srcmorph.config.FactCounter;
 import net.ladenthin.srcmorph.config.FactDefinition;
 import net.ladenthin.srcmorph.config.ModelDefinition;
@@ -130,6 +131,25 @@ public class EngineSupportTest {
 
         // assert
         assertThat(resolved, is(Arrays.asList(tempDir.resolve("src"), tempDir.resolve("lib"))));
+    }
+
+    @Test
+    public void resolveSubtrees_aSubtreeBehindALinkInsideAnother_isKept() throws Exception {
+        // arrange: src/shared and src/deep/lib lie behind links, which the walk of src does not enter
+        Files.createDirectories(tempDir.resolve("shared/lib"));
+        Files.createDirectories(tempDir.resolve("src/deep"));
+        CommonTestFixtures.directoryLink(tempDir.resolve("src/shared"), tempDir.resolve("shared"));
+        CommonTestFixtures.directoryLink(tempDir.resolve("src/deep/lib"), tempDir.resolve("shared/lib"));
+
+        // act
+        final List<Path> resolved = EngineSupport.resolveSubtrees(
+                tempDir, Arrays.asList("src/shared", "src", "src/deep/lib", "src/shared/lib"));
+
+        // assert: src/shared/lib lies in src/shared, behind no further link
+        assertThat(
+                resolved,
+                is(Arrays.asList(
+                        tempDir.resolve("src/shared"), tempDir.resolve("src"), tempDir.resolve("src/deep/lib"))));
     }
 
     @Test

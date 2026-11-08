@@ -362,6 +362,46 @@ public class SourceFileIndexerTest {
     }
 
     @Test
+    public void collectCandidates_aLinkTheRunLeavesOutOrWalksAnyway_isNoWarning() throws Exception {
+        // arrange: an excluded link, one that is a subtree of its own, and one of neither
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path target = Files.createDirectories(temp.resolve("target"));
+        final Path src = Files.createDirectories(temp.resolve("src"));
+        CommonTestFixtures.directoryLink(src.resolve("build"), target);
+        CommonTestFixtures.directoryLink(src.resolve("shared"), target);
+        CommonTestFixtures.directoryLink(src.resolve("other"), target);
+        final SourceFileIndexer indexer = new SourceFileIndexer(
+                temp,
+                temp.resolve("out"),
+                Arrays.asList(".java"),
+                Collections.<String>emptyList(),
+                Collections.<String>emptyList(),
+                "1.0.0",
+                "0.0.0",
+                Arrays.asList(src, src.resolve("shared")),
+                Collections.singletonList("**/build/**"),
+                0L,
+                0L,
+                false,
+                new RegenerateOn(),
+                SrcMorphConfiguration.DEFAULT_CONTENT_HEAD_CHARS);
+        final ListAppender<ILoggingEvent> log = captureLog();
+
+        // act
+        try {
+            indexer.collectCandidates(src);
+
+            // assert
+            assertThat(
+                    warnings(log),
+                    is(equalTo(Collections.singletonList(
+                            "Not entered, a link to another directory: " + src.resolve("other")))));
+        } finally {
+            release(log);
+        }
+    }
+
+    @Test
     public void collectCandidates_aRootThatIsALink_isEntered() throws Exception {
         // arrange
         final Path temp = Files.createTempDirectory("ai-index-test");

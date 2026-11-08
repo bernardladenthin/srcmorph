@@ -281,10 +281,14 @@ public final class SourceFileIndexer {
         walk(sourceRoot, new SimpleFileVisitor<Path>() {
             @Override
             public FileVisitResult preVisitDirectory(final Path directory, final BasicFileAttributes attributes) {
-                if (isLinkNotEntered(directory, attributes, sourceRoot)) {
+                final FileVisitResult entered = enterDirectory(directory);
+                if (entered == FileVisitResult.CONTINUE
+                        && !directory.equals(sourceRoot)
+                        && DIRECTORY_LINKS.isLink(directory, attributes)) {
+                    sourceLinkNotEntered(directory);
                     return FileVisitResult.SKIP_SUBTREE;
                 }
-                return enterDirectory(directory);
+                return entered;
             }
 
             @Override
@@ -293,7 +297,7 @@ public final class SourceFileIndexer {
                 if (Files.isRegularFile(file)) {
                     files.add(file);
                 } else if (attributes.isSymbolicLink() && Files.isDirectory(file)) {
-                    linkNotEntered(file);
+                    sourceLinkNotEntered(file);
                 }
                 return FileVisitResult.CONTINUE;
             }
@@ -652,6 +656,23 @@ public final class SourceFileIndexer {
             }
             unreadable.add(directory);
             return keptUnreadable(directory, e);
+        }
+    }
+
+    /**
+     * Tells that the walk of a source root does not enter a link to a directory: with a warning, or a debug
+     * line for a link the run leaves out or walks anyway, one an exclude takes as a whole, the output
+     * directory, or a subtree of its own.
+     *
+     * @param link the link
+     */
+    private void sourceLinkNotEntered(final Path link) {
+        if (excludeFilter.isExcludedDirectory(baseRelative(link))) {
+            LOGGER.debug("Excluded from indexing, not entered: {}", link);
+        } else if (link.equals(outputRoot) || isSubtree(link)) {
+            LOGGER.debug("A link to a directory, walked on its own or not at all: {}", link);
+        } else {
+            linkNotEntered(link);
         }
     }
 
@@ -1211,6 +1232,21 @@ public final class SourceFileIndexer {
         }
         for (final Pattern name : fileNames) {
             if (name.matcher(fileName).matches()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Returns whether a directory is one of the subtrees.
+     *
+     * @param directory the directory
+     * @return {@code true} for a subtree
+     */
+    private boolean isSubtree(final Path directory) {
+        for (final Path subtree : subtrees) {
+            if (subtree.equals(directory)) {
                 return true;
             }
         }

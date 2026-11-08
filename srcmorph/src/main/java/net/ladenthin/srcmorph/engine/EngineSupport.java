@@ -31,6 +31,7 @@ import net.ladenthin.srcmorph.provider.OpenAiCompatibleGenerationProvider;
 import net.ladenthin.srcmorph.provider.ProviderConfig;
 import net.ladenthin.srcmorph.provider.ProviderConfigFactory;
 import net.ladenthin.srcmorph.routing.RuleSelector;
+import net.ladenthin.srcmorph.support.DirectoryLinks;
 import net.ladenthin.srcmorph.support.UrlUserInfo;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -105,26 +106,48 @@ final class EngineSupport {
     }
 
     /**
-     * Adds a subtree unless one already added holds it, and drops those it holds.
+     * Adds a subtree unless one already added holds it, and drops those it holds. A subtree that lies
+     * behind a link below another ({@link #behindALink(Path, Path)}) is no part of it: the walk of the
+     * other does not enter the link, so both are kept.
      *
      * @param resolved the subtrees so far, changed in place
      * @param path     the subtree to add
      */
     private static void addOutermost(final List<Path> resolved, final Path path) {
         for (final Path other : resolved) {
-            if (path.startsWith(other)) {
+            if (path.startsWith(other) && !behindALink(other, path)) {
                 LOGGER.info("Subtree {} lies in subtree {}; its files are collected once", path, other);
                 return;
             }
         }
         for (final Iterator<Path> iterator = resolved.iterator(); iterator.hasNext(); ) {
             final Path other = iterator.next();
-            if (other.startsWith(path)) {
+            if (other.startsWith(path) && !behindALink(path, other)) {
                 LOGGER.info("Subtree {} lies in subtree {}; its files are collected once", other, path);
                 iterator.remove();
             }
         }
         resolved.add(path);
+    }
+
+    /**
+     * Returns whether a subtree, or a directory between it and the subtree that holds it, is a link to a
+     * directory ({@link DirectoryLinks}), which no walk enters below its root.
+     *
+     * @param outer the subtree that holds {@code inner}
+     * @param inner the subtree below it, an existing directory
+     * @return {@code true} when a link lies on the way from {@code outer} down to {@code inner}
+     */
+    private static boolean behindALink(final Path outer, final Path inner) {
+        final DirectoryLinks links = new DirectoryLinks();
+        for (@Nullable Path directory = inner;
+                directory != null && !directory.equals(outer);
+                directory = directory.getParent()) {
+            if (!links.isDirectoryNoLink(directory)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
