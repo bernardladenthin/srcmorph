@@ -686,7 +686,9 @@ public class PackageIndexer {
         return !AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME.equals(name)
                 && !(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME.equals(name) && isInOutputRoot(path))
                 && !name.startsWith(AiMdHeaderCodec.GENERATED_BY_PREFIX)
-                && name.endsWith(AiMdHeaderCodec.AI_MD_EXTENSION);
+                && name.endsWith(AiMdHeaderCodec.AI_MD_EXTENSION)
+                // a directory so named is none, nor a link to one
+                && Files.isRegularFile(path);
     }
 
     /**

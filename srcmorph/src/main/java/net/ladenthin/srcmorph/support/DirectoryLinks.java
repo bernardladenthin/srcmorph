@@ -4,11 +4,14 @@
 package net.ladenthin.srcmorph.support;
 
 import java.io.IOException;
+import java.nio.file.FileVisitResult;
+import java.nio.file.FileVisitor;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import lombok.ToString;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Tells a link to a directory from a directory, so a walk enters no directory twice and runs into no
@@ -51,6 +54,66 @@ public class DirectoryLinks {
         } catch (final IOException e) {
             // a junction whose target is gone
             return true;
+        }
+    }
+
+    /**
+     * Walks {@code start} without following links ({@link Files#walkFileTree(Path, FileVisitor)}) and
+     * reports every path to {@code visitor} as the same path below {@code shown}: a walk of a root that is
+     * a symbolic link walks the link's target, as one that does not follow links would take the link for a
+     * file and not enter it, and still names every path by the link.
+     *
+     * @param shown   the path the visitor sees for {@code start}
+     * @param start   the directory walked
+     * @param visitor the visitor
+     * @throws IOException if the visitor throws one, as {@link Files#walkFileTree(Path, FileVisitor)} does
+     */
+    public void walkFileTree(final Path shown, final Path start, final FileVisitor<Path> visitor) throws IOException {
+        Files.walkFileTree(start, new ShownVisitor(shown, start, visitor));
+    }
+
+    /** Hands every path of a walk of {@code start} on as the same path below {@code shown}. */
+    private static final class ShownVisitor implements FileVisitor<Path> {
+
+        /** The path the visitor sees for {@link #start}. */
+        private final Path shown;
+
+        /** The directory walked. */
+        private final Path start;
+
+        /** The visitor the paths are handed on to. */
+        private final FileVisitor<Path> visitor;
+
+        ShownVisitor(final Path shown, final Path start, final FileVisitor<Path> visitor) {
+            this.shown = shown;
+            this.start = start;
+            this.visitor = visitor;
+        }
+
+        @Override
+        public FileVisitResult preVisitDirectory(final Path directory, final BasicFileAttributes attributes)
+                throws IOException {
+            return visitor.preVisitDirectory(shown(directory), attributes);
+        }
+
+        @Override
+        public FileVisitResult visitFile(final Path file, final BasicFileAttributes attributes) throws IOException {
+            return visitor.visitFile(shown(file), attributes);
+        }
+
+        @Override
+        public FileVisitResult visitFileFailed(final Path file, final IOException e) throws IOException {
+            return visitor.visitFileFailed(shown(file), e);
+        }
+
+        @Override
+        public FileVisitResult postVisitDirectory(final Path directory, final @Nullable IOException e)
+                throws IOException {
+            return visitor.postVisitDirectory(shown(directory), e);
+        }
+
+        private Path shown(final Path path) {
+            return shown.resolve(start.relativize(path));
         }
     }
 

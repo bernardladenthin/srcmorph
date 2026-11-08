@@ -671,15 +671,17 @@ The entries below hold the details; what a 1.4.0 user changes:
   calibration reports `srcmorph-calibration.json`/`.yaml` in the output directory, the
   `runRecordFile` and the `.parts.md` files below `partsDirectory` (a source there stays one; a
   `*.parts.md` written by hand below it is no source either, and `pruneOrphans` removes its summary).
-- **No walk enters a link to a directory below its root:** on Windows the file walk and the orphan
-  scan of `pruneOrphans` entered a junction, and the package and project phases followed a symbolic
-  link on every system, so a link beside its target summarized every file twice and a link back up
-  looped (64 copies of one file measured; on Linux the package phase failed with `ELOOP`), and a
-  link like `docs/latest -> v2` rewrote the target's `package.ai.md` on every run. Such a link is now
-  left out with a warning, the start of a walk (a subtree, the output directory) is entered link or
-  not, a link to a file is still taken, and a directory with another reparse point (a cloud file
-  placeholder) still counts as a directory. The summaries an earlier run wrote below a link are
-  orphans now.
+- **No walk enters a link to a directory below its root:** on Windows the file walk, the orphan
+  scan of `pruneOrphans` and the project phase entered a junction, and the package phase followed a
+  symbolic link on every system, so a link beside its target summarized every file twice and a link
+  back up looped (64 copies of one file measured; on Linux the package phase failed with `ELOOP`),
+  and a link like `docs/latest -> v2` rewrote the target's `package.ai.md` on every run. Such a link
+  is now left out with a warning. The start of a walk (a subtree, the output directory) is entered
+  when it is a link: the file walk, the orphan scan and the project phase took a symbolic link there
+  for a file and found nothing, so a linked output directory got no `project.ai.md`. A link to a file
+  is still taken, and a directory with another reparse point (a cloud file placeholder) still counts
+  as a directory; a volume mounted into a folder carries a junction's reparse point and is taken for
+  a link. The summaries an earlier run wrote below a link are orphans now.
 - **The file walk does not enter an excluded directory and goes on past an unreadable one:** it
   descended everywhere and applied the excludes per file, so a directory it could not list ended the
   run with an `UncheckedIOException`, also when an exclude covered it. A directory an exclude ending

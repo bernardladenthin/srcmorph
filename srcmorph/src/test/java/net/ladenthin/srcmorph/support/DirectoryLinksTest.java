@@ -6,11 +6,18 @@ package net.ladenthin.srcmorph.support;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
+import java.io.IOException;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import net.ladenthin.srcmorph.CommonTestFixtures;
 import org.junit.jupiter.api.Test;
 
@@ -88,6 +95,63 @@ public class DirectoryLinksTest {
 
         // act, assert: read as a walk reads it
         assertThat(links.isLink(junction, attributesOf(junction)), is(true));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="walkFileTree">
+    @Test
+    public void walkFileTree_aStartShownAsAnotherPath_reportsEveryPathBelowIt() throws Exception {
+        // arrange
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path start = Files.createDirectories(temp.resolve("real/a"));
+        Files.write(start.resolve("A.java"), new byte[0]);
+        Files.createDirectory(temp.resolve("real/skipped"));
+        Files.write(temp.resolve("real/skipped/S.java"), new byte[0]);
+        final Path locked = Files.createDirectory(temp.resolve("real/locked"));
+        final Path shown = temp.resolve("alias");
+        final List<String> events = new ArrayList<>();
+
+        // act
+        try (AutoCloseable denied = CommonTestFixtures.unlistable(locked)) {
+            links.walkFileTree(shown, temp.resolve("real"), new SimpleFileVisitor<Path>() {
+                @Override
+                public FileVisitResult preVisitDirectory(final Path directory, final BasicFileAttributes attributes) {
+                    events.add("enter " + name(shown, directory));
+                    return directory.endsWith("skipped") ? FileVisitResult.SKIP_SUBTREE : FileVisitResult.CONTINUE;
+                }
+
+                @Override
+                public FileVisitResult visitFile(final Path file, final BasicFileAttributes attributes) {
+                    events.add("file " + name(shown, file));
+                    return FileVisitResult.CONTINUE;
+                }
+
+                @Override
+                public FileVisitResult visitFileFailed(final Path file, final IOException e) {
+                    events.add("failed " + name(shown, file));
+                    return FileVisitResult.CONTINUE;
+                }
+
+                @Override
+                public FileVisitResult postVisitDirectory(final Path directory, final IOException e) {
+                    events.add("leave " + name(shown, directory));
+                    return FileVisitResult.CONTINUE;
+                }
+            });
+        }
+
+        // assert: in the walk's order, which the file system gives; every path below the shown one
+        Collections.sort(events);
+        assertThat(
+                events,
+                is(Arrays.asList(
+                        "enter ", "enter a", "enter skipped", "failed locked", "file a/A.java", "leave ", "leave a")));
+    }
+
+    /** Returns a path below {@code shown}, with {@code /} separators; fails for any other path. */
+    private static String name(final Path shown, final Path path) {
+        assertThat(path.startsWith(shown), is(true));
+        return shown.relativize(path).toString().replace('\\', '/');
     }
     // </editor-fold>
 

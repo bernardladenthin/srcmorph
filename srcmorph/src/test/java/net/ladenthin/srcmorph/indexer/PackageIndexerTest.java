@@ -104,6 +104,34 @@ public class PackageIndexerTest {
     }
 
     @Test
+    public void aggregate_aDirectoryNamedLikeASummary_isNone() throws Exception {
+        // arrange: no summary, only a directory named like one, without a package of its own
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path outputRoot = temp.resolve("ai");
+        Files.createDirectories(outputRoot.resolve("main/a/Odd.java.ai.md"));
+        final PromptCatalog promptSupport = new PromptCatalog(CommonTestFixtures.createPackagePromptDefinitions());
+        final PackageIndexer indexer = new PackageIndexer(
+                temp,
+                outputRoot,
+                "1.0.0",
+                "0.0.0",
+                Collections.<Path>emptyList(),
+                false,
+                new RegenerateOn(),
+                new MockGenerationProvider(),
+                CommonTestFixtures.createPackageFieldGeneration(),
+                promptSupport,
+                CommonTestFixtures.createDefaultAiModelDefinitionSupport());
+
+        // act
+        final IndexTally aggregated = indexer.aggregate(outputRoot);
+
+        // assert
+        assertThat(aggregated.written(), is(equalTo(0)));
+        assertThat(Files.exists(outputRoot.resolve("main/a/package.ai.md")), is(false));
+    }
+
+    @Test
     public void aggregate_aLinkToADirectory_isNotEntered() throws Exception {
         // arrange: a package, a link to it beside it and a link back up, a loop
         final Path temp = Files.createTempDirectory("ai-index-test");

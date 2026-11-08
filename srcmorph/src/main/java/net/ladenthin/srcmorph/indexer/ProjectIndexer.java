@@ -208,7 +208,7 @@ public class ProjectIndexer {
      */
     public IndexOutcome aggregate(final Path rootDirectory) throws IOException {
         final List<Path> packageFiles = new ArrayList<>();
-        Files.walkFileTree(rootDirectory, new SimpleFileVisitor<Path>() {
+        SourceFileIndexer.walk(rootDirectory, new SimpleFileVisitor<Path>() {
             @Override
             public FileVisitResult preVisitDirectory(final Path directory, final BasicFileAttributes attributes) {
                 // a link to another directory would list its packages twice, or loop
@@ -221,6 +221,8 @@ public class ProjectIndexer {
             public FileVisitResult visitFile(final Path file, final BasicFileAttributes attributes) {
                 if (Files.isRegularFile(file) && isPackageAiMdFile(file)) {
                     packageFiles.add(file);
+                } else if (attributes.isSymbolicLink() && Files.isDirectory(file)) {
+                    SourceFileIndexer.linkNotEntered(file);
                 }
                 return FileVisitResult.CONTINUE;
             }

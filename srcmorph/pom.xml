@@ -783,6 +783,7 @@ SPDX-License-Identifier: Apache-2.0
                         <param>net.ladenthin.srcmorph.config.RegenerateOn</param>
                         <param>net.ladenthin.srcmorph.support.ChecksumSupport</param>
                         <param>net.ladenthin.srcmorph.support.DirectoryLinks</param>
+                        <param>net.ladenthin.srcmorph.support.DirectoryLinks$ShownVisitor</param>
                         <param>net.ladenthin.srcmorph.indexer.generation.DeterministicSummary</param>
                         <param>net.ladenthin.srcmorph.support.SourceLines</param>
                         <param>net.ladenthin.srcmorph.indexer.generation.GenerationTimeEstimator</param>

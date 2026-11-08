@@ -6,6 +6,7 @@ package net.ladenthin.srcmorph.indexer;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.FileVisitResult;
+import java.nio.file.FileVisitor;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
@@ -264,7 +265,8 @@ public final class SourceFileIndexer {
      *
      * <p>The walk does not enter a directory an exclude takes as a whole ({@link #enterDirectory(Path)}),
      * nor a link to a directory below {@code sourceRoot} ({@link #isLinkNotEntered(Path, BasicFileAttributes,
-     * Path)}). It enters the output directory, which a subtree such as {@code .} holds and which may hold sources
+     * Path)}), and a {@code sourceRoot} that is a link to one is walked as that directory
+     * ({@link #walk(Path, FileVisitor)}). It enters the output directory, which a subtree such as {@code .} holds and which may hold sources
      * next to their summaries, but no {@code .ai.md} below it is a candidate. A file or directory it cannot
      * read is left out with a warning
      * ({@link #walkFailed(Path, IOException)}), not the end of the run.</p>
@@ -276,7 +278,7 @@ public final class SourceFileIndexer {
      */
     public List<Path> collectCandidates(final Path sourceRoot) throws IOException {
         final List<Path> files = new ArrayList<>();
-        Files.walkFileTree(sourceRoot, new SimpleFileVisitor<Path>() {
+        walk(sourceRoot, new SimpleFileVisitor<Path>() {
             @Override
             public FileVisitResult preVisitDirectory(final Path directory, final BasicFileAttributes attributes) {
                 if (isLinkNotEntered(directory, attributes, sourceRoot)) {
@@ -373,7 +375,7 @@ public final class SourceFileIndexer {
             produced.add(targetFile(source));
         }
         final SummaryCollector collector = new SummaryCollector(root);
-        Files.walkFileTree(root, collector);
+        walk(root, collector);
         final Set<Path> orphaned =
                 new HashSet<>(new Java8CompatibilityHelper().hashMapCapacityFor(collector.summaries.size()));
         for (final Path summary : collector.summaries) {
@@ -540,6 +542,19 @@ public final class SourceFileIndexer {
         }
         linkNotEntered(directory);
         return true;
+    }
+
+    /**
+     * Walks a directory without following links, also one that is a symbolic link itself: that walk takes
+     * the link's target and names every path by the link, as {@link Files#walkFileTree(Path, FileVisitor)}
+     * would take the link for a file ({@link DirectoryLinks#walkFileTree(Path, Path, FileVisitor)}).
+     *
+     * @param start   the directory to walk
+     * @param visitor the visitor
+     * @throws IOException if the link cannot be resolved, or the visitor throws one
+     */
+    static void walk(final Path start, final FileVisitor<Path> visitor) throws IOException {
+        DIRECTORY_LINKS.walkFileTree(start, Files.isSymbolicLink(start) ? start.toRealPath() : start, visitor);
     }
 
     /**

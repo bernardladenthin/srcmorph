@@ -632,6 +632,22 @@ public class SourceFileIndexerTest {
     }
 
     @Test
+    public void orphanedSummaries_anOutputDirectoryThatIsALink_isEntered() throws Exception {
+        // arrange
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        writeSummary(temp.resolve("real/a/Gone.java.ai.md"), "file", "Gone.");
+        final Path out = temp.resolve("out");
+        CommonTestFixtures.directoryLink(out, temp.resolve("real"));
+        final SourceFileIndexer indexer = indexer(temp, out, Collections.<String>emptyList(), 0L, 0L);
+
+        // act
+        final List<Path> orphans = indexer.orphanedSummaries(Collections.<Path>emptyList());
+
+        // assert
+        assertThat(relative(out, orphans), is(equalTo(Arrays.asList("a/Gone.java.ai.md"))));
+    }
+
+    @Test
     public void orphanedSummaries_aPackageLeftWithoutSummaries_isAnOrphanToo() throws Exception {
         // arrange
         final Path temp = Files.createTempDirectory("ai-index-test");

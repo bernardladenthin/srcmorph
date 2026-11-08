@@ -125,6 +125,25 @@ public class ProjectIndexerTest {
     }
 
     @Test
+    public void aggregate_anOutputDirectoryThatIsALink_isEntered() throws Exception {
+        // arrange
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        writePackageFile(temp.resolve("real/main/a/package.ai.md"), "main/a", "> A package.\n");
+        final Path outputRoot = temp.resolve("ai");
+        CommonTestFixtures.directoryLink(outputRoot, temp.resolve("real"));
+        final ProjectIndexer indexer = new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false, new RegenerateOn());
+
+        // act
+        final IndexOutcome written = indexer.aggregate(outputRoot);
+
+        // assert
+        assertThat(written, is(IndexOutcome.WRITTEN));
+        assertThat(
+                Files.readString(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME)),
+                containsString("main/a/package.ai.md"));
+    }
+
+    @Test
     public void aggregate_noPackages_writesNothing() throws Exception {
         // arrange: the output root exists but holds no package.ai.md
         final Path outputRoot = Files.createTempDirectory("ai-index-test").resolve("ai");
