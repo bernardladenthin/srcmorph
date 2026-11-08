@@ -179,8 +179,8 @@ Package root: `net.ladenthin.srcmorph`.
   `SourceLines` (a source is read once with `\n` line endings: checksum, plan, prompt and chunks see
   the same text),
   `DirectoryLinks` (a symbolic link or a Windows junction to a directory, which no walk enters below its
-  root; a root that is a link is walked as its target, every path named by the link
-  ), `Shebang` (the interpreter a `#!` line names: `fileInterpreters` and the `interpreters` condition),
+  root; a root that is a link is walked as its target, every path named by the link),
+  `Shebang` (the interpreter a `#!` line names: `fileInterpreters` and the `interpreters` condition),
   `GeneratorVersion` (srcmorph's own version, the header's `G`),
   `Java8CompatibilityHelper`, `ConvertToRecord`,
   `ReplaceWithLibrary` (marks a copy of a library class whose release is not out yet;
