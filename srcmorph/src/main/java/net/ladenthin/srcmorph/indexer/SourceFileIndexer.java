@@ -135,7 +135,7 @@ public final class SourceFileIndexer {
      * The files srcmorph itself writes ({@link #leaveOut(Path)}), absolute and normalized: no candidate is
      * one of them.
      */
-    private final List<Path> ownFiles = new ArrayList<>();
+    private final Set<Path> ownFiles = new HashSet<>();
 
     /**
      * The directories srcmorph writes files of a suffix below ({@link #leaveOutBelow(Path, String)}),
