@@ -667,7 +667,7 @@ The entries below hold the details; what a 1.4.0 user changes:
   `.ai.md` below the output directory and still takes the sources an output directory holds (summaries
   next to their sources, `outputDirectory: src`); nor are srcmorph's other files a source, the
   calibration reports `srcmorph-calibration.json`/`.yaml` in the output directory, the
-  `runRecordFile` and the files below `partsDirectory`.
+  `runRecordFile` and the `.parts.md` files below `partsDirectory` (a source there stays one).
 - **The file walk does not enter an excluded directory and goes on past an unreadable one:** it
   descended everywhere and applied the excludes per file, so a directory it could not list ended the
   run with an `UncheckedIOException`, also when an exclude covered it. A directory an exclude ending

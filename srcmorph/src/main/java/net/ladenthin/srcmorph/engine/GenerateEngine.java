@@ -430,7 +430,8 @@ public final class GenerateEngine {
         }
         final File partsDirectory = config.getPartsDirectory();
         if (partsDirectory != null) {
-            fileIndexer.leaveOut(partsDirectory.toPath());
+            // only the parts: a parts directory may mirror the source tree in place
+            fileIndexer.leaveOutBelow(partsDirectory.toPath(), PARTS_SUFFIX);
         }
     }
 

@@ -15,8 +15,10 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 import lombok.ToString;
@@ -130,10 +132,16 @@ public final class SourceFileIndexer {
     private final List<Path> unreadableSources = new ArrayList<>();
 
     /**
-     * The files and directories srcmorph itself writes ({@link #leaveOut(Path)}), absolute and normalized:
-     * no candidate is one of them or below one.
+     * The files srcmorph itself writes ({@link #leaveOut(Path)}), absolute and normalized: no candidate is
+     * one of them.
      */
-    private final List<Path> ownPaths = new ArrayList<>();
+    private final List<Path> ownFiles = new ArrayList<>();
+
+    /**
+     * The directories srcmorph writes files of a suffix below ({@link #leaveOutBelow(Path, String)}),
+     * absolute and normalized, to the suffix, in lower case.
+     */
+    private final Map<Path, String> ownSuffixesBelow = new LinkedHashMap<>();
 
     private final RuleSelector fieldGenerationSelector = new RuleSelector();
     private final ConditionEvaluator conditionEvaluator = new ConditionEvaluator();
@@ -604,26 +612,47 @@ public final class SourceFileIndexer {
     }
 
     /**
-     * Leaves a file or directory srcmorph itself writes out of the candidates, as it leaves out the
-     * summaries below the output directory: a calibration report, the run record, the parts directory.
-     * A subtree such as {@code .} reaches them, and they are no sources.
+     * Leaves a file srcmorph itself writes out of the candidates, as it leaves out the summaries below the
+     * output directory: a calibration report, the run record. A subtree such as {@code .} reaches them, and
+     * they are no sources.
      *
-     * @param path the file, or the directory whose files are left out
+     * @param file the file
      */
-    public void leaveOut(final Path path) {
-        ownPaths.add(path.toAbsolutePath().normalize());
+    public void leaveOut(final Path file) {
+        ownFiles.add(file.toAbsolutePath().normalize());
     }
 
     /**
-     * Returns whether a file is one srcmorph writes ({@link #leaveOut(Path)}) or lies below one.
+     * Leaves the files of a suffix below a directory out of the candidates: the {@code .parts.md} files
+     * srcmorph writes below the parts directory. A source below that directory is still a candidate, as
+     * the parts directory may mirror the source tree in place.
+     *
+     * @param directory the directory
+     * @param suffix    the suffix of the files srcmorph writes there, compared in any case
+     */
+    public void leaveOutBelow(final Path directory, final String suffix) {
+        ownSuffixesBelow.put(directory.toAbsolutePath().normalize(), suffix.toLowerCase(Locale.ROOT));
+    }
+
+    /**
+     * Returns whether a file is one srcmorph writes ({@link #leaveOut(Path)},
+     * {@link #leaveOutBelow(Path, String)}).
      *
      * @param file a file the walk found
      * @return whether it is srcmorph's own
      */
     private boolean isOwn(final Path file) {
         final Path absolute = file.toAbsolutePath().normalize();
-        for (final Path own : ownPaths) {
-            if (absolute.startsWith(own)) {
+        if (ownFiles.contains(absolute)) {
+            return true;
+        }
+        final @Nullable Path name = absolute.getFileName();
+        if (name == null) {
+            return false;
+        }
+        final String lowerName = name.toString().toLowerCase(Locale.ROOT);
+        for (final Map.Entry<Path, String> below : ownSuffixesBelow.entrySet()) {
+            if (absolute.startsWith(below.getKey()) && lowerName.endsWith(below.getValue())) {
                 return true;
             }
         }

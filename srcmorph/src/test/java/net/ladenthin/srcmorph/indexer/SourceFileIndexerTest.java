@@ -347,18 +347,37 @@ public class SourceFileIndexerTest {
         writeJava(temp.resolve("a/Foo.java"), "class Foo {}\n");
         writeJava(temp.resolve("a/Report.java"), "class Report {}\n");
         writeJava(temp.resolve("parts/a/Foo.java"), "class Foo {}\n");
-        writeJava(temp.resolve("partsAside/Bar.java"), "class Bar {}\n");
-        final SourceFileIndexer indexer = indexerWithNames(temp, Collections.<String>emptyList());
+        writeJava(temp.resolve("parts/a/Foo.java.parts.md"), "## map 1\n");
+        writeJava(temp.resolve("parts/a/Old.java.PARTS.MD"), "## map 1\n");
+        writeJava(temp.resolve("partsAside/Bar.java.parts.md"), "## map 1\n");
+        final SourceFileIndexer indexer = new SourceFileIndexer(
+                temp,
+                temp.resolve("out"),
+                Arrays.asList(".java", ".md"),
+                Collections.<String>emptyList(),
+                Collections.<String>emptyList(),
+                "1.0.0",
+                "0.0.0",
+                Collections.<Path>emptyList(),
+                Collections.<String>emptyList(),
+                0L,
+                0L,
+                false,
+                new RegenerateOn(),
+                SrcMorphConfiguration.DEFAULT_CONTENT_HEAD_CHARS);
         indexer.leaveOut(temp.resolve("a/../a/Report.java"));
-        indexer.leaveOut(temp.resolve("parts"));
+        indexer.leaveOutBelow(temp.resolve("parts"), ".parts.md");
 
         // act
         final List<Path> candidates = indexer.collectCandidates(temp);
 
-        // assert
+        // assert: a source below the parts directory stays, a parts file elsewhere too
         assertThat(
                 candidates,
-                is(equalTo(Arrays.asList(temp.resolve("a/Foo.java"), temp.resolve("partsAside/Bar.java")))));
+                is(equalTo(Arrays.asList(
+                        temp.resolve("a/Foo.java"),
+                        temp.resolve("parts/a/Foo.java"),
+                        temp.resolve("partsAside/Bar.java.parts.md")))));
     }
 
     @Test

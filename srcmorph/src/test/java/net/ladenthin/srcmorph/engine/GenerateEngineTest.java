@@ -1630,6 +1630,23 @@ public class GenerateEngineTest {
     }
 
     @Test
+    public void execute_thePartsDirectoryIsTheBase_keepsEverySourceAndSummary() throws Exception {
+        // arrange: the parts kept next to the sources, an index of an earlier run, pruneOrphans on
+        final SrcMorphConfiguration config = baseConfig();
+        new GenerateEngine(config).execute();
+        config.setPartsDirectory(tempDir.toFile());
+        config.setPruneOrphans(true);
+        config.setForce(true);
+
+        // act
+        final GenerateResult result = new GenerateEngine(config).execute();
+
+        // assert
+        assertThat(result.written(), is(1));
+        assertThat(Files.exists(fooSummary()), is(true));
+    }
+
+    @Test
     public void execute_pruneOrphansAndAMissingDefaultSubtree_keepsEverySummary() throws Exception {
         // arrange: the index of an earlier run, then the base directory without its src
         final SrcMorphConfiguration config = baseConfig();
