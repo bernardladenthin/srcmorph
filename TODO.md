@@ -22,6 +22,11 @@ repository.
 | 3 | SonarCloud: the analysis of PR #269 reads, that of `main` does not: `main` was analysed as a short branch (`Branch name: main, type: short` in the run of 2026-11-04), the main branch `master` last three months ago | the owner renamed the main branch to `main` (2026-11-07); left: one analysis of `main` as the long branch (the push of the merge of #269, or a re-run of the last SonarQube run on `main`), then its issues are read | Owner | PR #269 |
 | 38 | Use jllama's `ChatStreamAssembler` (not in `llama` 6.0.0) | switch with its release | External | Other open items |
 | 40 | Merge PR #269 | merge | Owner | PR #269 |
+| 141 | The walk takes srcmorph's own files in the output directory as sources (`srcmorph-calibration.yaml`/`.json`; a `runRecordFile` or `partsDirectory` below a subtree) | leave them out; tests | Claude | Review 2026-11-08 (6) |
+| 142 | A fraction in an int key (`charsPerToken: 2.5`, run.py `--chars-per-token 0.5`) is cut to an integer without a word | the loader refuses it; run.py takes an int of at least 1; tests | Claude | Review 2026-11-08 (6) |
+| 143 | The Luna parity test compares the kinds with known differences by their leaves only | compare their operator too | Claude | Review 2026-11-08 (6) |
+| 144 | `classify`/`plan` still name an unreadable content under `@throws` | correct the Javadoc | Claude | Review 2026-11-08 (6) |
+| 145 | A file that vanishes between the walk and its filters ends the run (`Files.size`, `getLastModifiedTime` unguarded) | warn, keep its summary, leave it out; tests | Claude | Review 2026-11-08 (6) |
 
 ## Open
 
@@ -34,6 +39,10 @@ repository.
   #269's code smells left: the cognitive complexity of nine methods and an eight-parameter method
   (refactors to report, not to apply), "test methods should not be public" (the owner's guides decide
   the other way) and a few false positives (comments read as code).
+
+### Review 2026-11-08 (6)
+
+The two reviews of 7b617713: rows 141 to 145.
 
 ### Known limits, for the next model round (no open work)
 
