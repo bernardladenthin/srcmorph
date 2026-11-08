@@ -669,7 +669,17 @@ The entries below hold the details; what a 1.4.0 user changes:
   `.ai.md` below the output directory and still takes the sources an output directory holds (summaries
   next to their sources, `outputDirectory: src`); nor are srcmorph's other files a source, the
   calibration reports `srcmorph-calibration.json`/`.yaml` in the output directory, the
-  `runRecordFile` and the `.parts.md` files below `partsDirectory` (a source there stays one).
+  `runRecordFile` and the `.parts.md` files below `partsDirectory` (a source there stays one; a
+  `*.parts.md` written by hand below it is no source either, and `pruneOrphans` removes its summary).
+- **No walk enters a link to a directory below its root:** on Windows the file walk and the orphan
+  scan of `pruneOrphans` entered a junction, and the package and project phases followed a symbolic
+  link on every system, so a link beside its target summarized every file twice and a link back up
+  looped (64 copies of one file measured; on Linux the package phase failed with `ELOOP`), and a
+  link like `docs/latest -> v2` rewrote the target's `package.ai.md` on every run. Such a link is now
+  left out with a warning, the start of a walk (a subtree, the output directory) is entered link or
+  not, a link to a file is still taken, and a directory with another reparse point (a cloud file
+  placeholder) still counts as a directory. The summaries an earlier run wrote below a link are
+  orphans now.
 - **The file walk does not enter an excluded directory and goes on past an unreadable one:** it
   descended everywhere and applied the excludes per file, so a directory it could not list ended the
   run with an `UncheckedIOException`, also when an exclude covered it. A directory an exclude ending
@@ -677,7 +687,9 @@ The entries below hold the details; what a 1.4.0 user changes:
   directory that cannot be read is left out with a warning (a debug line when excluded), and so is a
   source whose content, size or modification time cannot be read (no read permission, a lock,
   deleted after the walk), which ended plan, check and generate; its summary is kept. The
-  candidates and their order are unchanged.
+  candidates and their order are unchanged. The package and project phases fail with the
+  `IOException` of a directory they cannot list, also when the listing breaks off midway, not with
+  an `UncheckedIOException`.
 - **`All` checks the package and the project phase before the file phase** (their rule, prompts and
   model, as `Check` does), so a missing `packageRules` or a wrong phase rule fails before any file is
   sent and billed, not after the whole file phase; with `planOnly` only the file phase is planned.

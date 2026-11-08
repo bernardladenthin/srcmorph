@@ -105,6 +105,26 @@ public class ProjectIndexerTest {
     }
 
     @Test
+    public void aggregate_aLinkToADirectory_isNotEntered() throws Exception {
+        // arrange: a package, a link to it beside it and a link back up, a loop
+        final Path outputRoot = Files.createTempDirectory("ai-index-test").resolve("ai");
+        writePackageFile(outputRoot.resolve("main/a/package.ai.md"), "main/a", "> A package.\n");
+        CommonTestFixtures.directoryLink(outputRoot.resolve("main/b"), outputRoot.resolve("main/a"));
+        CommonTestFixtures.directoryLink(outputRoot.resolve("main/a/loop"), outputRoot.resolve("main"));
+        final ProjectIndexer indexer = new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false, new RegenerateOn());
+
+        // act
+        final IndexOutcome written = indexer.aggregate(outputRoot);
+
+        // assert
+        assertThat(written, is(IndexOutcome.WRITTEN));
+        final String project = Files.readString(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME));
+        assertThat(project, containsString("main/a/package.ai.md"));
+        assertThat(project, not(containsString("main/b/")));
+        assertThat(project, not(containsString("loop")));
+    }
+
+    @Test
     public void aggregate_noPackages_writesNothing() throws Exception {
         // arrange: the output root exists but holds no package.ai.md
         final Path outputRoot = Files.createTempDirectory("ai-index-test").resolve("ai");

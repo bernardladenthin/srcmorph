@@ -346,6 +346,37 @@ public class SourceFileIndexerTest {
     }
 
     @Test
+    public void collectCandidates_aLinkToADirectoryBelowTheRoot_isNotEntered() throws Exception {
+        // arrange: a link beside its target, and one back up to the root, a loop
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        writeJava(temp.resolve("src/real/A.java"), "class A {}\n");
+        CommonTestFixtures.directoryLink(temp.resolve("src/link"), temp.resolve("src/real"));
+        CommonTestFixtures.directoryLink(temp.resolve("src/real/loop"), temp.resolve("src"));
+        final SourceFileIndexer indexer = indexer(temp, temp.resolve("out"), Collections.<String>emptyList(), 0L, 0L);
+
+        // act
+        final List<Path> candidates = indexer.collectCandidates(temp.resolve("src"));
+
+        // assert
+        assertThat(candidates, is(equalTo(Collections.singletonList(temp.resolve("src/real/A.java")))));
+    }
+
+    @Test
+    public void collectCandidates_aRootThatIsALink_isEntered() throws Exception {
+        // arrange
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        writeJava(temp.resolve("real/A.java"), "class A {}\n");
+        CommonTestFixtures.directoryLink(temp.resolve("link"), temp.resolve("real"));
+        final SourceFileIndexer indexer = indexer(temp, temp.resolve("out"), Collections.<String>emptyList(), 0L, 0L);
+
+        // act
+        final List<Path> candidates = indexer.collectCandidates(temp.resolve("link"));
+
+        // assert
+        assertThat(candidates, is(equalTo(Collections.singletonList(temp.resolve("link/A.java")))));
+    }
+
+    @Test
     public void classify_aSourceDeletedAfterTheWalk_isLeftOutWithAWarning() throws Exception {
         // arrange
         final Path temp = Files.createTempDirectory("ai-index-test");
@@ -581,6 +612,23 @@ public class SourceFileIndexerTest {
                 warnings(log),
                 hasItem("No summary of " + sourceRoot.resolve("locked") + " is an orphan: it is missing or could"
                         + " not be read"));
+    }
+
+    @Test
+    public void orphanedSummaries_aLinkInTheOutputDirectory_isNotEntered() throws Exception {
+        // arrange: the summary of a source that is gone, a link to its directory and one back up, a loop
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path out = temp.resolve("out");
+        writeSummary(out.resolve("a/Gone.java.ai.md"), "file", "Gone.");
+        CommonTestFixtures.directoryLink(out.resolve("b"), out.resolve("a"));
+        CommonTestFixtures.directoryLink(out.resolve("a/loop"), out);
+        final SourceFileIndexer indexer = indexer(temp, out, Collections.<String>emptyList(), 0L, 0L);
+
+        // act
+        final List<Path> orphans = indexer.orphanedSummaries(Collections.<Path>emptyList());
+
+        // assert: once, by its own path
+        assertThat(relative(out, orphans), is(equalTo(Arrays.asList("a/Gone.java.ai.md"))));
     }
 
     @Test

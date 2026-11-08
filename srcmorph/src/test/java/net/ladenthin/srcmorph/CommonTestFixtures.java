@@ -5,6 +5,7 @@ package net.ladenthin.srcmorph;
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
+import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -201,5 +202,38 @@ public class CommonTestFixtures {
         denied.addAll(before);
         view.setAcl(denied);
         return () -> view.setAcl(before);
+    }
+
+    /**
+     * Creates a link to a directory: a symbolic link, or on Windows, where one wants a privilege the test
+     * may not hold, a junction ({@link #junction(Path, Path)}); the test is skipped when neither can be made.
+     */
+    public static void directoryLink(final Path link, final Path target) throws Exception {
+        try {
+            Files.createSymbolicLink(link, target);
+            return;
+        } catch (final IOException | UnsupportedOperationException e) {
+            // no symbolic link here: a junction, on Windows
+        }
+        junction(link, target);
+    }
+
+    /**
+     * Creates a Windows junction to a directory ({@code mklink /J}, which wants no privilege); the test is
+     * skipped on another system and when the junction cannot be made.
+     */
+    public static void junction(final Path link, final Path target) throws Exception {
+        assumeTrue(System.getProperty("os.name").startsWith("Windows"), "a junction is Windows' own");
+        final Process process = new ProcessBuilder(
+                        "cmd",
+                        "/c",
+                        "mklink",
+                        "/J",
+                        link.toString(),
+                        target.toAbsolutePath().toString())
+                .redirectErrorStream(true)
+                .start();
+        process.getInputStream().readAllBytes();
+        assumeTrue(process.waitFor() == 0 && Files.isDirectory(link), "mklink /J failed");
     }
 }

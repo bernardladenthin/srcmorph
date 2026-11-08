@@ -22,10 +22,6 @@ repository.
 | 3 | SonarCloud: the analysis of PR #269 reads, that of `main` does not: `main` was analysed as a short branch (`Branch name: main, type: short` in the run of 2026-11-04), the main branch `master` last three months ago | the owner renamed the main branch to `main` (2026-11-07); left: one analysis of `main` as the long branch (the push of the merge of #269, or a re-run of the last SonarQube run on `main`), then its issues are read | Owner | PR #269 |
 | 38 | Use jllama's `ChatStreamAssembler` (not in `llama` 6.0.0) | switch with its release | External | Other open items |
 | 40 | Merge PR #269 | merge | Owner | PR #269 |
-| 149 | The walks follow a directory link: on Windows a junction in the source and the orphan walk, everywhere a symlink in the package phase (duplicates, loops, ELOOP) | enter no linked directory below the root, with a warning; tests; CHANGELOG | Claude | Review 2026-11-08 (8) |
-| 150 | The package phase lets an `UncheckedIOException` of a listing's iteration escape | rethrow it as its `IOException`; test | Claude | Review 2026-11-08 (8) |
-| 151 | A hand-written `*.parts.md` below `partsDirectory` is silently no source | CHANGELOG note | Claude | Review 2026-11-08 (8) |
-| 152 | profiles/README: "the examples" carry a secrets rule; `copilot-api-gateway/srcmorph.yaml` names "the v1 prompt" | reword | Claude | Review 2026-11-08 (8) |
 
 ## Open
 
@@ -38,10 +34,6 @@ repository.
   #269's code smells left: the cognitive complexity of nine methods and an eight-parameter method
   (refactors to report, not to apply), "test methods should not be public" (the owner's guides decide
   the other way) and a few false positives (comments read as code).
-
-### Review 2026-11-08 (8)
-
-The two reviews of 5faa5026: rows 149 to 152.
 
 ### Known limits, for the next model round (no open work)
 

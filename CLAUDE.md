@@ -178,7 +178,8 @@ Package root: `net.ladenthin.srcmorph`.
   `user:password@`, query and fragment in a log line, a message or the CLI's configuration echo),
   `SourceLines` (a source is read once with `\n` line endings: checksum, plan, prompt and chunks see
   the same text),
-  `Shebang` (the interpreter a `#!` line names: `fileInterpreters` and the `interpreters` condition),
+  `DirectoryLinks` (a symbolic link or a Windows junction to a directory, which no walk enters below its
+  root), `Shebang` (the interpreter a `#!` line names: `fileInterpreters` and the `interpreters` condition),
   `GeneratorVersion` (srcmorph's own version, the header's `G`),
   `Java8CompatibilityHelper`, `ConvertToRecord`,
   `ReplaceWithLibrary` (marks a copy of a library class whose release is not out yet;
@@ -205,7 +206,7 @@ what the mapping unit tests and the `mock`-provider suite structurally cannot se
 defects fixed in 1.2.0 were of exactly that shape. Its reflective completeness check fails when a knob
 is neither swept nor listed in `NOT_SWEPT` with a reason, so a knob added later reds the class until
 somebody decides how it is covered. **PIT mutation testing**: `mutationThreshold`
-100 over an explicit `targetClasses` list in `srcmorph/pom.xml` — currently 90 entries (nested classes counted) across
+100 over an explicit `targetClasses` list in `srcmorph/pom.xml` — currently 91 entries (nested classes counted) across
 every package, all killed at 100%. **All three modules are
 PIT-gated now**: `srcmorph-cli` (29/29) and `srcmorph-maven-plugin` (79/79) carry their own
 `pitest-maven` executions at the same threshold, and CI runs the goal reactor-wide. The natives come from `net.ladenthin:llama-platform` (a pom

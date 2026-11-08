@@ -52,7 +52,7 @@ srcMorph:
       stream: true                           # required: the gateway's non-streaming path adds and runs VS Code tools
       requestsPerMinute: 25                  # below the gateway's rateLimitPerMinute (30): wait instead of a 429
       contextSize: 32768                     # at most the model's max_input_tokens
-      maxOutputTokens: 4096                  # the v1 prompt asks for a structured summary of every section
+      maxOutputTokens: 4096                  # room for a structured summary of every section
       temperature: 0.2
 
   rules:

@@ -102,6 +102,50 @@ public class PackageIndexerTest {
         assertThat(document.header().generatedAt().trim().isEmpty(), is(false));
         assertThat(document.body().trim().isEmpty(), is(false));
     }
+
+    @Test
+    public void aggregate_aLinkToADirectory_isNotEntered() throws Exception {
+        // arrange: a package, a link to it beside it and a link back up, a loop
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path outputRoot = temp.resolve("ai");
+        final Path packageDirectory = outputRoot.resolve("main/a");
+        Files.createDirectories(packageDirectory);
+        final AiMdHeader childHeader = new AiMdHeader(
+                "Test.java",
+                AiMdHeaderCodec.HEADER_VERSION_1_0,
+                "AAAAAAAA",
+                "2026-03-16T00:00:00Z",
+                "2026-03-16T00:00:10Z",
+                "1.0.0",
+                "0.0.0",
+                AiMdHeaderCodec.NODE_TYPE_FILE);
+        documentCodec.write(packageDirectory.resolve("Test.java.ai.md"), new AiMdDocument(childHeader, ""));
+        CommonTestFixtures.directoryLink(outputRoot.resolve("main/b"), packageDirectory);
+        CommonTestFixtures.directoryLink(packageDirectory.resolve("loop"), outputRoot.resolve("main"));
+        final PromptCatalog promptSupport = new PromptCatalog(CommonTestFixtures.createPackagePromptDefinitions());
+        final PackageIndexer indexer = new PackageIndexer(
+                temp,
+                outputRoot,
+                "1.0.0",
+                "0.0.0",
+                Collections.<Path>emptyList(),
+                false,
+                new RegenerateOn(),
+                new MockGenerationProvider(),
+                CommonTestFixtures.createPackageFieldGeneration(),
+                promptSupport,
+                CommonTestFixtures.createDefaultAiModelDefinitionSupport());
+
+        // act
+        final IndexTally aggregated = indexer.aggregate(outputRoot);
+
+        // assert: main/a, main and the root; main names a/ only
+        assertThat(aggregated.written(), is(equalTo(3)));
+        assertThat(aggregated.failed(), is(equalTo(0)));
+        final String main = Files.readString(outputRoot.resolve("main/package.ai.md"));
+        assertThat(main, containsString("a/package.ai.md"));
+        assertThat(main, not(containsString("b/package.ai.md")));
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="child summaries in package source">

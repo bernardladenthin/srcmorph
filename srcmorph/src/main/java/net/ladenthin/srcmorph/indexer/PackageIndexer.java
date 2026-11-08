@@ -4,6 +4,7 @@
 package net.ladenthin.srcmorph.indexer;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -29,6 +30,7 @@ import net.ladenthin.srcmorph.prompt.PromptCatalog;
 import net.ladenthin.srcmorph.prompt.PromptPreparer;
 import net.ladenthin.srcmorph.provider.GenerationProvider;
 import net.ladenthin.srcmorph.support.ChecksumSupport;
+import net.ladenthin.srcmorph.support.DirectoryLinks;
 import net.ladenthin.srcmorph.support.Java8CompatibilityHelper;
 import net.ladenthin.srcmorph.support.SourcePaths;
 import net.ladenthin.srcmorph.support.TimeSupport;
@@ -120,6 +122,7 @@ public class PackageIndexer {
     private final AiMdDocumentCodec documentCodec = new AiMdDocumentCodec();
     private final AiMdHeaderCodec headerCodec = new AiMdHeaderCodec();
     private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
+    private final DirectoryLinks directoryLinks = new DirectoryLinks();
 
     private final SummaryGenerator summaryGenerator;
 
@@ -181,6 +184,7 @@ public class PackageIndexer {
 
     /**
      * Aggregates all package directories beneath {@code rootDirectory}.
+     * A link to another directory below it is not entered ({@link DirectoryLinks}), with a warning.
      *
      * @param rootDirectory output root directory to walk
      * @return how many package index files were written, were up to date, or got an incomplete answer
@@ -194,14 +198,13 @@ public class PackageIndexer {
     }
 
     private void aggregateRecursive(final Path directory, final IndexTally tally) throws IOException {
-        final List<Path> subDirectories;
-        try (Stream<Path> stream = Files.list(directory)) {
-            subDirectories =
-                    compatibilityHelper.toList(stream.filter(Files::isDirectory).sorted());
-        }
-
-        for (Path subDirectory : subDirectories) {
-            aggregateRecursive(subDirectory, tally);
+        for (final Path path : entries(directory)) {
+            if (directoryLinks.isDirectoryNoLink(path)) {
+                aggregateRecursive(path, tally);
+            } else if (Files.isDirectory(path)) {
+                // a link to another directory would aggregate it twice, or loop
+                LOGGER.warn("Not entered, a link to another directory: {}", path);
+            }
         }
 
         if (matchesAggregationScope(directory) && shouldCreatePackageFile(directory)) {
@@ -242,10 +245,40 @@ public class PackageIndexer {
     }
 
     private boolean shouldCreatePackageFile(final Path directory) throws IOException {
-        try (Stream<Path> stream = Files.list(directory)) {
-            return stream.anyMatch(
-                    path -> Files.isDirectory(path) ? hasPackageAiMdFile(path) : isAiMdContentFile(path));
+        for (final Path path : entries(directory)) {
+            if (isPackage(path) || isAiMdContentFile(path)) {
+                return true;
+            }
         }
+        return false;
+    }
+
+    /**
+     * Lists a directory's entries, sorted by name ({@link #BY_FILE_NAME}).
+     *
+     * @param directory the directory
+     * @return its entries
+     * @throws IOException if the directory cannot be listed, also when the listing fails after it began
+     */
+    private List<Path> entries(final Path directory) throws IOException {
+        try (Stream<Path> stream = Files.list(directory)) {
+            return compatibilityHelper.toList(stream.sorted(BY_FILE_NAME));
+        } catch (final UncheckedIOException e) {
+            // the listing failed after it began: the IOException this method declares
+            throw e.getCause();
+        }
+    }
+
+    /**
+     * Returns whether an entry of a package directory is a sub-package: a directory, no link to one
+     * ({@link DirectoryLinks}), that holds a
+     * {@link net.ladenthin.srcmorph.document.AiMdHeaderCodec#PACKAGE_AI_MD_FILENAME}.
+     *
+     * @param path the entry
+     * @return {@code true} for a sub-package
+     */
+    private boolean isPackage(final Path path) {
+        return directoryLinks.isDirectoryNoLink(path) && hasPackageAiMdFile(path);
     }
 
     /**
@@ -319,24 +352,22 @@ public class PackageIndexer {
     private List<String> collectContents(final Path directory) throws IOException {
         final List<String> entries = new ArrayList<>();
 
-        try (Stream<Path> stream = Files.list(directory)) {
-            for (Path path : compatibilityHelper.toList(stream.sorted(BY_FILE_NAME))) {
-                final Path fileNamePath = path.getFileName();
-                if (fileNamePath == null) {
-                    continue;
-                }
-                final String name = fileNamePath.toString();
+        for (Path path : entries(directory)) {
+            final Path fileNamePath = path.getFileName();
+            if (fileNamePath == null) {
+                continue;
+            }
+            final String name = fileNamePath.toString();
 
-                if (Files.isDirectory(path)) {
-                    if (hasPackageAiMdFile(path)) {
-                        entries.add(name + CHILD_DIRECTORY_SUFFIX);
-                    }
-                    continue;
+            if (directoryLinks.isDirectoryNoLink(path)) {
+                if (hasPackageAiMdFile(path)) {
+                    entries.add(name + CHILD_DIRECTORY_SUFFIX);
                 }
+                continue;
+            }
 
-                if (isAiMdContentFile(path)) {
-                    entries.add(name);
-                }
+            if (isAiMdContentFile(path)) {
+                entries.add(name);
             }
         }
 
@@ -357,25 +388,23 @@ public class PackageIndexer {
     private List<String> collectChildLinks(final Path directory) throws IOException {
         final List<String> links = new ArrayList<>();
 
-        try (Stream<Path> stream = Files.list(directory)) {
-            for (Path path : compatibilityHelper.toList(stream.sorted(BY_FILE_NAME))) {
-                final Path fileNamePath = path.getFileName();
-                if (fileNamePath == null) {
-                    continue;
-                }
-                final String name = fileNamePath.toString();
+        for (Path path : entries(directory)) {
+            final Path fileNamePath = path.getFileName();
+            if (fileNamePath == null) {
+                continue;
+            }
+            final String name = fileNamePath.toString();
 
-                if (Files.isDirectory(path)) {
-                    if (hasPackageAiMdFile(path)) {
-                        final String label = name + CHILD_DIRECTORY_SUFFIX;
-                        links.add(markdownLink(label, label + AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME));
-                    }
-                    continue;
+            if (directoryLinks.isDirectoryNoLink(path)) {
+                if (hasPackageAiMdFile(path)) {
+                    final String label = name + CHILD_DIRECTORY_SUFFIX;
+                    links.add(markdownLink(label, label + AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME));
                 }
+                continue;
+            }
 
-                if (isAiMdContentFile(path)) {
-                    links.add(markdownLink(toChildDisplayName(name), name));
-                }
+            if (isAiMdContentFile(path)) {
+                links.add(markdownLink(toChildDisplayName(name), name));
             }
         }
 
@@ -467,29 +496,27 @@ public class PackageIndexer {
     private int appendChildSummaries(final StringBuilder builder, final Path directory) throws IOException {
         int bodyCount = 0;
 
-        try (Stream<Path> stream = Files.list(directory)) {
-            for (Path path : compatibilityHelper.toList(stream.sorted(BY_FILE_NAME))) {
-                final Path fileNamePath = path.getFileName();
-                if (fileNamePath == null) {
-                    continue;
-                }
-                final String name = fileNamePath.toString();
+        for (Path path : entries(directory)) {
+            final Path fileNamePath = path.getFileName();
+            if (fileNamePath == null) {
+                continue;
+            }
+            final String name = fileNamePath.toString();
 
-                if (Files.isDirectory(path)) {
-                    if (hasPackageAiMdFile(path)) {
-                        final String body = readChildBody(path.resolve(AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME));
-                        if (appendChildSummary(builder, name + CHILD_DIRECTORY_SUFFIX, body)) {
-                            bodyCount++;
-                        }
-                    }
-                    continue;
-                }
-
-                if (isAiMdContentFile(path)) {
-                    final String body = readChildBody(path);
-                    if (appendChildSummary(builder, toChildDisplayName(name), body)) {
+            if (directoryLinks.isDirectoryNoLink(path)) {
+                if (hasPackageAiMdFile(path)) {
+                    final String body = readChildBody(path.resolve(AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME));
+                    if (appendChildSummary(builder, name + CHILD_DIRECTORY_SUFFIX, body)) {
                         bodyCount++;
                     }
+                }
+                continue;
+            }
+
+            if (isAiMdContentFile(path)) {
+                final String body = readChildBody(path);
+                if (appendChildSummary(builder, toChildDisplayName(name), body)) {
+                    bodyCount++;
                 }
             }
         }
@@ -567,25 +594,23 @@ public class PackageIndexer {
     private String calculatePackageChecksum(final Path directory) throws IOException {
         final StringBuilder builder = new StringBuilder();
 
-        try (Stream<Path> stream = Files.list(directory)) {
-            for (Path path : compatibilityHelper.toList(stream.sorted(BY_FILE_NAME))) {
-                final Path fileNamePath = path.getFileName();
-                if (fileNamePath == null) {
-                    continue;
-                }
-                final String name = fileNamePath.toString();
+        for (Path path : entries(directory)) {
+            final Path fileNamePath = path.getFileName();
+            if (fileNamePath == null) {
+                continue;
+            }
+            final String name = fileNamePath.toString();
 
-                if (Files.isDirectory(path)) {
-                    if (hasPackageAiMdFile(path)) {
-                        builder.append(childEntryLineFormatter.format(name, readChildPackageHeader(path)));
-                    }
-                    continue;
+            if (directoryLinks.isDirectoryNoLink(path)) {
+                if (hasPackageAiMdFile(path)) {
+                    builder.append(childEntryLineFormatter.format(name, readChildPackageHeader(path)));
                 }
+                continue;
+            }
 
-                if (isAiMdContentFile(path)) {
-                    builder.append(childEntryLineFormatter.format(
-                            name, documentCodec.read(path).header()));
-                }
+            if (isAiMdContentFile(path)) {
+                builder.append(childEntryLineFormatter.format(
+                        name, documentCodec.read(path).header()));
             }
         }
 
@@ -595,18 +620,16 @@ public class PackageIndexer {
     private String calculatePackageDate(final Path directory) throws IOException {
         String latest = TimeSupport.EPOCH_DATE;
 
-        try (Stream<Path> stream = Files.list(directory)) {
-            for (Path path : compatibilityHelper.toList(stream.sorted(BY_FILE_NAME))) {
-                if (Files.isDirectory(path)) {
-                    if (hasPackageAiMdFile(path)) {
-                        latest = laterDate(latest, readChildPackageHeader(path).sourceDate());
-                    }
-                    continue;
+        for (Path path : entries(directory)) {
+            if (directoryLinks.isDirectoryNoLink(path)) {
+                if (hasPackageAiMdFile(path)) {
+                    latest = laterDate(latest, readChildPackageHeader(path).sourceDate());
                 }
+                continue;
+            }
 
-                if (isAiMdContentFile(path)) {
-                    latest = laterDate(latest, documentCodec.read(path).header().sourceDate());
-                }
+            if (isAiMdContentFile(path)) {
+                latest = laterDate(latest, documentCodec.read(path).header().sourceDate());
             }
         }
 

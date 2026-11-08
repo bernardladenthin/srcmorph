@@ -45,6 +45,7 @@ import net.ladenthin.srcmorph.routing.ConditionEvaluator;
 import net.ladenthin.srcmorph.routing.FileContext;
 import net.ladenthin.srcmorph.routing.RuleSelector;
 import net.ladenthin.srcmorph.support.ChecksumSupport;
+import net.ladenthin.srcmorph.support.DirectoryLinks;
 import net.ladenthin.srcmorph.support.Java8CompatibilityHelper;
 import net.ladenthin.srcmorph.support.Shebang;
 import net.ladenthin.srcmorph.support.SourceExcludeFilter;
@@ -76,6 +77,9 @@ import org.slf4j.LoggerFactory;
 public final class SourceFileIndexer {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SourceFileIndexer.class);
+
+    /** Tells the links to a directory the walks do not enter. */
+    private static final DirectoryLinks DIRECTORY_LINKS = new DirectoryLinks();
 
     /** The order of the candidates: by {@link #sortKey(Path)}, their path with {@code /} separators. */
     private static final Comparator<Path> BY_PATH = Comparator.comparing(SourceFileIndexer::sortKey);
@@ -258,8 +262,9 @@ public final class SourceFileIndexer {
      * <p>The files come sorted by their path with {@code /} separators, not in the order the file system
      * lists them, so the plan, the run and its record name them in the same order on every machine.</p>
      *
-     * <p>The walk does not enter a directory an exclude takes as a whole ({@link #enterDirectory(Path)}).
-     * It enters the output directory, which a subtree such as {@code .} holds and which may hold sources
+     * <p>The walk does not enter a directory an exclude takes as a whole ({@link #enterDirectory(Path)}),
+     * nor a link to a directory below {@code sourceRoot} ({@link #isLinkNotEntered(Path, BasicFileAttributes,
+     * Path)}). It enters the output directory, which a subtree such as {@code .} holds and which may hold sources
      * next to their summaries, but no {@code .ai.md} below it is a candidate. A file or directory it cannot
      * read is left out with a warning
      * ({@link #walkFailed(Path, IOException)}), not the end of the run.</p>
@@ -274,6 +279,9 @@ public final class SourceFileIndexer {
         Files.walkFileTree(sourceRoot, new SimpleFileVisitor<Path>() {
             @Override
             public FileVisitResult preVisitDirectory(final Path directory, final BasicFileAttributes attributes) {
+                if (isLinkNotEntered(directory, attributes, sourceRoot)) {
+                    return FileVisitResult.SKIP_SUBTREE;
+                }
                 return enterDirectory(directory);
             }
 
@@ -282,6 +290,8 @@ public final class SourceFileIndexer {
                 // a link to a file is taken, as the walk took it before: the attributes are the link's own
                 if (Files.isRegularFile(file)) {
                     files.add(file);
+                } else if (attributes.isSymbolicLink() && Files.isDirectory(file)) {
+                    linkNotEntered(file);
                 }
                 return FileVisitResult.CONTINUE;
             }
@@ -515,6 +525,33 @@ public final class SourceFileIndexer {
     }
 
     /**
+     * Returns whether a walk leaves out a directory below its root that links to another directory
+     * ({@link DirectoryLinks#isLink(Path, BasicFileAttributes)}), with a warning: entered, it would give a
+     * file twice or run into a loop. The root itself is entered, link or not.
+     *
+     * @param directory  the directory the walk reached
+     * @param attributes its attributes, read without following links
+     * @param root       the directory the walk started at
+     * @return {@code true} when the walk does not enter it
+     */
+    static boolean isLinkNotEntered(final Path directory, final BasicFileAttributes attributes, final Path root) {
+        if (directory.equals(root) || !DIRECTORY_LINKS.isLink(directory, attributes)) {
+            return false;
+        }
+        linkNotEntered(directory);
+        return true;
+    }
+
+    /**
+     * Warns that a walk does not enter a link to a directory.
+     *
+     * @param link the link
+     */
+    static void linkNotEntered(final Path link) {
+        LOGGER.warn("Not entered, a link to another directory: {}", link);
+    }
+
+    /**
      * Goes on with the walk of the output directory after a file or a directory of it could not be read:
      * what is below it is kept, with a warning.
      *
@@ -566,8 +603,17 @@ public final class SourceFileIndexer {
         }
 
         @Override
+        public FileVisitResult preVisitDirectory(final Path directory, final BasicFileAttributes attributes) {
+            return isLinkNotEntered(directory, attributes, root)
+                    ? FileVisitResult.SKIP_SUBTREE
+                    : FileVisitResult.CONTINUE;
+        }
+
+        @Override
         public FileVisitResult visitFile(final Path file, final BasicFileAttributes attributes) {
-            if (attributes.isRegularFile()) {
+            if (attributes.isSymbolicLink() && Files.isDirectory(file)) {
+                linkNotEntered(file);
+            } else if (attributes.isRegularFile()) {
                 final Path name = file.getFileName();
                 if (name != null && AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME.equals(name.toString())) {
                     packageFiles.add(file);

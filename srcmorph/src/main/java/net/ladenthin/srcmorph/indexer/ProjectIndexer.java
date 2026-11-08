@@ -4,13 +4,14 @@
 package net.ladenthin.srcmorph.indexer;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Stream;
 import lombok.ToString;
 import net.ladenthin.srcmorph.config.ModelRegistry;
 import net.ladenthin.srcmorph.config.RegenerateOn;
@@ -197,6 +198,7 @@ public class ProjectIndexer {
 
     /**
      * Aggregates every package index beneath {@code rootDirectory} into a single project index file.
+     * A link to another directory below it is not entered, with a warning.
      *
      * @param rootDirectory output root directory to walk for {@code package.ai.md} files
      * @return {@link IndexOutcome#WRITTEN}; {@link IndexOutcome#UNCHANGED} when there were no package
@@ -205,14 +207,24 @@ public class ProjectIndexer {
      * @throws IOException if the output tree cannot be read or the project index cannot be written
      */
     public IndexOutcome aggregate(final Path rootDirectory) throws IOException {
-        final List<Path> packageFiles;
-        try (Stream<Path> stream = Files.walk(rootDirectory)) {
-            packageFiles = compatibilityHelper.toList(
-                    stream.filter(path -> Files.isRegularFile(path) && isPackageAiMdFile(path)));
-        } catch (final UncheckedIOException e) {
-            // a directory below the root the stream could not open: the IOException this method declares
-            throw e.getCause();
-        }
+        final List<Path> packageFiles = new ArrayList<>();
+        Files.walkFileTree(rootDirectory, new SimpleFileVisitor<Path>() {
+            @Override
+            public FileVisitResult preVisitDirectory(final Path directory, final BasicFileAttributes attributes) {
+                // a link to another directory would list its packages twice, or loop
+                return SourceFileIndexer.isLinkNotEntered(directory, attributes, rootDirectory)
+                        ? FileVisitResult.SKIP_SUBTREE
+                        : FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult visitFile(final Path file, final BasicFileAttributes attributes) {
+                if (Files.isRegularFile(file) && isPackageAiMdFile(file)) {
+                    packageFiles.add(file);
+                }
+                return FileVisitResult.CONTINUE;
+            }
+        });
 
         if (packageFiles.isEmpty()) {
             LOGGER.info("No package index files found under {}; skipping project index.", rootDirectory);

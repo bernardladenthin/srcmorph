@@ -55,7 +55,9 @@ shell, Perl and other files; Definitions, Configuration and Dependencies for XML
 only what is literally present" guard for truncated sources. Every file prompt has the same secrets
 rule: a password, private key, token, API key or credentials in a URL is named, its value written as
 `***`. A configuration keeps the files that hold credentials away from the model altogether with a
-`skip` rule; the examples, the self-test and the model-card runs carry one (`id: secrets`: `.env`,
+`skip` rule; the self-test, its CLI twin `examples/build-your-own-jar/srcmorph.yaml`, the Luna
+example `examples/copilot-api-gateway/srcmorph-luna.yaml` and the model-card runs carry one
+(`id: secrets`: `.env`,
 `*.tfvars`, `*.pkrvars.hcl`, `*.tfstate`, Maven's `settings.xml` by its `<settings>` root, keys, a
 `.properties` file that gives a password (also `passwd`, `pwd`, `pass`, `passphrase`), secret,
 secret key, token, API key, private key or credentials a value other than a whole placeholder, a
