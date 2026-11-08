@@ -22,10 +22,6 @@ repository.
 | 3 | SonarCloud: the analysis of PR #269 reads, that of `main` does not: `main` was analysed as a short branch (`Branch name: main, type: short` in the run of 2026-11-04), the main branch `master` last three months ago | the owner renamed the main branch to `main` (2026-11-07); left: one analysis of `main` as the long branch (the push of the merge of #269, or a re-run of the last SonarQube run on `main`), then its issues are read | Owner | PR #269 |
 | 38 | Use jllama's `ChatStreamAssembler` (not in `llama` 6.0.0) | switch with its release | External | Other open items |
 | 40 | Merge PR #269 | merge | Owner | PR #269 |
-| 153 | A Windows junction whose target is gone reaches a walk as a failed read: the project phase fails, the file walk says "Cannot read", the orphan scan keeps every package above it | the walks' failure handlers leave a link out with the link warning; a Windows test | Claude | Review 2026-11-08 (9) |
-| 154 | A link to a summary file counts in the package and project phases, not in the orphan scan | the orphan scan takes it as the other phases do; CHANGELOG | Claude | Review 2026-11-08 (9) |
-| 155 | A walk of a linked root names the target in an error message | CHANGELOG note | Claude | Review 2026-11-08 (9) |
-| 156 | No test of `entries()` failing midway; the junction paths through the indexers run on Windows only | a test with a listing that fails midway; note the Windows-only tests | Claude | Review 2026-11-08 (9) |
 
 ## Open
 
@@ -38,10 +34,6 @@ repository.
   #269's code smells left: the cognitive complexity of nine methods and an eight-parameter method
   (refactors to report, not to apply), "test methods should not be public" (the owner's guides decide
   the other way) and a few false positives (comments read as code).
-
-### Review 2026-11-08 (9)
-
-The two reviews of c6974385: rows 153 to 156.
 
 ### Known limits, for the next model round (no open work)
 

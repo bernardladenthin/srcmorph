@@ -13,6 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.IOException;
 import java.io.InterruptedIOException;
+import java.io.UncheckedIOException;
 import java.net.SocketTimeoutException;
 import java.nio.channels.ClosedByInterruptException;
 import java.nio.file.Files;
@@ -22,6 +23,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Stream;
 import net.ladenthin.srcmorph.CommonTestFixtures;
 import net.ladenthin.srcmorph.config.RegenerateOn;
 import net.ladenthin.srcmorph.document.AiMdDocument;
@@ -101,6 +103,38 @@ public class PackageIndexerTest {
         assertThat(document.header().sourceDate().trim().isEmpty(), is(false));
         assertThat(document.header().generatedAt().trim().isEmpty(), is(false));
         assertThat(document.body().trim().isEmpty(), is(false));
+    }
+
+    @Test
+    public void sorted_aListingThatFailsMidway_failsWithItsIOException() throws Exception {
+        // arrange
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final PackageIndexer indexer = new PackageIndexer(
+                temp,
+                temp.resolve("ai"),
+                "1.0.0",
+                "0.0.0",
+                Collections.<Path>emptyList(),
+                false,
+                new RegenerateOn(),
+                new MockGenerationProvider(),
+                CommonTestFixtures.createPackageFieldGeneration(),
+                new PromptCatalog(CommonTestFixtures.createPackagePromptDefinitions()),
+                CommonTestFixtures.createDefaultAiModelDefinitionSupport());
+        final IOException gone = new IOException("the share is gone");
+        final Stream<Path> listing = Stream.of(temp.resolve("b"), temp.resolve("a"))
+                .map(path -> {
+                    if (path.endsWith("a")) {
+                        throw new UncheckedIOException(gone);
+                    }
+                    return path;
+                });
+
+        // act
+        final IOException thrown = assertThrows(IOException.class, () -> indexer.sorted(listing));
+
+        // assert
+        assertThat(thrown, is(gone));
     }
 
     @Test

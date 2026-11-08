@@ -304,6 +304,11 @@ public final class SourceFileIndexer {
 
             @Override
             public FileVisitResult visitFileFailed(final Path file, final IOException e) {
+                if (DIRECTORY_LINKS.isLinkToADirectory(file)) {
+                    // a junction whose target is gone: a link, not entered
+                    sourceLinkNotEntered(file);
+                    return FileVisitResult.CONTINUE;
+                }
                 return walkFailed(file, e);
             }
 
@@ -632,7 +637,8 @@ public final class SourceFileIndexer {
         public FileVisitResult visitFile(final Path file, final BasicFileAttributes attributes) {
             if (attributes.isSymbolicLink() && Files.isDirectory(file)) {
                 linkNotEntered(file);
-            } else if (attributes.isRegularFile()) {
+            } else if (attributes.isRegularFile() || (attributes.isSymbolicLink() && Files.isRegularFile(file))) {
+                // a link to a summary is one, as the package and project phases take it
                 final Path name = file.getFileName();
                 if (name != null && AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME.equals(name.toString())) {
                     packageFiles.add(file);
@@ -645,6 +651,11 @@ public final class SourceFileIndexer {
 
         @Override
         public FileVisitResult visitFileFailed(final Path file, final IOException e) {
+            if (DIRECTORY_LINKS.isLinkToADirectory(file)) {
+                // a junction whose target is gone: a link, not entered
+                linkNotEntered(file);
+                return FileVisitResult.CONTINUE;
+            }
             unreadable.add(file);
             return keptUnreadable(file, e);
         }

@@ -144,6 +144,24 @@ public class ProjectIndexerTest {
     }
 
     @Test
+    public void aggregate_aJunctionWhoseTargetIsGone_isLeftOut() throws Exception {
+        // arrange
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path outputRoot = temp.resolve("ai");
+        writePackageFile(outputRoot.resolve("main/a/package.ai.md"), "main/a", "> A package.\n");
+        final Path target = Files.createDirectory(temp.resolve("target"));
+        CommonTestFixtures.junction(outputRoot.resolve("main/gone"), target);
+        Files.delete(target);
+        final ProjectIndexer indexer = new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false, new RegenerateOn());
+
+        // act
+        final IndexOutcome written = indexer.aggregate(outputRoot);
+
+        // assert
+        assertThat(written, is(IndexOutcome.WRITTEN));
+    }
+
+    @Test
     public void aggregate_noPackages_writesNothing() throws Exception {
         // arrange: the output root exists but holds no package.ai.md
         final Path outputRoot = Files.createTempDirectory("ai-index-test").resolve("ai");

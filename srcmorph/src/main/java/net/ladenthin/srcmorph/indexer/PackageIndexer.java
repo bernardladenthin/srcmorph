@@ -201,7 +201,7 @@ public class PackageIndexer {
         for (final Path path : entries(directory)) {
             if (directoryLinks.isDirectoryNoLink(path)) {
                 aggregateRecursive(path, tally);
-            } else if (Files.isDirectory(path)) {
+            } else if (directoryLinks.isLinkToADirectory(path)) {
                 // a link to another directory would aggregate it twice, or loop
                 LOGGER.warn("Not entered, a link to another directory: {}", path);
             }
@@ -262,9 +262,22 @@ public class PackageIndexer {
      */
     private List<Path> entries(final Path directory) throws IOException {
         try (Stream<Path> stream = Files.list(directory)) {
-            return compatibilityHelper.toList(stream.sorted(BY_FILE_NAME));
+            return sorted(stream);
+        }
+    }
+
+    /**
+     * Collects a directory listing sorted by name ({@link #BY_FILE_NAME}).
+     *
+     * @param listing the listing
+     * @return its entries
+     * @throws IOException if the listing fails after it began, as {@link Files#list(Path)} reports it in an
+     *                     {@link UncheckedIOException}
+     */
+    List<Path> sorted(final Stream<Path> listing) throws IOException {
+        try {
+            return compatibilityHelper.toList(listing.sorted(BY_FILE_NAME));
         } catch (final UncheckedIOException e) {
-            // the listing failed after it began: the IOException this method declares
             throw e.getCause();
         }
     }

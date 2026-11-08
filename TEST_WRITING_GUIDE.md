@@ -97,3 +97,9 @@ public void setUp() {
   a file of this repository.
 - `CoreArchitectureTest`, `CliArchitectureTest` and `PluginArchitectureTest` are the ArchUnit rules
   of the three modules (CLAUDE.md lists them).
+- A test of a link to a directory makes it with `CommonTestFixtures.directoryLink`: a symbolic link,
+  or on Windows without the privilege a junction. CI runs on Linux, so a junction (a Windows test
+  with `CommonTestFixtures.junction`, a dangling one, the junction branch of `support.DirectoryLinks`)
+  runs only on a Windows machine, and a symbolic link only where one can be made; such a test skips
+  elsewhere. Cover a branch both reach with attributes made up in the test, as `DirectoryLinksTest`
+  does.

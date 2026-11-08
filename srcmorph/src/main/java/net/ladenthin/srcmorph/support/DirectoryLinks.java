@@ -58,6 +58,41 @@ public class DirectoryLinks {
     }
 
     /**
+     * Returns whether a path is a link to a directory ({@link #isLinkToADirectory(Path, BasicFileAttributes)}),
+     * its attributes read without following links: a walk that could not open it reports a junction whose
+     * target is gone as a failed read, not as a directory.
+     *
+     * @param path the path
+     * @return {@code true} for a link to a directory; {@code false} otherwise, and when the attributes cannot
+     *         be read
+     */
+    public boolean isLinkToADirectory(final Path path) {
+        final BasicFileAttributes attributes;
+        try {
+            attributes = Files.readAttributes(path, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
+        } catch (final IOException e) {
+            return false;
+        }
+        return isLinkToADirectory(path, attributes);
+    }
+
+    /**
+     * Returns whether a path is a link to a directory: a symbolic link whose target is a directory, or a
+     * link {@link #isLink(Path, BasicFileAttributes)} tells from its attributes (a junction, also one whose
+     * target is gone).
+     *
+     * @param path       the path
+     * @param attributes its attributes, read without following links
+     * @return {@code true} for a link to a directory
+     */
+    boolean isLinkToADirectory(final Path path, final BasicFileAttributes attributes) {
+        if (attributes.isSymbolicLink()) {
+            return Files.isDirectory(path);
+        }
+        return isLink(path, attributes);
+    }
+
+    /**
      * Walks {@code start} without following links ({@link Files#walkFileTree(Path, FileVisitor)}) and
      * reports every path to {@code visitor} as the same path below {@code shown}: a walk of a root that is
      * a symbolic link walks the link's target, as one that does not follow links would take the link for a

@@ -98,6 +98,66 @@ public class DirectoryLinksTest {
     }
     // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="isLinkToADirectory">
+    @Test
+    public void isLinkToADirectory_aDirectoryOrAFileOrAPathThatIsGone_isNone() throws Exception {
+        // arrange
+        final Path directory = Files.createTempDirectory("ai-index-test");
+        final Path file = Files.write(directory.resolve("A.java"), new byte[0]);
+
+        // act, assert
+        assertThat(links.isLinkToADirectory(directory), is(false));
+        assertThat(links.isLinkToADirectory(file), is(false));
+        assertThat(links.isLinkToADirectory(directory.resolve("gone")), is(false));
+    }
+
+    @Test
+    public void isLinkToADirectory_aLinkToADirectory_isOne() throws Exception {
+        // arrange
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path target = Files.createDirectory(temp.resolve("target"));
+        final Path link = temp.resolve("link");
+        CommonTestFixtures.directoryLink(link, target);
+
+        // act, assert
+        assertThat(links.isLinkToADirectory(link), is(true));
+    }
+
+    @Test
+    public void isLinkToADirectory_aJunctionWhoseTargetIsGone_isOne() throws Exception {
+        // arrange
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path target = Files.createDirectory(temp.resolve("target"));
+        final Path junction = temp.resolve("junction");
+        CommonTestFixtures.junction(junction, target);
+        Files.delete(target);
+
+        // act, assert
+        assertThat(links.isLinkToADirectory(junction), is(true));
+    }
+
+    @Test
+    public void isLinkToADirectory_aSymbolicLink_isOneWhenItsTargetIsADirectory() throws Exception {
+        // arrange: the attributes say symbolic link, the path is what it points at
+        final Path directory = Files.createTempDirectory("ai-index-test");
+        final Path file = Files.write(directory.resolve("A.java"), new byte[0]);
+
+        // act, assert
+        assertThat(links.isLinkToADirectory(directory, attributes(true, false)), is(true));
+        assertThat(links.isLinkToADirectory(file, attributes(true, false)), is(false));
+    }
+
+    @Test
+    public void isLinkToADirectory_anOtherDirectoryWhoseRealPathIsItsOwn_isNone() throws Exception {
+        // arrange
+        final Path directory = Files.createTempDirectory("ai-index-test").resolve("plain");
+        Files.createDirectory(directory);
+
+        // act, assert
+        assertThat(links.isLinkToADirectory(directory, attributes(false, true)), is(false));
+    }
+    // </editor-fold>
+
     // <editor-fold defaultstate="collapsed" desc="walkFileTree">
     @Test
     public void walkFileTree_aStartShownAsAnotherPath_reportsEveryPathBelowIt() throws Exception {

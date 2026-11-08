@@ -12,11 +12,13 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.charset.StandardCharsets;
@@ -402,6 +404,32 @@ public class SourceFileIndexerTest {
     }
 
     @Test
+    public void collectCandidates_aJunctionWhoseTargetIsGone_isALinkNotEntered() throws Exception {
+        // arrange
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        writeJava(temp.resolve("src/A.java"), "class A {}\n");
+        final Path target = Files.createDirectory(temp.resolve("target"));
+        CommonTestFixtures.junction(temp.resolve("src/gone"), target);
+        Files.delete(target);
+        final SourceFileIndexer indexer = indexer(temp, temp.resolve("out"), Collections.<String>emptyList(), 0L, 0L);
+        final ListAppender<ILoggingEvent> log = captureLog();
+
+        // act
+        try {
+            final List<Path> candidates = indexer.collectCandidates(temp.resolve("src"));
+
+            // assert
+            assertThat(candidates, is(equalTo(Collections.singletonList(temp.resolve("src/A.java")))));
+            assertThat(
+                    warnings(log),
+                    is(equalTo(Collections.singletonList(
+                            "Not entered, a link to another directory: " + temp.resolve("src/gone")))));
+        } finally {
+            release(log);
+        }
+    }
+
+    @Test
     public void collectCandidates_aRootThatIsALink_isEntered() throws Exception {
         // arrange
         final Path temp = Files.createTempDirectory("ai-index-test");
@@ -678,6 +706,46 @@ public class SourceFileIndexerTest {
         writeSummary(temp.resolve("real/a/Gone.java.ai.md"), "file", "Gone.");
         final Path out = temp.resolve("out");
         CommonTestFixtures.directoryLink(out, temp.resolve("real"));
+        final SourceFileIndexer indexer = indexer(temp, out, Collections.<String>emptyList(), 0L, 0L);
+
+        // act
+        final List<Path> orphans = indexer.orphanedSummaries(Collections.<Path>emptyList());
+
+        // assert
+        assertThat(relative(out, orphans), is(equalTo(Arrays.asList("a/Gone.java.ai.md"))));
+    }
+
+    @Test
+    public void orphanedSummaries_aJunctionWhoseTargetIsGone_keepsNoPackageAboveIt() throws Exception {
+        // arrange: a package whose one summary is an orphan, beside a junction whose target is gone
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path out = temp.resolve("out");
+        writeSummary(out.resolve("a/Gone.java.ai.md"), "file", "Gone.");
+        writeSummary(out.resolve("a/package.ai.md"), "package", "A.");
+        final Path target = Files.createDirectory(temp.resolve("target"));
+        CommonTestFixtures.junction(out.resolve("a/gone"), target);
+        Files.delete(target);
+        final SourceFileIndexer indexer = indexer(temp, out, Collections.<String>emptyList(), 0L, 0L);
+
+        // act
+        final List<Path> orphans = indexer.orphanedSummaries(Collections.<Path>emptyList());
+
+        // assert
+        assertThat(relative(out, orphans), is(equalTo(Arrays.asList("a/Gone.java.ai.md", "a/package.ai.md"))));
+    }
+
+    @Test
+    public void orphanedSummaries_aLinkToASummaryFile_isThatSummary() throws Exception {
+        // arrange: the link is the orphan, its target outside the output directory stays
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path out = temp.resolve("out");
+        writeSummary(temp.resolve("kept/Gone.java.ai.md"), "file", "Gone.");
+        Files.createDirectories(out.resolve("a"));
+        try {
+            Files.createSymbolicLink(out.resolve("a/Gone.java.ai.md"), temp.resolve("kept/Gone.java.ai.md"));
+        } catch (final IOException | UnsupportedOperationException e) {
+            assumeTrue(false, "no symbolic link can be made here");
+        }
         final SourceFileIndexer indexer = indexer(temp, out, Collections.<String>emptyList(), 0L, 0L);
 
         // act

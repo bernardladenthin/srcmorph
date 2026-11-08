@@ -28,6 +28,7 @@ import net.ladenthin.srcmorph.indexer.generation.SummaryGenerator;
 import net.ladenthin.srcmorph.indexer.generation.SummaryResult;
 import net.ladenthin.srcmorph.prompt.PromptPreparer;
 import net.ladenthin.srcmorph.support.ChecksumSupport;
+import net.ladenthin.srcmorph.support.DirectoryLinks;
 import net.ladenthin.srcmorph.support.Java8CompatibilityHelper;
 import net.ladenthin.srcmorph.support.TimeSupport;
 import org.jspecify.annotations.Nullable;
@@ -225,6 +226,16 @@ public class ProjectIndexer {
                     SourceFileIndexer.linkNotEntered(file);
                 }
                 return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult visitFileFailed(final Path file, final IOException e) throws IOException {
+                if (new DirectoryLinks().isLinkToADirectory(file)) {
+                    // a junction whose target is gone: a link, not entered
+                    SourceFileIndexer.linkNotEntered(file);
+                    return FileVisitResult.CONTINUE;
+                }
+                throw e;
             }
         });
 

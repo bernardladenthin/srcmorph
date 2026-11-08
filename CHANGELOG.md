@@ -686,7 +686,11 @@ The entries below hold the details; what a 1.4.0 user changes:
   is still taken, and a directory with another reparse point (a cloud file placeholder) still counts
   as a directory; a volume mounted into a folder carries a junction's reparse point and is taken for
   a link. A subtree behind a link inside another subtree is now kept as a subtree of its own (it was
-  dropped as part of the other). The summaries an earlier run wrote below a link are orphans now.
+  dropped as part of the other). A junction whose target is gone is such a link too (the project
+  phase failed on it, the file walk could not read it, and the orphan scan kept every package above
+  it). A link to a summary file counts as that summary in every phase, and `pruneOrphans` removes the
+  link, not its target. A walk of a linked root names the target in an error message. The summaries an
+  earlier run wrote below a link are orphans now.
 - **The file walk does not enter an excluded directory and goes on past an unreadable one:** it
   descended everywhere and applied the excludes per file, so a directory it could not list ended the
   run with an `UncheckedIOException`, also when an exclude covered it. A directory an exclude ending
