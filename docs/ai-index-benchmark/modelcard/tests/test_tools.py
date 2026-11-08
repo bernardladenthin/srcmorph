@@ -7,6 +7,7 @@ model.
 Run from the repository root: python -m unittest discover -s docs/ai-index-benchmark/modelcard/tests
 """
 import argparse
+import csv
 import http.client
 import io
 import json
@@ -35,6 +36,38 @@ def args(**overrides):
     values = {"models": "gpt-oss-20b", "backend": "", "oversize": "", "max_chunks": None, "chars_per_token": None}
     values.update(overrides)
     return argparse.Namespace(**values)
+
+
+class CardMetricsTest(unittest.TestCase):
+    """score.card_metrics, the quality plot.py charts and the card ranks by."""
+
+    @staticmethod
+    def row(file, kind, recall, failed="", lead="True", numbers="0"):
+        return {"file": file, "kind": kind, "recall": recall, "failed": failed, "lead": lead,
+                "badHeadings": "0", "fences": "0", "leaks": "0", "numbersStated": numbers}
+
+    def test_cardMetrics_meansTheRecallOfEachKindAndTheCleanShare(self):
+        rows = [self.row("java/A.java", "java", "1.0"), self.row("java/B.java", "java", "0.5"),
+                self.row("java/C.java", "java", ""),
+                self.row("sql/05_seed_data.sql", "sql", "1.0", numbers="3"),
+                self.row("other/x.sh", "other", "0.0", failed="empty"),
+                self.row("other/y.sh", "other", "1.0", lead="False")]
+        metrics = score.card_metrics(rows)
+        self.assertEqual(metrics["recall"], {"java": 0.75, "sql": 1.0, "other": 0.5})
+        self.assertEqual(metrics["format"], 4 / 6)
+        self.assertEqual(metrics["seed"], 0.75)
+        self.assertEqual(metrics["quality"], (0.75 + 1.0 + 0.5 + 4 / 6) / 4)
+
+    def test_cardMetrics_ofTheCardsScores_givesLunaTheCardsQuality(self):
+        with open(HERE / "scores" / "files.tsv", encoding="utf-8") as f:
+            rows = [r for r in csv.DictReader(f, delimiter="\t") if r["model"] == "gpt-6-luna"]
+        self.assertEqual(round(score.card_metrics(rows)["quality"], 3), 0.990)
+
+    def test_metaDirectory_isTheCardsOnlyForTheCardsOutputs(self):
+        self.assertEqual(score.meta_directory(str(score.CARD_OUT), None), str(HERE / "runs"))
+        self.assertEqual(score.meta_directory("elsewhere/out", "elsewhere/meta"), "elsewhere/meta")
+        with self.assertRaises(ValueError):
+            score.meta_directory("elsewhere/out", None)
 
 
 class ValidateTest(unittest.TestCase):

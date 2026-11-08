@@ -77,7 +77,7 @@ both stand level with Muse and above Qwen3.8-27B; the other models have not been
 - **Qwen3.8-27B with reasoning off** is the best after Muse Spark 1.3 (whose tier is for public code
   only) in runs 2 and 3 and on average over its three runs (98.7 %), and the steadiest of the hosted
   models; in the search measurement it moves most between runs (86 to 98 % first,
-  93 % on average; the other repeated configurations average 93 to 96 %). It costs 3.5 times as
+  93 % on average; the other repeated configurations average 93 to 96 %). It costs 3.6 times as
   much as Luna (0.34 USD per MB), so a 10 MB
   repository costs about 3.40 USD. With reasoning on it cost 18 times as much as Luna.
 - **gpt-oss-20b** is level with Luna over three runs at half the price, and in the search
@@ -419,7 +419,7 @@ both stand level with Muse and above Qwen3.8-27B; the other models have not been
 
 ### Repeatability
 
-Every other number on this card comes from one run at temperature 0.2. Six hosted
+The Results tables and charts come from one run at temperature 0.2. Six hosted
 configurations and Muse Spark 1.3 ran twice more, and Gemma 4 E4B ran three more times on the same GPU: once with the
 card's seed 42 and with seeds 43 and 44. The outputs are under [`repeat-2026-10/`](repeat-2026-10/),
 and [`modelcard/repeat.py`](modelcard/repeat.py) scores them with the card's metrics into
@@ -443,8 +443,9 @@ measurement below (about 0.02 USD), so that run's own cost is not known.
   the card's run byte for byte. Seeds 43 and 44 changed every file, but quality by at most
   0.4 points.
 - **Hosted runs move by 0.3 to 5.4 points.** A difference of one to three points between two
-  single runs of the top group is within that, so the card's first ranking (Luna 99.0 %, then
-  Qwen3.8 98.6 %, then gpt-oss 96.1 %) did not hold. Qwen3.8-27B was best after Muse Spark 1.3 in
+  single runs of the top group is within that, so the card's first order of the repeated
+  configurations after Muse Spark (Luna 99.0 %, then Qwen3.8 98.6 %, then gpt-oss 96.1 %) did not
+  hold. Qwen3.8-27B was best after Muse Spark 1.3 in
   runs 2 and 3 and on average (98.7 %); Muse Spark ran above it in all three.
 - **Luna's drops come from two files.** In runs 2 and 3, `rotate_backups.sh` keeps 2 of its 5
   expected names. In run 3 Luna describes the 88 getters and setters of `AiGenerationConfig.java`
@@ -796,9 +797,10 @@ its search scores.
 
 ### Caveats
 
-- **One run per model** at temperature 0.2, except the eight configurations under
-  [Repeatability](#repeatability): hosted runs moved by up to 5.4 points, so differences of a few
-  points are noise.
+- **One run per model** in the Results tables and charts, at temperature 0.2; the eight
+  configurations under [Repeatability](#repeatability) ran three or four times, and the
+  Recommendations give their means and ranges. Hosted runs moved by up to 5.4 points, so
+  differences of a few points are noise.
 - **Hosted and local weights differ.** An OpenRouter route serves the weights its provider
   chose (often BF16 or FP8); the local models are 4-bit. A hosted model and a local one are not comparable on quality alone.
 - **Recall and invented names are proxies.** Recall counts names, not whether what a summary says

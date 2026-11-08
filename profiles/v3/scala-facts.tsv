@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# Scala fact counters (.scala, .sc; Scala 2 and 3), for a rule with the shared prompt file-body-oop:
+# Scala fact counters (.scala; Scala 2 and 3), for a rule with the shared prompt file-body-oop:
 # one per line, label TAB pattern (Java regex), counted over the whole file. The [ignore] line runs
 # first and reads the file as the Scala lexer does, leftmost region first: it blanks line comments,
 # block comments (nested two levels deep; a third level ends the comment early), triple-quoted

@@ -210,7 +210,10 @@ The entries below hold the details; what a 1.4.0 user changes:
   run and a check delete nothing. Kept, with a warning: a summary whose header cannot be read, what
   the walk of the output directory cannot read, and every summary below a source file or directory
   the source walk could not read. Leave it off while narrowing `subtrees` for one run: the summaries
-  of the subtrees left out are orphans of that run too. On a case-insensitive file system that
+  of the subtrees left out are orphans of that run too. A summary that stays or that the run writes
+  keeps the `package.ai.md` of every directory above it; a missing default subtree (`src/main/java`)
+  and a script whose `#!` line cannot be read keep their summaries, so an empty plan deletes
+  nothing. On a case-insensitive file system that
   compares paths by case (macOS), the summary of a source renamed only in case is an orphan once
   and is written again.
 
@@ -370,6 +373,19 @@ The entries below hold the details; what a 1.4.0 user changes:
   `.wsdl` and `.xhtml` by extension. From 260 KB a `persistence.xml`, MyBatis mapper or WSDL got the
   generic `xml-facts` on Granite; it now keeps its kind's counters on gpt-oss, which map-reduces it.
   POMs keep their own tiers.
+- **Secrets skip a properties file with a secret key or a blank separator:** the properties branch
+  of the secrets rule (self-test, CLI twin, Luna example, run.py) also takes `aws.secretKey=`,
+  `app.secret-key=`, `aws.secret-access-key=`, `jwt.secret.key=` and `mail.smtp.password hunter2`
+  (a blank is a separator in a properties file); a key that only starts so (`password.label`,
+  `token.expiry`) stays a source.
+- **score.py wants `--meta` with an `--out` other than the card's** (breaking for a script that left
+  it out): it applied the cut-off lists of the card's runs to any output tree. The card's quality
+  metric moved from plot.py to `score.card_metrics`, with a test.
+- **OpenAPI, Camel YAML and Dockerfile rules take no lookalike:** the `openapi` rule wants a version
+  after `openapi:` or `swagger:` (a Spring `application.yml` with `swagger: enabled: true` goes to
+  `ops`), a Camel route's `- from:` names an endpoint (`timer:`, `kafka:`) or holds `uri:`,
+  `steps:` or `parameters:` (a list of redirects `- from: /docs/old` is no route), and the configs
+  exclude `**/*.dockerignore`, BuildKit's `Dockerfile.dockerignore` that `Dockerfile.*` took.
 - **Secrets skip a Kubernetes Secret by its kind:** the secrets rule of the self-test, its CLI twin,
   the Luna example and run.py skips a YAML file whose head declares `kind: Secret`, whatever its
   name; `deploy/postgres.yaml` went to the `k8s` rule, in the Luna example to a remote model. A Helm

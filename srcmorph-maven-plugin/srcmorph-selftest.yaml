@@ -101,6 +101,7 @@ srcMorph:
   excludes:
     - "**/package-info.java"
     - "**/module-info.java"
+    - "**/*.dockerignore"                    # BuildKit's Dockerfile.dockerignore, which Dockerfile.* takes
 
   # When a summary is rewritten. force: true rewrites every one. Otherwise a summary is rewritten when
   # it is missing or empty, its aiVersion changed, or a change below whose switch is true (each one is
@@ -689,7 +690,7 @@ srcMorph:
       reducePromptKey: reduce-parts
       condition:
         extensions: [".xhtml"]
-    - id: openapi
+    - id: openapi                            # by its version key (swagger: 2.0), not a Spring flag
       promptKey: file-body-contract
       onIncomplete: retryOnce
       aiDefinitionKey: "${ai.model}"
@@ -704,7 +705,7 @@ srcMorph:
             - and:
                 conditions:
                   - extensions: [".yml", ".yaml"]
-                  - contentMatches: '(?m)^["'']?(?:openapi|swagger)["'']?[ \t]*:'
+                  - contentMatches: '(?m)^["'']?(?:openapi|swagger)["'']?[ \t]*:[ \t]*["'']?\d'
             - fileNames: ["openapi*.json", "swagger*.json"]
     - id: asyncapi
       promptKey: file-body-contract
@@ -743,7 +744,7 @@ srcMorph:
       reducePromptKey: reduce-parts
       condition:
         extensions: [".graphql", ".graphqls", ".gql"]
-    - id: camel-yaml                         # Camel routes in the YAML DSL
+    - id: camel-yaml                         # Camel routes in the YAML DSL; a from: names an endpoint
       promptKey: file-body-ops
       onIncomplete: retryOnce
       aiDefinitionKey: "${ai.model}"
@@ -756,7 +757,7 @@ srcMorph:
         and:
           conditions:
             - extensions: [".yml", ".yaml"]
-            - contentMatches: '(?m)^-[ \t]+(?:route|routeTemplate|templatedRoute|from|rest)[ \t]*:'
+            - contentMatches: '(?m)^-[ \t]+(?:(?:route|routeTemplate|templatedRoute|rest)[ \t]*:|from[ \t]*:[ \t]*(?:["'']?[a-z][\w+.-]*:|\r?\n[ \t]+(?:uri|steps|parameters)[ \t]*:))'
     - id: compose
       promptKey: file-body-ops
       onIncomplete: retryOnce

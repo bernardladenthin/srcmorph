@@ -29,6 +29,8 @@ import matplotlib.pyplot as plt  # noqa: E402
 from matplotlib.text import Text  # noqa: E402
 from matplotlib.transforms import Bbox  # noqa: E402
 
+import score  # noqa: E402  the card's quality metric
+
 HERE = Path(__file__).resolve().parent
 OUT = HERE / "charts"
 
@@ -111,22 +113,13 @@ def load():
         if key not in runs or key not in rows:
             continue
         files = rows[key]
-        recall = {}
-        for kind in ("java", "sql", "other"):
-            # score.py's per-file recall (a failed or missing summary 0, an unmeasured file empty)
-            per_file = [float(r["recall"]) for r in files if r["kind"] == kind and r["recall"] != ""]
-            recall[kind] = sum(per_file) / len(per_file) if per_file else 0.0
-        clean = sum(1 for r in files if not r["failed"] and r["lead"] == "True" and r["badHeadings"] == "0"
-                    and r["fences"] == "0" and r["leaks"] == "0")
-        fmt_share = clean / len(files)
-        seed = next((r for r in files if r["file"].endswith("05_seed_data.sql")), {})
+        metrics = score.card_metrics(files)
         run = runs[key]
         source_files = sum(1 for r in files if r["kind"] in ("java", "sql", "other"))
         data.append({
             "key": key, "name": short_name(model), "backend": model["backend"],
-            "recall": recall, "format": fmt_share,
-            "seed": int(seed.get("numbersStated") or 0) / 4,
-            "quality": (recall["java"] + recall["sql"] + recall["other"] + fmt_share) / 4,
+            "recall": metrics["recall"], "format": metrics["format"], "seed": metrics["seed"],
+            "quality": metrics["quality"],
             "secondsPerFile": run["phases"]["GenerateFileIndex"]["seconds"] / source_files,
             "cost": run.get("costUsd"),
         })

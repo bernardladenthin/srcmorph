@@ -14,6 +14,9 @@ repository's profiles/ directory (--profile, default v3, the current one), passe
 profileDirectory, so the benchmark runs exactly the files the plugin's self-test runs. The
 .ai.md tree goes to <out>/<model key>/, timings and the OpenRouter cost to <meta>/<model key>.json.
 
+Needs Python 3.11 or later: the rules' Java regexes, which the tools evaluate with re, use
+possessive quantifiers.
+
 API keys are never read from a file here: the caller puts OPENROUTER_API_KEY / HF_TOKEN /
 COPILOT_GATEWAY_API_KEY into the environment, and a model only receives the variable its own
 definition names (every other apiKeyEnv of models.json is dropped from the CLI's environment).
@@ -249,7 +252,7 @@ LANGUAGES = (("shell", {"extensions": [".sh", ".bash", ".ksh"]}, "shell", 0),
              ("jsp", {"extensions": [".jsp", ".jspf", ".tag"]}, "view", 0),
              ("facelets", {"extensions": [".xhtml"]}, "view", 0),
              ("openapi", _or(_and({"extensions": YAML_EXTENSIONS},
-                                  {"contentMatches": r"""(?m)^["']?(?:openapi|swagger)["']?[ \t]*:"""}),
+                                  {"contentMatches": r"""(?m)^["']?(?:openapi|swagger)["']?[ \t]*:[ \t]*["']?\d"""}),
                              {"fileNames": ["openapi*.json", "swagger*.json"]}), "contract", 10),
              ("asyncapi", _or(_and({"extensions": YAML_EXTENSIONS}, {"contentMatches": r"""(?m)^["']?asyncapi["']?[ \t]*:"""}),
                               {"fileNames": ["asyncapi*.json"]}), "contract", 10),
@@ -261,7 +264,8 @@ LANGUAGES = (("shell", {"extensions": [".sh", ".bash", ".ksh"]}, "shell", 0),
              ("k8s", _and({"extensions": YAML_EXTENSIONS}, {"contentMatches": r"(?m)^kind:[ \t]*[\"']?[A-Z]"}), "ops", 5),
              ("dockerfile", {"fileNames": ["Dockerfile", "Dockerfile.*", "Containerfile"]}, "ops", 0),
              ("camel-yaml", _and({"extensions": YAML_EXTENSIONS},
-                                {"contentMatches": r"(?m)^-[ \t]+(?:route|routeTemplate|templatedRoute|from|rest)[ \t]*:"}),
+                                {"contentMatches": r"(?m)^-[ \t]+(?:(?:route|routeTemplate|templatedRoute|rest)[ \t]*:|from[ \t]*:"
+                                                 r"""[ \t]*(?:["']?[a-z][\w+.-]*:|\r?\n[ \t]+(?:uri|steps|parameters)[ \t]*:))"""}),
               "ops", 10),
              ("compose", {"fileNames": ["docker-compose*.{yml,yaml}", "compose*.{yml,yaml}"]}, "ops", 10),
              ("ansible", _or({"pathGlob": "**/roles/*/{tasks,handlers,defaults,vars,meta}/*.{yml,yaml}"},

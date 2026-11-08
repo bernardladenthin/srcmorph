@@ -553,7 +553,8 @@ before it is parsed. For the models of a GitHub Copilot subscription through a l
 ## Prompt System
 Prompts are referenced by key from the rules and read from the profile (`profileDirectory`). The
 self-test configuration uses thirteen prompt files (nine file prompts, the package and project
-prompts and the two map-reduce parts) and seventeen fact-counter files of
+prompts and the two map-reduce parts) and 35 fact-counter files (all but those of Ansible and Java
+EE) of
 [`profiles/v3/`](../profiles/README.md); the benchmark and the examples read the same files, so each
 prompt and each counter exists once in the repository:
 - `file-body-oop` — summarizes a single source file of a class-based language: Java, Kotlin, Groovy, Scala, and TypeScript (types, public API, dependencies)

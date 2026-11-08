@@ -36,6 +36,7 @@ import net.ladenthin.srcmorph.config.SrcMorphConfigurationFileLoader;
 import net.ladenthin.srcmorph.prompt.PromptTemplateLoader;
 import net.ladenthin.srcmorph.routing.FileContext;
 import net.ladenthin.srcmorph.routing.RuleSelector;
+import net.ladenthin.srcmorph.support.SourceExcludeFilter;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
@@ -333,6 +334,45 @@ public class ExamplesConfigBindingTest {
                 final RoutingRule rule = selector.select(rules, context(source[0], source[1]));
                 assertThat(config + ": " + source[0], rule != null && !rule.isSkip(), is(true));
             }
+        }
+    }
+
+    /**
+     * A contract or a route file by its content, not by a lookalike: an OpenAPI document by its version key,
+     * not a Spring application.yml that switches swagger on; a Camel route whose {@code from} names an
+     * endpoint, not a list of redirects; and BuildKit's {@code Dockerfile.dockerignore} is no source.
+     *
+     * @throws Exception if an example cannot be read
+     */
+    @Test
+    public void select_everyProfileConfig_leavesALookalikeToItsGenericRule() throws Exception {
+        // arrange
+        final String[][] cases = {
+            {"api/orders.yaml", "openapi: 3.0.3\n", "openapi"},
+            {"api/v31.yaml", "openapi: \"3.1.0\"\n", "openapi"},
+            {"api/legacy.yaml", "swagger: '2.0'\ninfo: {}\n", "openapi"},
+            {"config/application.yml", "server:\n  port: 8080\nswagger:\n  enabled: true\n", "ops"},
+            {"camel/timer.yaml", "- from:\n    uri: timer:tick\n", "camel-yaml"},
+            {"camel/kafka.yaml", "- from: \"kafka:orders\"\n", "camel-yaml"},
+            {"camel/orders.yaml", "- route:\n    id: orders\n", "camel-yaml"},
+            {"docs/redirects.yaml", "- from: /docs/old\n  to: /docs/new\n", "ops"},
+        };
+
+        // act, assert
+        for (final Path config : List.of(
+                EXAMPLES_DIRECTORY.resolve("copilot-api-gateway/srcmorph-luna.yaml"),
+                EXAMPLES_DIRECTORY.resolve("build-your-own-jar/srcmorph.yaml"))) {
+            final SrcMorphConfiguration srcMorph = Main.fromYaml(Main.readString(config)).srcMorph;
+            final List<RoutingRule> rules = srcMorph.getRules();
+            final RuleSelector selector = new RuleSelector();
+            selector.validate(rules);
+            for (final String[] c : cases) {
+                final RoutingRule rule = selector.select(rules, context(c[0], c[1]));
+                assertThat(config + ": " + c[0], rule == null ? null : rule.getId(), is(equalTo(c[2])));
+            }
+            final SourceExcludeFilter excludes = new SourceExcludeFilter(srcMorph.getExcludes());
+            assertThat(config.toString(), excludes.isExcluded("docker/Dockerfile.dockerignore"), is(true));
+            assertThat(config.toString(), excludes.isExcluded("docker/Dockerfile.dev"), is(false));
         }
     }
 

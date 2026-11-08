@@ -41,5 +41,5 @@ module). To measure a profile on it:
 ```bash
 python run.py --cp <classpath file> --models gpt-oss-20b,gpt-6-luna --work <dir> \
     --corpus ../corpus-enterprise --out <dir> --meta <dir> --facts [--java-prompt file-body-oop]
-python score.py --work <dir> --out <dir> --facts facts-enterprise.json
+python score.py --work <dir> --out <dir> --meta <dir> --facts facts-enterprise.json
 ```

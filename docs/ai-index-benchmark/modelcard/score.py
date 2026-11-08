@@ -83,7 +83,7 @@ Writes <scores>/files.tsv (one row per model and file) and <scores>/summary.json
 which MODEL-CARD.md is built from.
 
 Usage: python score.py --work <prepared corpus dir> [--out ...] [--scores ...] [--facts <json>]
-       [--meta <runs dir>]
+       [--meta <runs dir>] (--meta is required with an --out other than the card's)
 """
 import argparse
 import codecs
@@ -621,6 +621,20 @@ def score_file(source, body, ids, numbers, case_insensitive=False, everyday=(), 
     }
 
 
+CARD_OUT = HERE.parent / "outputs-2026-10"
+
+
+def meta_directory(out, meta):
+    """The runs' meta files whose cut-off paths an --out is scored with: --meta, or for the card's own
+    outputs the card's runs/; another output tree names its meta, so the card's cut-off lists are not
+    applied to it."""
+    if meta is not None:
+        return meta
+    if Path(out).resolve() == CARD_OUT.resolve():
+        return str(HERE / "runs")
+    raise ValueError(f"--out {out} is not the card's outputs: --meta names its runs' meta files")
+
+
 def cut_off_of(meta_dir, model):
     """The paths a run's provider reported as cut off at maxOutputTokens (runs/<model>.json)."""
     if meta_dir is None:
@@ -762,6 +776,24 @@ def tsv_cell(row, column):
     return "" if value is None else str(value)
 
 
+def card_metrics(rows):
+    """The card's quality of one model from its files.tsv rows (strings, as csv reads them): the recall
+    of each kind (java, sql, other: the mean of the per-file recall, a file without a measured recall
+    left out, 0.0 for a kind without any), the share of clean files (a body, a lead, no bad heading,
+    fence or leak), the share of the four seed counts the seed data's summary states, and the quality,
+    the mean of the three recalls and the clean share."""
+    recall = {}
+    for kind in ("java", "sql", "other"):
+        per_file = [float(r["recall"]) for r in rows if r["kind"] == kind and r["recall"] != ""]
+        recall[kind] = sum(per_file) / len(per_file) if per_file else 0.0
+    clean = sum(1 for r in rows if not r["failed"] and r["lead"] == "True" and r["badHeadings"] == "0"
+                and r["fences"] == "0" and r["leaks"] == "0")
+    fmt_share = clean / len(rows)
+    seed = next((r for r in rows if r["file"].endswith("05_seed_data.sql")), {})
+    return {"recall": recall, "format": fmt_share, "seed": int(seed.get("numbersStated") or 0) / 4,
+            "quality": (recall["java"] + recall["sql"] + recall["other"] + fmt_share) / 4}
+
+
 def tsv_line(row):
     return "\t".join(tsv_cell(row, c) for c in TSV_COLUMNS)
 
@@ -769,11 +801,16 @@ def tsv_line(row):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--work", required=True)
-    parser.add_argument("--out", default=str(HERE.parent / "outputs-2026-10"))
+    parser.add_argument("--out", default=str(CARD_OUT))
     parser.add_argument("--scores", default=str(HERE / "scores"))
     parser.add_argument("--facts", default=str(HERE / "facts.json"))
-    parser.add_argument("--meta", default=str(HERE / "runs"), help="the runs' meta files, for the cut-off paths")
+    parser.add_argument("--meta", help="the runs' meta files, for the cut-off paths (default: the card's"
+                        " runs/, only with the card's --out)")
     args = parser.parse_args()
+    try:
+        meta = meta_directory(args.out, args.meta)
+    except ValueError as e:
+        parser.error(str(e))
     facts = json.loads(Path(args.facts).read_text(encoding="utf-8"))
     work = Path(args.work)
     scores = Path(args.scores)
@@ -781,7 +818,7 @@ def main():
     lines = ["\t".join(TSV_COLUMNS)]
     summary = {}
     for model_dir in sorted(p for p in Path(args.out).iterdir() if p.is_dir()):
-        rows = score_model(model_dir, work, facts, cut_off_of(args.meta, model_dir.name))
+        rows = score_model(model_dir, work, facts, cut_off_of(meta, model_dir.name))
         summary[model_dir.name] = summarize(rows)
         lines += [tsv_line({**row, "model": model_dir.name}) for row in rows]
     (scores / "files.tsv").write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")

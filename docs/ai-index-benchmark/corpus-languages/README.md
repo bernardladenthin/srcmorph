@@ -25,5 +25,5 @@ the exact counts the fact files give for each file are pinned by `ShellFactPatte
 ```bash
 python run.py --cp <classpath file> --models gpt-oss-20b,gpt-6-luna --work <dir> \
     --corpus ../corpus-languages --out <dir> --meta <dir> [--facts]
-python score.py --work <dir> --out <dir> --facts facts-languages.json
+python score.py --work <dir> --out <dir> --meta <dir> --facts facts-languages.json
 ```

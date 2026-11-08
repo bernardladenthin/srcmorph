@@ -25,7 +25,7 @@ python score.py --work <copy of corpus-languages> --out ../languages-2026-11/lan
     --meta ../languages-2026-11/languages/run1/meta --facts facts-languages.json --scores <dir>
 ```
 
-`--meta` names the run's own cut-offs (without it, those of the card's runs are read), `--scores` a
+`--meta` names the run's own cut-offs (required with an `--out` other than the card's), `--scores` a
 directory of its own (without it, the card's `scores/` is overwritten).
 
 The quality figures of finding 7 and of `profiles/README.md` (per run and the mean, min and max of

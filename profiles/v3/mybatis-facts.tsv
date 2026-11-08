@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# MyBatis mapper counters (the XML mapper files of MyBatis and iBATIS): one per line, label TAB
+# MyBatis mapper counters (the XML mapper files of MyBatis): one per line, label TAB
 # pattern (Java regex). The [ignore] line blanks comments, processing instructions and the DOCTYPE,
 # but not CDATA: a mapper writes its SQL in CDATA, and its #{} parameters and ${} substitutions are
 # what the counters read. A region that is never closed runs to the end of the file. "dynamic SQL
