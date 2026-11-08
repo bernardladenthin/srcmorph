@@ -446,6 +446,14 @@ public class ExamplesConfigBindingTest {
             {"data/catalog.xsd", "<xs:schema/>\n", 300_000L, "big-xml"},
             {"data/catalog.xml", "<catalog/>\n", 1_200_000L, "huge-xml"},
             {"data/catalog.xml", "<catalog/>\n", 100_000L, "xml"},
+            // a schema that names a kind's namespace is no file of the kind, it stays with the tiers
+            {
+                "schema/camel-spring.xsd",
+                "<xs:schema targetNamespace=\"http://camel.apache.org/schema/spring\"/>\n",
+                1_200_000L,
+                "huge-xml"
+            },
+            {"schema/mapper.xsl", "<!-- mybatis.org//DTD Mapper -->\n<xsl:stylesheet/>\n", 300_000L, "big-xml"},
         };
 
         // act, assert
@@ -459,9 +467,10 @@ public class ExamplesConfigBindingTest {
     }
 
     /**
-     * The XML tiers leave out a kind's file by the kind rule's own conditions, copied into their
-     * {@code not}: every name, path or content condition of every rule that takes a file of the tiers'
-     * extensions by name, path or content, in rule order. A kind rule added or changed without its copy in
+     * The XML tiers leave out a kind's file by the kind rule's whole condition, copied into their
+     * {@code not}: the condition of every rule that takes a file of the tiers' extensions by name, path or
+     * content, in rule order, so a large {@code .xsd} a kind's content pattern names but the kind rule does
+     * not take stays with the tiers. A kind rule added or changed without its copy in
      * the tiers fails here. The POM rule is left out: the POM tiers outrank the XML tiers from the same
      * size on.
      *
@@ -496,11 +505,7 @@ public class ExamplesConfigBindingTest {
                     || !takesXml(condition, Objects.requireNonNull(tierExtensions))) {
                 continue;
             }
-            for (final RuleCondition leaf : leaves(condition)) {
-                if (leaf.getFileNames() != null || leaf.getPathGlob() != null || leaf.getContentMatches() != null) {
-                    kindConditions.add(json.valueToTree(leaf));
-                }
-            }
+            kindConditions.add(json.valueToTree(condition));
         }
 
         // pre-assert

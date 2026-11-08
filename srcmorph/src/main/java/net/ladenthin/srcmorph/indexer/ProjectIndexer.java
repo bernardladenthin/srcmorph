@@ -4,6 +4,7 @@
 package net.ladenthin.srcmorph.indexer;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -208,6 +209,9 @@ public class ProjectIndexer {
         try (Stream<Path> stream = Files.walk(rootDirectory)) {
             packageFiles = compatibilityHelper.toList(
                     stream.filter(path -> Files.isRegularFile(path) && isPackageAiMdFile(path)));
+        } catch (final UncheckedIOException e) {
+            // a directory below the root the stream could not open: the IOException this method declares
+            throw e.getCause();
         }
 
         if (packageFiles.isEmpty()) {

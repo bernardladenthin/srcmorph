@@ -185,7 +185,8 @@ The entries below hold the details; what a 1.4.0 user changes:
   applies the same defaults, and OpenRouter now applies the model's own.
 - **A source named `package` or `project` fails the plan** (breaking): it was summarized into the
   `package.ai.md` of its directory (`project.ai.md` of the output root), the file the package
-  (project) phase writes; on a case-insensitive file system `Package` too. Exclude it or take it with
+  (project) phase writes; the name is compared in any case on every file system (`Package` too),
+  since a case-insensitive one would put both into one file. Exclude it or take it with
   a skip rule. A source named `project` below the base root is summarized into `project.ai.md` of its
   directory, and the package phase now reads that file as its directory's content (it left out every
   `project.ai.md`, not only the output root's).
@@ -380,7 +381,8 @@ The entries below hold the details; what a 1.4.0 user changes:
   (`temperature: 1`) still takes a whole number.
 - **The XML size tiers leave a kind's file to its rule:** `huge-xml` and `big-xml` take only what the
   `xml` rule takes and leave out every file an XML kind rule takes by name or content (jee, mybatis,
-  bpmn, persistence, integration; the conditions copied in rule order, a test holds them equal), and
+  bpmn, persistence, integration; their whole conditions copied in rule order, a test holds them
+  equal, so a large `.xsd` or `.xsl` that only names a kind's namespace stays with the tiers), and
   `.wsdl` and `.xhtml` by extension. From 260 KB a `persistence.xml`, MyBatis mapper or WSDL got the
   generic `xml-facts` on Granite; it now keeps its kind's counters on gpt-oss, which map-reduces it.
   POMs keep their own tiers.

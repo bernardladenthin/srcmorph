@@ -22,9 +22,6 @@ repository.
 | 3 | SonarCloud: the analysis of PR #269 reads, that of `main` does not: `main` was analysed as a short branch (`Branch name: main, type: short` in the run of 2026-11-04), the main branch `master` last three months ago | the owner renamed the main branch to `main` (2026-11-07); left: one analysis of `main` as the long branch (the push of the merge of #269, or a re-run of the last SonarQube run on `main`), then its issues are read | Owner | PR #269 |
 | 38 | Use jllama's `ChatStreamAssembler` (not in `llama` 6.0.0) | switch with its release | External | Other open items |
 | 40 | Merge PR #269 | merge | Owner | PR #269 |
-| 146 | The XML tiers leave out a large `.xsd`/`.xsl`/`.xslt` by the mybatis or integration content, which no kind rule then takes | copy the kind rules' whole conditions into the tiers' `not`; the test compares them whole | Claude | Review 2026-11-08 (7) |
-| 147 | The package and project phases surface an unreadable directory below the output as an `UncheckedIOException` | rethrow it as its `IOException`; tests | Claude | Review 2026-11-08 (7) |
-| 148 | CHANGELOG: `Package` fails the plan "on a case-insensitive file system", the code compares in any case everywhere | reword | Claude | Review 2026-11-08 (7) |
 
 ## Open
 
@@ -37,10 +34,6 @@ repository.
   #269's code smells left: the cognitive complexity of nine methods and an eight-parameter method
   (refactors to report, not to apply), "test methods should not be public" (the owner's guides decide
   the other way) and a few false positives (comments read as code).
-
-### Review 2026-11-08 (7)
-
-The two reviews of cf3362d0: rows 146 to 148.
 
 ### Known limits, for the next model round (no open work)
 

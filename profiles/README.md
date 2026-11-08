@@ -332,7 +332,8 @@ generic one its final answer ran to the output limit and the file failed, in eve
 under [`remeasure-2026-11-02/`](../docs/ai-index-benchmark/remeasure-2026-11-02/README.md).
 The two tiers take what the `xml` rule takes (`.xml`, `.xsd`, `.xsl`, `.xslt`) and leave out every
 file an XML kind rule takes by its name or content (`jee`, `persistence`, a `.bpmn20.xml`, `mybatis`,
-`integration`; the conditions are copied from those rules), as `.wsdl` and `.xhtml` by their
+`integration`; their whole conditions are copied, so a large `.xsd` or `.xsl` that only names a
+kind's namespace stays with the tiers), as `.wsdl` and `.xhtml` by their
 extension: at priority 100 and 200 they outrank the kind rules (10 and 11), and up to 2026-11-07 a
 300 KB `persistence.xml`, MyBatis mapper or WSDL got the generic `xml-facts` from them instead of
 its kind's counters. Such a file now stays with its kind rule on gpt-oss, which map-reduces it.

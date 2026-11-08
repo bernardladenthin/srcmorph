@@ -12,7 +12,6 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
@@ -27,13 +26,7 @@ import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.nio.file.attribute.AclEntry;
-import java.nio.file.attribute.AclEntryPermission;
-import java.nio.file.attribute.AclEntryType;
-import java.nio.file.attribute.AclFileAttributeView;
-import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
-import java.nio.file.attribute.UserPrincipal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -230,34 +223,6 @@ public class SourceFileIndexerTest {
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="collectCandidates -- the walk">
-    /**
-     * Takes the permission to list a directory away until the returned handle is closed: on POSIX its
-     * mode bits (the test does not run as root), on Windows an access control entry that denies the
-     * current user the listing.
-     */
-    private static AutoCloseable unlistable(final Path directory) throws Exception {
-        if (FileSystems.getDefault().supportedFileAttributeViews().contains("posix")) {
-            Files.setPosixFilePermissions(directory, Collections.<PosixFilePermission>emptySet());
-            return () -> Files.setPosixFilePermissions(directory, PosixFilePermissions.fromString("rwx------"));
-        }
-        final AclFileAttributeView view = Files.getFileAttributeView(directory, AclFileAttributeView.class);
-        assumeTrue(view != null, "the file system supports neither POSIX permissions nor access control lists");
-        final List<AclEntry> before = view.getAcl();
-        final UserPrincipal user = directory
-                .getFileSystem()
-                .getUserPrincipalLookupService()
-                .lookupPrincipalByName(System.getProperty("user.name"));
-        final List<AclEntry> denied = new ArrayList<>();
-        denied.add(AclEntry.newBuilder()
-                .setType(AclEntryType.DENY)
-                .setPrincipal(user)
-                .setPermissions(AclEntryPermission.LIST_DIRECTORY)
-                .build());
-        denied.addAll(before);
-        view.setAcl(denied);
-        return () -> view.setAcl(before);
-    }
-
     /** Captures the indexer's log lines until {@link #release}. */
     private static ListAppender<ILoggingEvent> captureLog() {
         final ListAppender<ILoggingEvent> appender = new ListAppender<>();
@@ -490,7 +455,7 @@ public class SourceFileIndexerTest {
 
         // act
         final List<String> selected;
-        try (AutoCloseable locked = unlistable(sourceRoot.resolve("locked"))) {
+        try (AutoCloseable locked = CommonTestFixtures.unlistable(sourceRoot.resolve("locked"))) {
             selected = names(indexer.collectCandidates(sourceRoot));
         } finally {
             release(log);
@@ -515,7 +480,7 @@ public class SourceFileIndexerTest {
 
         // act
         final List<String> selected;
-        try (AutoCloseable locked = unlistable(sourceRoot.resolve("generated/locked"))) {
+        try (AutoCloseable locked = CommonTestFixtures.unlistable(sourceRoot.resolve("generated/locked"))) {
             selected = names(indexer.collectCandidates(sourceRoot));
         } finally {
             release(log);
@@ -538,7 +503,7 @@ public class SourceFileIndexerTest {
 
         // act
         final List<String> selected;
-        try (AutoCloseable locked = unlistable(sourceRoot.resolve("generated"))) {
+        try (AutoCloseable locked = CommonTestFixtures.unlistable(sourceRoot.resolve("generated"))) {
             selected = names(indexer.collectCandidates(sourceRoot));
         } finally {
             release(log);
@@ -603,7 +568,7 @@ public class SourceFileIndexerTest {
         // act
         final List<Path> orphans;
         try {
-            try (AutoCloseable locked = unlistable(sourceRoot.resolve("locked"))) {
+            try (AutoCloseable locked = CommonTestFixtures.unlistable(sourceRoot.resolve("locked"))) {
                 orphans = indexer.orphanedSummaries(indexer.collectCandidates(sourceRoot));
             }
         } finally {
@@ -709,7 +674,7 @@ public class SourceFileIndexerTest {
         // act
         final List<Path> orphans;
         try {
-            try (AutoCloseable locked = unlistable(java.resolve("locked"))) {
+            try (AutoCloseable locked = CommonTestFixtures.unlistable(java.resolve("locked"))) {
                 orphans = indexer.orphanedSummaries(Collections.<Path>emptyList());
             }
         } finally {

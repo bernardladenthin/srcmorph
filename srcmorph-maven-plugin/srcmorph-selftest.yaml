@@ -361,14 +361,23 @@ srcMorph:
           conditions:
             - extensions: [".xml", ".xsd", ".xsl", ".xslt"]
             - size: {min: 1000000}
-            - not:                           # the XML kind rules' own conditions, as in big-xml
+            - not:                           # the XML kind rules' whole conditions, as in big-xml
                 or:
                   conditions:
                     - fileNames: ["web.xml", "web-fragment.xml", "ejb-jar.xml", "application.xml"]   # jee
-                    - contentMatches: 'mybatis\.org//DTD Mapper'                                     # mybatis
-                    - fileNames: ["*.bpmn20.xml"]                                                    # bpmn
+                    - and:                                                                           # mybatis
+                        conditions:
+                          - extensions: [".xml"]
+                          - contentMatches: 'mybatis\.org//DTD Mapper'
+                    - or:                                                                            # bpmn
+                        conditions:
+                          - extensions: [".bpmn"]
+                          - fileNames: ["*.bpmn20.xml"]
                     - fileNames: ["persistence.xml", "orm.xml", "*.hbm.xml"]                         # persistence
-                    - contentMatches: 'camel\.apache\.org/schema|springframework\.org/schema/integration|mulesoft\.org/schema/mule|ws\.apache\.org/ns/synapse'
+                    - and:                                                                           # integration
+                        conditions:
+                          - extensions: [".xml"]
+                          - contentMatches: 'camel\.apache\.org/schema|springframework\.org/schema/integration|mulesoft\.org/schema/mule|ws\.apache\.org/ns/synapse'
     - id: big-xml
       promptKey: file-body-xml
       onIncomplete: retryOnce
@@ -383,14 +392,23 @@ srcMorph:
           conditions:
             - extensions: [".xml", ".xsd", ".xsl", ".xslt"]
             - size: {min: 260000}
-            - not:                           # the XML kind rules' own conditions, as in huge-xml
+            - not:                           # the XML kind rules' whole conditions, as in huge-xml
                 or:
                   conditions:
                     - fileNames: ["web.xml", "web-fragment.xml", "ejb-jar.xml", "application.xml"]   # jee
-                    - contentMatches: 'mybatis\.org//DTD Mapper'                                     # mybatis
-                    - fileNames: ["*.bpmn20.xml"]                                                    # bpmn
+                    - and:                                                                           # mybatis
+                        conditions:
+                          - extensions: [".xml"]
+                          - contentMatches: 'mybatis\.org//DTD Mapper'
+                    - or:                                                                            # bpmn
+                        conditions:
+                          - extensions: [".bpmn"]
+                          - fileNames: ["*.bpmn20.xml"]
                     - fileNames: ["persistence.xml", "orm.xml", "*.hbm.xml"]                         # persistence
-                    - contentMatches: 'camel\.apache\.org/schema|springframework\.org/schema/integration|mulesoft\.org/schema/mule|ws\.apache\.org/ns/synapse'
+                    - and:                                                                           # integration
+                        conditions:
+                          - extensions: [".xml"]
+                          - contentMatches: 'camel\.apache\.org/schema|springframework\.org/schema/integration|mulesoft\.org/schema/mule|ws\.apache\.org/ns/synapse'
     - id: huge-pom                      # a big POM takes the XML tiers one step higher, with the Maven counters
       promptKey: file-body-fallback
       onIncomplete: retryOnce

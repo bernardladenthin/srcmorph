@@ -3,7 +3,21 @@
 // SPDX-License-Identifier: Apache-2.0
 package net.ladenthin.srcmorph;
 
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
+
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.attribute.AclEntry;
+import java.nio.file.attribute.AclEntryPermission;
+import java.nio.file.attribute.AclEntryType;
+import java.nio.file.attribute.AclFileAttributeView;
+import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.PosixFilePermissions;
+import java.nio.file.attribute.UserPrincipal;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import net.ladenthin.srcmorph.config.ModelDefinition;
 import net.ladenthin.srcmorph.config.ModelRegistry;
@@ -159,5 +173,33 @@ public class CommonTestFixtures {
 
     private CommonTestFixtures() {
         // utility class — not instantiable
+    }
+
+    /**
+     * Takes the permission to list a directory away until the returned handle is closed: on POSIX its
+     * mode bits (the test does not run as root), on Windows an access control entry that denies the
+     * current user the listing.
+     */
+    public static AutoCloseable unlistable(final Path directory) throws Exception {
+        if (FileSystems.getDefault().supportedFileAttributeViews().contains("posix")) {
+            Files.setPosixFilePermissions(directory, Collections.<PosixFilePermission>emptySet());
+            return () -> Files.setPosixFilePermissions(directory, PosixFilePermissions.fromString("rwx------"));
+        }
+        final AclFileAttributeView view = Files.getFileAttributeView(directory, AclFileAttributeView.class);
+        assumeTrue(view != null, "the file system supports neither POSIX permissions nor access control lists");
+        final List<AclEntry> before = view.getAcl();
+        final UserPrincipal user = directory
+                .getFileSystem()
+                .getUserPrincipalLookupService()
+                .lookupPrincipalByName(System.getProperty("user.name"));
+        final List<AclEntry> denied = new ArrayList<>();
+        denied.add(AclEntry.newBuilder()
+                .setType(AclEntryType.DENY)
+                .setPrincipal(user)
+                .setPermissions(AclEntryPermission.LIST_DIRECTORY)
+                .build());
+        denied.addAll(before);
+        view.setAcl(denied);
+        return () -> view.setAcl(before);
     }
 }

@@ -9,6 +9,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -85,6 +86,24 @@ public class ProjectIndexerTest {
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="no packages">
+    @Test
+    public void aggregate_aDirectoryThatCannotBeListed_failsWithItsIOException() throws Exception {
+        // arrange
+        final Path outputRoot = Files.createTempDirectory("ai-index-test").resolve("ai");
+        final Path locked = outputRoot.resolve("main/locked");
+        Files.createDirectories(locked);
+        final ProjectIndexer indexer = new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false, new RegenerateOn());
+
+        // act
+        final IOException thrown;
+        try (AutoCloseable denied = CommonTestFixtures.unlistable(locked)) {
+            thrown = assertThrows(IOException.class, () -> indexer.aggregate(outputRoot));
+        }
+
+        // assert
+        assertThat(thrown.getMessage(), containsString("locked"));
+    }
+
     @Test
     public void aggregate_noPackages_writesNothing() throws Exception {
         // arrange: the output root exists but holds no package.ai.md
