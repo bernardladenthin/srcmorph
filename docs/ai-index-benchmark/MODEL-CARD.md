@@ -69,13 +69,14 @@ both stand level with Muse and above Qwen3.8-27B; the other models have not been
   the only run with nothing missing: full recall on every kind, all four seed counts, a clean format,
   and 95 % first in search. Two more runs scored 100 % and 99.4 % (one name of
   the other files missing) and searched 93 % first both times, so it is also the steadiest of the
-  top group (see [Repeatability](#repeatability)). The Contributor tier costs a twelfth
+  top group in search (see [Repeatability](#repeatability)). The Contributor tier costs a twelfth
   of the standard one (0.10 / 0.20 against 1.25 / 4.25 USD per million tokens) because Meta trains
   on its prompts, as third-party sources report; OpenRouter refuses it until the account allows
   providers that train on paid requests, in both its privacy settings and the workspace guardrail.
   Fine for public code like this corpus, not for code that must not leave the company.
-- **Qwen3.8-27B with reasoning off** is the best in every one of its three runs after Muse Spark
-  1.3 (whose tier is for public code only) and the steadiest of the hosted models; in the search measurement it moves most between runs (86 to 98 % first,
+- **Qwen3.8-27B with reasoning off** is the best after Muse Spark 1.3 (whose tier is for public code
+  only) in runs 2 and 3 and on average over its three runs (98.7 %), and the steadiest of the hosted
+  models; in the search measurement it moves most between runs (86 to 98 % first,
   93 % on average; the other repeated configurations average 93 to 96 %). It costs 3.5 times as
   much as Luna (0.34 USD per MB), so a 10 MB
   repository costs about 3.40 USD. With reasoning on it cost 18 times as much as Luna.
@@ -83,7 +84,7 @@ both stand level with Muse and above Qwen3.8-27B; the other models have not been
   measurement it is at the top (93 to 98 % first, 96 % on average). It keeps nearly every Java
   name, but states no seed
   counts.
-- **GPT-6 Luna** had the best single run (99 %, full recall on Java and SQL, all four seed counts,
+- **GPT-6 Luna** had the best single run after Muse Spark's (99 %, full recall on Java and SQL, all four seed counts,
   clean format), but it was its best of three: the other two scored 96 % and 94 %. It is among the
   fastest of the top group (6.9 s per file; Claude Haiku 5.5 6.8 s, Mercury 3 2.6 s) and costs about
   0.10 USD per MB.
@@ -418,7 +419,7 @@ both stand level with Muse and above Qwen3.8-27B; the other models have not been
 
 ### Repeatability
 
-Every other number on this card comes from one run at temperature 0.2. The six top hosted
+Every other number on this card comes from one run at temperature 0.2. Six hosted
 configurations and Muse Spark 1.3 ran twice more, and Gemma 4 E4B ran three more times on the same GPU: once with the
 card's seed 42 and with seeds 43 and 44. The outputs are under [`repeat-2026-10/`](repeat-2026-10/),
 and [`modelcard/repeat.py`](modelcard/repeat.py) scores them with the card's metrics into
@@ -443,8 +444,8 @@ measurement below (about 0.02 USD), so that run's own cost is not known.
   0.4 points.
 - **Hosted runs move by 0.3 to 5.4 points.** A difference of one to three points between two
   single runs of the top group is within that, so the card's first ranking (Luna 99.0 %, then
-  Qwen3.8 98.6 %, then gpt-oss 96.1 %) did not hold. Qwen3.8-27B was best in every run after
-  Muse Spark 1.3, which ran above it in all three.
+  Qwen3.8 98.6 %, then gpt-oss 96.1 %) did not hold. Qwen3.8-27B was best after Muse Spark 1.3 in
+  runs 2 and 3 and on average (98.7 %); Muse Spark ran above it in all three.
 - **Luna's drops come from two files.** In runs 2 and 3, `rotate_backups.sh` keeps 2 of its 5
   expected names. In run 3 Luna describes the 88 getters and setters of `AiGenerationConfig.java`
   as groups and names 3 of them, which costs 9 points of Java recall: the per-file mean weighs
@@ -795,7 +796,7 @@ its search scores.
 
 ### Caveats
 
-- **One run per model** at temperature 0.2, except the seven configurations under
+- **One run per model** at temperature 0.2, except the eight configurations under
   [Repeatability](#repeatability): hosted runs moved by up to 5.4 points, so differences of a few
   points are noise.
 - **Hosted and local weights differ.** An OpenRouter route serves the weights its provider

@@ -1524,7 +1524,7 @@ public class GenerateEngineTest {
                 containsString("\n- out/main/java/com/example/Bar.java.ai.md\n"));
         assertThat(
                 capturedMessages(Level.WARN),
-                is(Collections.singletonList("1 file summary(ies) below the output directory belong to no file of this"
+                is(Collections.singletonList("1 summary(ies) below the output directory belong to no file of this"
                         + " plan (see 'Orphaned summaries' in the plan above); the package and project phases still"
                         + " read them, and pruneOrphans: true deletes them")));
     }

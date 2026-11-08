@@ -186,10 +186,13 @@ The entries below hold the details; what a 1.4.0 user changes:
 - **A source named `package` or `project` fails the plan** (breaking): it was summarized into the
   `package.ai.md` of its directory (`project.ai.md` of the output root), the file the package
   (project) phase writes; on a case-insensitive file system `Package` too. Exclude it or take it with
-  a skip rule.
-- **Summaries of eleven kinds are written again:** the fact counters of Java, OpenAPI, AsyncAPI,
+  a skip rule. A source named `project` below the base root is summarized into `project.ai.md` of its
+  directory, and the package phase now reads that file as its directory's content (it left out every
+  `project.ai.md`, not only the output root's).
+- **Summaries of thirteen kinds are written again:** the fact counters of Java, OpenAPI, AsyncAPI,
   batch, SQL, GitHub Actions, Ansible, Kotlin, Scala, Groovy and JSP changed (see Fixed), and with
-  them the facts hash `N` of their summaries.
+  them the facts hash `N` of their summaries; Java EE (`java-ee-facts`) and JSP documents
+  (`jspx-facts`) include the Java and JSP counters, so theirs changed too.
 - **A large file of an XML kind stays with its kind's rule:** the self-test's `big-xml` and
   `huge-xml` tiers no longer take a `persistence.xml`, MyBatis mapper, WSDL, Facelets page or the
   other XML kinds (see Changed); a copied configuration takes the tiers' new conditions.
@@ -199,11 +202,17 @@ The entries below hold the details; what a 1.4.0 user changes:
 - **New key `srcMorph.pruneOrphans`: the plan lists the orphaned summaries, and the switch deletes
   them.** Nothing deleted the summary of a deleted, renamed or newly excluded source (or of one a
   skip rule now takes), and the package and project phases kept reading it. The `generate` plan now
-  lists every file summary (`X: file`) below the output directory that no file of the plan is
-  summarized into, in a section "Orphaned summaries (N)" with a warning. `pruneOrphans: true`
+  lists every file summary (`X: file`, read from the header block) below the output directory that
+  no file of the plan is summarized into, and the `package.ai.md` (`X: package`) of a directory left
+  without any summary and sub-package (a deleted or renamed package, which the package phase neither
+  rewrites nor removes), in a section "Orphaned summaries (N)" with a warning. `pruneOrphans: true`
   (default `false`) deletes them, each with a log line, before a run that generates; a `planOnly`
-  run and a check delete nothing. Leave it off while narrowing `subtrees` for one run: the summaries
-  of the subtrees left out are orphans of that run too.
+  run and a check delete nothing. Kept, with a warning: a summary whose header cannot be read, what
+  the walk of the output directory cannot read, and every summary below a source file or directory
+  the source walk could not read. Leave it off while narrowing `subtrees` for one run: the summaries
+  of the subtrees left out are orphans of that run too. On a case-insensitive file system that
+  compares paths by case (macOS), the summary of a source renamed only in case is an orphan once
+  and is written again.
 
 - **`partsDirectory` keeps the map-reduce answers of each file:** every map answer and every reduce
   batch's answer of a file read in chunks, in `<partsDirectory>/<path below the base>.parts.md`, so a
@@ -596,7 +605,7 @@ The entries below hold the details; what a 1.4.0 user changes:
 
 ### Fixed
 
-- **Nine fact counters count what their label says:** Java counts a constructor whose first
+- **The fact counters of ten kinds count what their label says:** Java counts a constructor whose first
   parameter is generic (`Reg(List<String> names)`) and names with a `$` (`FormatMessageW$MH`), and
   its header no longer says the methods hold every constructor; OpenAPI counts an operation only one
   level below a path key, not a schema property named `options` or `head`; batch's `errorlevel` is

@@ -463,10 +463,13 @@ part of the text the model and the fact counters see.
 
 The `generate` plan lists the **orphaned summaries**: the file summaries (`X: file`) below the output
 directory that no file of the plan is summarized into, of a source that was deleted, renamed or newly
-excluded, or that a skip rule takes now. The package and project phases would go on reading them.
+excluded, or that a skip rule takes now, and the `package.ai.md` of a directory left without any
+summary and sub-package. The package and project phases would go on reading them.
 `pruneOrphans: true` (default `false`) deletes them before the run generates, each with a log line;
-a `planOnly` run and `srcmorph:check` delete nothing. Leave it off while you narrow the subtrees for a
-single run: the summaries of the subtrees left out are orphans of that run too.
+a `planOnly` run and `srcmorph:check` delete nothing. A summary whose header cannot be read, what the
+walk of the output directory cannot read, and every summary below a source path the walk could not
+read are kept, with a warning. Leave it off while you narrow the subtrees for a single run: the
+summaries of the subtrees left out are orphans of that run too.
 
 ### Per-model `aiDefinitions` parameters
 

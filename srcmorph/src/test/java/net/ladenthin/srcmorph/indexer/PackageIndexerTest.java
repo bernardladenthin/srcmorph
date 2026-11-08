@@ -235,6 +235,47 @@ public class PackageIndexerTest {
         assertThat(rootSource, not(containsString("PROJECT_BODY_MARKER")));
         assertThat(rootSource, not(containsString(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME)));
     }
+
+    @Test
+    public void aggregate_projectAiMdBelowTheOutputRoot_isAChildSummary() throws Exception {
+        // arrange: below the output root a project.ai.md is the summary of a source named project
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path outputRoot = temp.resolve("ai");
+        final Path leafDirectory = outputRoot.resolve("main/java/com/example");
+        Files.createDirectories(leafDirectory);
+        writeChildFile(leafDirectory.resolve("Foo.java.ai.md"), "Foo.java", "FOO_BODY summary of Foo.");
+        writeChildFile(leafDirectory.resolve("project.ai.md"), "project", "PROJECT_SOURCE_BODY of the script.");
+
+        final CapturingProvider provider = new CapturingProvider();
+        final PromptCatalog promptSupport = new PromptCatalog(CommonTestFixtures.createPackagePromptDefinitions());
+        final PackageIndexer indexer = new PackageIndexer(
+                temp,
+                outputRoot,
+                "1.0.0",
+                "0.0.0",
+                Collections.<Path>emptyList(),
+                false,
+                new RegenerateOn(),
+                provider,
+                CommonTestFixtures.createPackageFieldGeneration(),
+                promptSupport,
+                CommonTestFixtures.createDefaultAiModelDefinitionSupport());
+
+        // act
+        indexer.aggregate(outputRoot);
+
+        // assert
+        final String leafSource = provider.sourceTextFor(Paths.get("main/java/com/example"));
+        assertThat(leafSource, is(notNullValue()));
+        assertThat(leafSource, containsString("PROJECT_SOURCE_BODY"));
+        assertThat(
+                documentCodec
+                        .read(leafDirectory.resolve(AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME))
+                        .header()
+                        .children()
+                        .toString(),
+                containsString("project.ai.md"));
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="child links in header">

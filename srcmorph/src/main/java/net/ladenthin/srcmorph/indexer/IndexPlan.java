@@ -268,7 +268,7 @@ public final class IndexPlan {
 
     /**
      * Records an orphaned summary: a file summary below the output directory that no routed file of this
-     * plan is summarized into.
+     * plan is summarized into, or the package summary of a directory left without any summary.
      *
      * @param summary the {@code .ai.md} file
      */
@@ -515,7 +515,8 @@ public final class IndexPlan {
             sb.append("\n### Orphaned summaries (")
                     .append(orphans.size())
                     .append(")\n\nFile summaries no file of this plan is summarized into (a deleted, renamed or")
-                    .append(" excluded source); the package and project phases still read them, and")
+                    .append(" excluded source), and the package summaries of directories left without any; the")
+                    .append(" package and project phases still read them, and")
                     .append(" pruneOrphans: true deletes them.\n\n");
             for (final Path file : orphans) {
                 sb.append("- ").append(relativize(baseDir, file)).append("\n");

@@ -178,8 +178,9 @@ public final class GenerateEngine {
         //    run uses to trim — see InputWindowCalculator).
         final IndexPlan plan = fileIndexer.classify(
                 candidates, rules, modelDefinitionSupport, promptPreparationSupport, config.getGenerationProvider());
-        // 2b. The file summaries below the output directory no file of this plan is summarized into: listed in
-        //     the plan always, deleted only by a run that generates with pruneOrphans (step 3d).
+        // 2b. The file summaries below the output directory no file of this plan is summarized into, and the
+        //     package summaries left without any: listed in the plan always, deleted only by a run that
+        //     generates with pruneOrphans (step 3d).
         final boolean planOnly = !checkOnly && config.isPlanOnly();
         final boolean prune = !planOnly && !checkOnly && config.isPruneOrphans();
         addOrphans(plan, fileIndexer);
@@ -412,7 +413,8 @@ public final class GenerateEngine {
 
     /**
      * Adds the orphaned summaries to the plan: the file summaries below the output directory that no
-     * routed file of the plan is summarized into.
+     * routed file of the plan is summarized into, and the package summaries of directories left without
+     * any ({@link SourceFileIndexer#orphanedSummaries(java.util.Collection)}).
      *
      * @param plan        the plan
      * @param fileIndexer the indexer that walks the output directory
@@ -433,7 +435,7 @@ public final class GenerateEngine {
     private static void warnOrphans(final IndexPlan plan, final boolean prune) {
         if (!plan.orphans().isEmpty()) {
             LOGGER.warn(
-                    "{} file summary(ies) below the output directory belong to no file of this plan (see 'Orphaned"
+                    "{} summary(ies) below the output directory belong to no file of this plan (see 'Orphaned"
                             + " summaries' in the plan above); {}",
                     plan.orphans().size(),
                     prune

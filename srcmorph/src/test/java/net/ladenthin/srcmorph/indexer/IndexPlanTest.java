@@ -239,8 +239,9 @@ public class IndexPlanTest {
         assertThat(
                 markdown,
                 containsString("\n### Orphaned summaries (2)\n\nFile summaries no file of this plan is summarized into"
-                        + " (a deleted, renamed or excluded source); the package and project phases still read"
-                        + " them, and pruneOrphans: true deletes them.\n\n- out/Gone.java.ai.md\n"
+                        + " (a deleted, renamed or excluded source), and the package summaries of directories left"
+                        + " without any; the package and project phases still read them, and pruneOrphans: true"
+                        + " deletes them.\n\n- out/Gone.java.ai.md\n"
                         + "- out/a/Old.java.ai.md\n"));
         assertThat(markdown.indexOf("### Skipped"), is(lessThan(markdown.indexOf("### Orphaned"))));
     }

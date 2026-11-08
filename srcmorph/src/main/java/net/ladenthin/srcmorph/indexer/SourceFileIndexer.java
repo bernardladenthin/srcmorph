@@ -121,7 +121,13 @@ public final class SourceFileIndexer {
     private final ChecksumSupport checksumSupport = new ChecksumSupport();
     private final AiMdRewritePolicy headerSupport;
     private final AiMdDocumentCodec documentCodec = new AiMdDocumentCodec();
-    private final AiMdHeaderCodec headerCodec = new AiMdHeaderCodec();
+
+    /**
+     * The source files and directories {@link #collectCandidates(Path)} could not read (and no exclude takes
+     * whole): their summaries are no orphans.
+     */
+    private final List<Path> unreadableSources = new ArrayList<>();
+
     private final RuleSelector fieldGenerationSelector = new RuleSelector();
     private final ConditionEvaluator conditionEvaluator = new ConditionEvaluator();
     private final GenerationTimeEstimator timeEstimator = new GenerationTimeEstimator();
@@ -302,9 +308,14 @@ public final class SourceFileIndexer {
      * Returns the orphaned summaries: the {@code .ai.md} files of node type
      * {@link AiMdHeaderCodec#NODE_TYPE_FILE} below the output root that none of {@code sources} is
      * summarized into ({@link #targetFile(Path)}), the summary of a deleted, renamed or newly excluded source
-     * or of one a skip rule takes now. The package and project files are none, by their name in any case and
-     * by their header, nor is an {@code .ai.md} without a file header (a note written by hand); a summary
-     * that cannot be read is kept, with a warning, and so is everything the walk cannot read.
+     * or of one a skip rule takes now, and the {@link AiMdHeaderCodec#PACKAGE_AI_MD_FILENAME} of node type
+     * {@link AiMdHeaderCodec#NODE_TYPE_PACKAGE} of a directory that, without them, holds no summary and no
+     * sub-package any more (a deleted or renamed package), which the package phase neither rewrites nor
+     * removes. The node type is read from the header block only. The package files and the project file in
+     * the output root are no file summaries, nor is an {@code .ai.md} without a file header (a note written
+     * by hand), which keeps its package too. Kept, with a warning: a summary that cannot be read, everything
+     * the walk of the output root cannot read and every package above it, and every summary below a source
+     * path {@link #collectCandidates(Path)} could not read, whose sources are not known.
      *
      * @param sources the files the run summarizes
      * @return the orphaned summaries, sorted by path; empty when the output root does not exist
@@ -320,33 +331,124 @@ public final class SourceFileIndexer {
         for (final Path source : sources) {
             produced.add(targetFile(source));
         }
-        final SummaryCollector collector = new SummaryCollector(produced);
+        final SummaryCollector collector = new SummaryCollector(root);
         Files.walkFileTree(root, collector);
-        final List<Path> summaries = collector.summaries;
-        summaries.sort(BY_PATH);
-        for (final Path summary : summaries) {
-            final String nodeType;
-            try {
-                nodeType = headerCodec.read(summary).nodeType();
-            } catch (final IOException e) {
-                LOGGER.warn("Cannot read the header of {}, so it is kept: {}", summary, e.toString());
+        final Set<Path> orphaned =
+                new HashSet<>(new Java8CompatibilityHelper().hashMapCapacityFor(collector.summaries.size()));
+        for (final Path summary : collector.summaries) {
+            if (!produced.contains(summary)
+                    && !belowUnreadableSource(summary)
+                    && AiMdHeaderCodec.NODE_TYPE_FILE.equals(nodeType(summary))) {
+                orphaned.add(summary);
+            }
+        }
+        orphans.addAll(orphaned);
+        orphans.addAll(orphanedPackageFiles(collector, produced, orphaned));
+        orphans.sort(BY_PATH);
+        return orphans;
+    }
+
+    /**
+     * Returns the package files that would be left in a directory without any summary and any sub-package
+     * once {@code orphaned} are gone: the deepest first, so a package that is kept keeps the packages above
+     * it.
+     *
+     * @param collector the walk of the output root
+     * @param produced  the summaries the run's sources are summarized into, written yet or not
+     * @param orphaned  the orphaned file summaries
+     * @return the orphaned package files
+     */
+    private List<Path> orphanedPackageFiles(
+            final SummaryCollector collector, final Set<Path> produced, final Set<Path> orphaned) {
+        final Set<Path> occupied = new HashSet<>(new Java8CompatibilityHelper()
+                .hashMapCapacityFor(collector.summaries.size() + produced.size() + collector.packageFiles.size()));
+        for (final Path summary : produced) {
+            occupy(occupied, summary.getParent());
+        }
+        for (final Path summary : collector.summaries) {
+            if (!orphaned.contains(summary)) {
+                occupy(occupied, summary.getParent());
+            }
+        }
+        final List<Path> packageFiles = new ArrayList<>(collector.packageFiles);
+        packageFiles.sort(Comparator.comparingInt(Path::getNameCount).reversed().thenComparing(BY_PATH));
+        final List<Path> orphans = new ArrayList<>();
+        for (final Path packageFile : packageFiles) {
+            final Path directory = packageFile.getParent();
+            if (directory == null) {
                 continue;
             }
-            if (AiMdHeaderCodec.NODE_TYPE_FILE.equals(nodeType)) {
-                orphans.add(summary);
+            if (occupied.contains(directory)
+                    || collector.holdsUnreadable(directory)
+                    || belowUnreadableSource(packageFile)
+                    || !AiMdHeaderCodec.NODE_TYPE_PACKAGE.equals(nodeType(packageFile))) {
+                occupy(occupied, directory.getParent());
+            } else {
+                orphans.add(packageFile);
             }
         }
         return orphans;
     }
 
     /**
+     * Marks a directory as one that keeps its package file.
+     *
+     * @param occupied  the directories that keep theirs
+     * @param directory the directory, or {@code null} above the file system's root
+     */
+    private static void occupy(final Set<Path> occupied, final @Nullable Path directory) {
+        if (directory != null) {
+            occupied.add(directory);
+        }
+    }
+
+    /**
+     * Returns the node type of a summary, read from its header block only (a {@code - X:} line of the body
+     * is none), or {@code null}, with a warning, when the summary cannot be read.
+     *
+     * @param summary the summary
+     * @return its node type, or {@code null}
+     */
+    private @Nullable String nodeType(final Path summary) {
+        try {
+            return documentCodec.read(summary).header().nodeType();
+        } catch (final IOException e) {
+            LOGGER.warn("Cannot read the header of {}, so it is kept: {}", summary, e.toString());
+            return null;
+        }
+    }
+
+    /**
+     * Returns whether a summary lies below a source path the walk of {@link #collectCandidates(Path)} could
+     * not read: the summary of an unreadable file, or any summary below the output directory of an
+     * unreadable directory. Its source may well exist.
+     *
+     * @param summary the summary
+     * @return {@code true} when it is kept for that reason
+     */
+    private boolean belowUnreadableSource(final Path summary) {
+        for (final Path source : unreadableSources) {
+            final Path output = outputRoot
+                    .resolve(pathSupport.relativizeFromSrc(baseDirectory, source))
+                    .normalize();
+            if (summary.startsWith(output) || summary.equals(targetFile(source))) {
+                LOGGER.warn("{} is kept: the source path {} could not be read", summary, source);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Returns whether a file of the output tree may be a file summary by its name: an {@code .ai.md}, not
-     * the package or the project file in any case, and no marker file.
+     * the package file in any case nor the project file in the output root (below it, a
+     * {@code project.ai.md} is the summary of a source named {@code project}), and no marker file.
      *
      * @param file the file
+     * @param root the output root, normalized
      * @return {@code true} when its header is worth reading
      */
-    private static boolean isFileSummaryName(final Path file) {
+    private static boolean isFileSummaryName(final Path file, final Path root) {
         final Path namePath = file.getFileName();
         if (namePath == null) {
             return false;
@@ -354,7 +456,7 @@ public final class SourceFileIndexer {
         final String name = namePath.toString();
         return name.endsWith(AiMdHeaderCodec.AI_MD_EXTENSION)
                 && !AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME.equalsIgnoreCase(name)
-                && !AiMdHeaderCodec.PROJECT_AI_MD_FILENAME.equalsIgnoreCase(name)
+                && !(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME.equalsIgnoreCase(name) && root.equals(file.getParent()))
                 && !name.startsWith(AiMdHeaderCodec.GENERATED_BY_PREFIX);
     }
 
@@ -373,37 +475,68 @@ public final class SourceFileIndexer {
 
     /**
      * Collects the files of the output directory that may be file summaries by their name
-     * ({@link #isFileSummaryName(Path)}) and that no source of the run is summarized into; what it cannot
-     * read it keeps ({@link #keptUnreadable(Path, IOException)}).
+     * ({@link #isFileSummaryName(Path, Path)}), the package files, and what it cannot read, which is kept
+     * ({@link #keptUnreadable(Path, IOException)}).
      */
     private static final class SummaryCollector extends SimpleFileVisitor<Path> {
 
-        /** The summaries the run's sources are summarized into. */
-        private final Set<Path> produced;
+        /** The output root, normalized. */
+        private final Path root;
 
-        /** The files collected, in the order of the walk. */
+        /** The files that may be file summaries, in the order of the walk. */
         final List<Path> summaries = new ArrayList<>();
 
-        SummaryCollector(final Set<Path> produced) {
-            this.produced = produced;
+        /** The package files, in the order of the walk. */
+        final List<Path> packageFiles = new ArrayList<>();
+
+        /** The files and directories the walk could not read. */
+        private final List<Path> unreadable = new ArrayList<>();
+
+        SummaryCollector(final Path root) {
+            this.root = root;
+        }
+
+        /**
+         * Returns whether the walk could not read a file or directory in or below a directory.
+         *
+         * @param directory the directory
+         * @return {@code true} when something in or below it is unknown
+         */
+        boolean holdsUnreadable(final Path directory) {
+            for (final Path path : unreadable) {
+                if (path.startsWith(directory)) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         @Override
         public FileVisitResult visitFile(final Path file, final BasicFileAttributes attributes) {
-            if (attributes.isRegularFile() && isFileSummaryName(file) && !produced.contains(file)) {
-                summaries.add(file);
+            if (attributes.isRegularFile()) {
+                final Path name = file.getFileName();
+                if (name != null && AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME.equals(name.toString())) {
+                    packageFiles.add(file);
+                } else if (isFileSummaryName(file, root)) {
+                    summaries.add(file);
+                }
             }
             return FileVisitResult.CONTINUE;
         }
 
         @Override
         public FileVisitResult visitFileFailed(final Path file, final IOException e) {
+            unreadable.add(file);
             return keptUnreadable(file, e);
         }
 
         @Override
         public FileVisitResult postVisitDirectory(final Path directory, final @Nullable IOException e) {
-            return e != null ? keptUnreadable(directory, e) : FileVisitResult.CONTINUE;
+            if (e == null) {
+                return FileVisitResult.CONTINUE;
+            }
+            unreadable.add(directory);
+            return keptUnreadable(directory, e);
         }
     }
 
@@ -428,7 +561,8 @@ public final class SourceFileIndexer {
      * Goes on with the walk after a file or a directory could not be read (a directory without the
      * permission to list it, a file that vanished during the walk): nothing below it is a candidate, with a
      * warning, or only a debug line for a directory an exclude takes as a whole, whose files would not be
-     * candidates anyway.
+     * candidates anyway. The path is remembered otherwise, so {@link #orphanedSummaries(Collection)} keeps
+     * the summaries below it.
      *
      * @param path the file or directory
      * @param e    why it could not be read
@@ -439,6 +573,7 @@ public final class SourceFileIndexer {
             LOGGER.debug("Cannot read the excluded {}: {}", path, e.toString());
         } else {
             LOGGER.warn("Cannot read {}, so nothing of it is indexed: {}", path, e.toString());
+            unreadableSources.add(path);
         }
         return FileVisitResult.CONTINUE;
     }

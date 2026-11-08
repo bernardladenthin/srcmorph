@@ -391,6 +391,158 @@ public class SourceFileIndexerTest {
     }
     // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="orphanedSummaries">
+    /** Writes a summary whose header block names its node type, then the body. */
+    private static void writeSummary(final Path file, final String nodeType, final String body) throws Exception {
+        Files.createDirectories(file.getParent());
+        Files.write(
+                file,
+                ("### " + file.getFileName() + "\n- H: 1.0\n- X: " + nodeType + "\n\n" + body + "\n")
+                        .getBytes(StandardCharsets.UTF_8));
+    }
+
+    /** Returns the paths below {@code root}, with {@code /} separators. */
+    private static List<String> relative(final Path root, final List<Path> files) {
+        final List<String> relative = new ArrayList<>();
+        for (final Path file : files) {
+            relative.add(root.relativize(file).toString().replace('\\', '/'));
+        }
+        return relative;
+    }
+
+    @Test
+    public void orphanedSummaries_aBodyLineLikeTheNodeTypeField_readsTheHeaderBlockOnly() throws Exception {
+        // arrange: a file summary whose body has a "- X:" bullet, and a note by hand with "- X: file" in its text
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path out = temp.resolve("out");
+        writeSummary(out.resolve("main/java/a/Point.java.ai.md"), "file", "- X: the horizontal offset");
+        Files.write(out.resolve("notes.ai.md"), "# Notes\n\n- X: file\n".getBytes(StandardCharsets.UTF_8));
+        final SourceFileIndexer indexer = indexer(temp, out, Collections.<String>emptyList(), 0L, 0L);
+
+        // act
+        final List<Path> orphans = indexer.orphanedSummaries(Collections.<Path>emptyList());
+
+        // assert
+        assertThat(relative(out, orphans), is(equalTo(Arrays.asList("main/java/a/Point.java.ai.md"))));
+    }
+
+    @Test
+    public void orphanedSummaries_aSourceDirectoryTheWalkCannotRead_keepsTheSummariesBelowIt() throws Exception {
+        // arrange
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path sourceRoot = temp.resolve("src/main/java");
+        final Path out = temp.resolve("out");
+        writeJava(sourceRoot.resolve("a/A.java"), "class A {}\n");
+        writeJava(sourceRoot.resolve("locked/L.java"), "class L {}\n");
+        writeSummary(out.resolve("main/java/a/A.java.ai.md"), "file", "A.");
+        writeSummary(out.resolve("main/java/a/Gone.java.ai.md"), "file", "Gone.");
+        writeSummary(out.resolve("main/java/locked/L.java.ai.md"), "file", "L.");
+        writeSummary(out.resolve("main/java/locked/package.ai.md"), "package", "Locked.");
+        final SourceFileIndexer indexer = indexer(temp, out, Collections.<String>emptyList(), 0L, 0L);
+        final ListAppender<ILoggingEvent> log = captureLog();
+
+        // act
+        final List<Path> orphans;
+        try {
+            try (AutoCloseable locked = unlistable(sourceRoot.resolve("locked"))) {
+                orphans = indexer.orphanedSummaries(indexer.collectCandidates(sourceRoot));
+            }
+        } finally {
+            release(log);
+        }
+
+        // assert
+        assertThat(relative(out, orphans), is(equalTo(Arrays.asList("main/java/a/Gone.java.ai.md"))));
+        assertThat(
+                warnings(log),
+                hasItem(out.resolve("main/java/locked/L.java.ai.md") + " is kept: the source path "
+                        + sourceRoot.resolve("locked") + " could not be read"));
+    }
+
+    @Test
+    public void orphanedSummaries_aPackageLeftWithoutSummaries_isAnOrphanToo() throws Exception {
+        // arrange
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path java = temp.resolve("out/main/java");
+        // com keeps Kept.java; com/legacy loses its one source; gone/sub and gone lose all of theirs
+        writeSummary(java.resolve("com/Kept.java.ai.md"), "file", "Kept.");
+        writeSummary(java.resolve("com/package.ai.md"), "package", "Com.");
+        writeSummary(java.resolve("com/legacy/Old.java.ai.md"), "file", "Old.");
+        writeSummary(java.resolve("com/legacy/package.ai.md"), "package", "Legacy.");
+        writeSummary(java.resolve("gone/sub/X.java.ai.md"), "file", "X.");
+        writeSummary(java.resolve("gone/sub/package.ai.md"), "package", "Sub.");
+        writeSummary(java.resolve("gone/package.ai.md"), "package", "Gone.");
+        // a new source whose summary the run has yet to write, and a package file that is none by its header
+        writeSummary(java.resolve("fresh/package.ai.md"), "package", "Fresh.");
+        writeSummary(java.resolve("odd/package.ai.md"), "file", "Odd.");
+        final SourceFileIndexer indexer = indexer(temp, temp.resolve("out"), Collections.<String>emptyList(), 0L, 0L);
+        final List<Path> sources = Arrays.asList(
+                temp.resolve("src/main/java/com/Kept.java"), temp.resolve("src/main/java/fresh/New.java"));
+
+        // act
+        final List<Path> orphans = indexer.orphanedSummaries(sources);
+
+        // assert
+        assertThat(
+                relative(java, orphans),
+                is(equalTo(Arrays.asList(
+                        "com/legacy/Old.java.ai.md",
+                        "com/legacy/package.ai.md",
+                        "gone/package.ai.md",
+                        "gone/sub/X.java.ai.md",
+                        "gone/sub/package.ai.md"))));
+    }
+
+    @Test
+    public void orphanedSummaries_anUnreadableSummaryOrOutputDirectory_isKeptWithThePackagesAboveIt() throws Exception {
+        // arrange: a summary that is not UTF-8, and an output directory that cannot be listed
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path java = temp.resolve("out/main/java");
+        final Path bad = java.resolve("bad/Bad.java.ai.md");
+        Files.createDirectories(bad.getParent());
+        Files.write(bad, new byte[] {'#', ' ', (byte) 0xC3, (byte) 0x28, '\n'});
+        writeSummary(java.resolve("bad/package.ai.md"), "package", "Bad.");
+        writeSummary(java.resolve("locked/L.java.ai.md"), "file", "L.");
+        writeSummary(java.resolve("locked/package.ai.md"), "package", "Locked.");
+        writeSummary(java.resolve("package.ai.md"), "package", "Java.");
+        final SourceFileIndexer indexer = indexer(temp, temp.resolve("out"), Collections.<String>emptyList(), 0L, 0L);
+        final ListAppender<ILoggingEvent> log = captureLog();
+
+        // act
+        final List<Path> orphans;
+        try {
+            try (AutoCloseable locked = unlistable(java.resolve("locked"))) {
+                orphans = indexer.orphanedSummaries(Collections.<Path>emptyList());
+            }
+        } finally {
+            release(log);
+        }
+
+        // assert
+        assertThat(orphans, is(equalTo(Collections.<Path>emptyList())));
+        assertThat(String.join("\n", warnings(log)), containsString("Cannot read the header of " + bad));
+        assertThat(
+                String.join("\n", warnings(log)),
+                containsString("Cannot read " + java.resolve("locked") + " of the output directory, so it is kept"));
+    }
+
+    @Test
+    public void orphanedSummaries_aProjectFile_isTheProjectPhasesInTheRootOnly() throws Exception {
+        // arrange
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path out = temp.resolve("out");
+        writeSummary(out.resolve("project.ai.md"), "file", "The project phase's file in the root.");
+        writeSummary(out.resolve("main/java/x/project.ai.md"), "file", "The summary of a source named project.");
+        final SourceFileIndexer indexer = indexer(temp, out, Collections.<String>emptyList(), 0L, 0L);
+
+        // act
+        final List<Path> orphans = indexer.orphanedSummaries(Collections.<Path>emptyList());
+
+        // assert
+        assertThat(relative(out, orphans), is(equalTo(Arrays.asList("main/java/x/project.ai.md"))));
+    }
+    // </editor-fold>
+
     // <editor-fold defaultstate="collapsed" desc="classify">
     @Test
     public void classify_javaRule_routesByExtensionToPrompt() throws Exception {

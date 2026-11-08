@@ -243,18 +243,8 @@ public class PackageIndexer {
 
     private boolean shouldCreatePackageFile(final Path directory) throws IOException {
         try (Stream<Path> stream = Files.list(directory)) {
-            return stream.anyMatch(path -> {
-                final Path fileName = path.getFileName();
-                // Files.list never returns the filesystem root, so getFileName() is non-null here.
-                if (fileName == null) {
-                    return false;
-                }
-                final String name = fileName.toString();
-                if (Files.isDirectory(path)) {
-                    return hasPackageAiMdFile(path);
-                }
-                return isAiMdContentFile(name);
-            });
+            return stream.anyMatch(
+                    path -> Files.isDirectory(path) ? hasPackageAiMdFile(path) : isAiMdContentFile(path));
         }
     }
 
@@ -344,7 +334,7 @@ public class PackageIndexer {
                     continue;
                 }
 
-                if (isAiMdContentFile(name)) {
+                if (isAiMdContentFile(path)) {
                     entries.add(name);
                 }
             }
@@ -383,7 +373,7 @@ public class PackageIndexer {
                     continue;
                 }
 
-                if (isAiMdContentFile(name)) {
+                if (isAiMdContentFile(path)) {
                     links.add(markdownLink(toChildDisplayName(name), name));
                 }
             }
@@ -495,7 +485,7 @@ public class PackageIndexer {
                     continue;
                 }
 
-                if (isAiMdContentFile(name)) {
+                if (isAiMdContentFile(path)) {
                     final String body = readChildBody(path);
                     if (appendChildSummary(builder, toChildDisplayName(name), body)) {
                         bodyCount++;
@@ -592,7 +582,7 @@ public class PackageIndexer {
                     continue;
                 }
 
-                if (isAiMdContentFile(name)) {
+                if (isAiMdContentFile(path)) {
                     builder.append(childEntryLineFormatter.format(
                             name, documentCodec.read(path).header()));
                 }
@@ -607,12 +597,6 @@ public class PackageIndexer {
 
         try (Stream<Path> stream = Files.list(directory)) {
             for (Path path : compatibilityHelper.toList(stream.sorted(BY_FILE_NAME))) {
-                final Path fileNamePath = path.getFileName();
-                if (fileNamePath == null) {
-                    continue;
-                }
-                final String name = fileNamePath.toString();
-
                 if (Files.isDirectory(path)) {
                     if (hasPackageAiMdFile(path)) {
                         latest = laterDate(latest, readChildPackageHeader(path).sourceDate());
@@ -620,7 +604,7 @@ public class PackageIndexer {
                     continue;
                 }
 
-                if (isAiMdContentFile(name)) {
+                if (isAiMdContentFile(path)) {
                     latest = laterDate(latest, documentCodec.read(path).header().sourceDate());
                 }
             }
@@ -658,21 +642,38 @@ public class PackageIndexer {
     }
 
     /**
-     * Returns {@code true} when {@code name} refers to a child AI index file that should
-     * be included in content listings and checksum calculations. Excludes the
+     * Returns {@code true} when {@code path} is a child AI index file that should be included in content
+     * listings and checksum calculations. Excludes the
      * {@link net.ladenthin.srcmorph.document.AiMdHeaderCodec#PACKAGE_AI_MD_FILENAME} file itself, the
-     * project-level {@link net.ladenthin.srcmorph.document.AiMdHeaderCodec#PROJECT_AI_MD_FILENAME}
-     * (which the aggregator writes into the output root and must not fold back into its own
-     * checksum or summary on a re-run), and any
-     * {@link net.ladenthin.srcmorph.document.AiMdHeaderCodec#GENERATED_BY_PREFIX} marker files.
+     * project-level {@link net.ladenthin.srcmorph.document.AiMdHeaderCodec#PROJECT_AI_MD_FILENAME} in the
+     * output root (which the aggregator writes there and must not fold back into its own checksum or
+     * summary on a re-run; below the root a {@code project.ai.md} is the summary of a source named
+     * {@code project}), and any {@link net.ladenthin.srcmorph.document.AiMdHeaderCodec#GENERATED_BY_PREFIX}
+     * marker files.
      *
-     * @param name file name of the path under examination
+     * @param path the file under examination
      * @return {@code true} if the file is a regular content AI index entry
      */
-    private boolean isAiMdContentFile(final String name) {
+    private boolean isAiMdContentFile(final Path path) {
+        final Path fileName = path.getFileName();
+        if (fileName == null) {
+            return false;
+        }
+        final String name = fileName.toString();
         return !AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME.equals(name)
-                && !AiMdHeaderCodec.PROJECT_AI_MD_FILENAME.equals(name)
+                && !(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME.equals(name) && isInOutputRoot(path))
                 && !name.startsWith(AiMdHeaderCodec.GENERATED_BY_PREFIX)
                 && name.endsWith(AiMdHeaderCodec.AI_MD_EXTENSION);
+    }
+
+    /**
+     * Returns whether a file lies directly in the output root.
+     *
+     * @param path the file
+     * @return {@code true} when its directory is the output root
+     */
+    private boolean isInOutputRoot(final Path path) {
+        final Path parent = path.toAbsolutePath().normalize().getParent();
+        return parent != null && parent.equals(outputRoot.toAbsolutePath().normalize());
     }
 }
