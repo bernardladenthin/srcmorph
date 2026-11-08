@@ -304,8 +304,8 @@ public final class SourceFileIndexer {
 
             @Override
             public FileVisitResult visitFileFailed(final Path file, final IOException e) {
-                if (DIRECTORY_LINKS.isLinkToADirectory(file)) {
-                    // a junction whose target is gone: a link, not entered
+                if (!file.equals(sourceRoot) && DIRECTORY_LINKS.isLinkToADirectory(file)) {
+                    // a junction whose target is gone: a link, not entered; the root is one that cannot be read
                     sourceLinkNotEntered(file);
                     return FileVisitResult.CONTINUE;
                 }
@@ -651,8 +651,8 @@ public final class SourceFileIndexer {
 
         @Override
         public FileVisitResult visitFileFailed(final Path file, final IOException e) {
-            if (DIRECTORY_LINKS.isLinkToADirectory(file)) {
-                // a junction whose target is gone: a link, not entered
+            if (!file.equals(root) && DIRECTORY_LINKS.isLinkToADirectory(file)) {
+                // a junction whose target is gone: a link, not entered; the root is one that cannot be read
                 linkNotEntered(file);
                 return FileVisitResult.CONTINUE;
             }
@@ -673,14 +673,14 @@ public final class SourceFileIndexer {
     /**
      * Tells that the walk of a source root does not enter a link to a directory: with a warning, or a debug
      * line for a link the run leaves out or walks anyway, one an exclude takes as a whole, the output
-     * directory, or a subtree of its own.
+     * directory, or a subtree of its own or a directory on the way to one.
      *
      * @param link the link
      */
     private void sourceLinkNotEntered(final Path link) {
         if (excludeFilter.isExcludedDirectory(baseRelative(link))) {
             LOGGER.debug("Excluded from indexing, not entered: {}", link);
-        } else if (link.equals(outputRoot) || isSubtree(link)) {
+        } else if (link.equals(outputRoot) || leadsToASubtree(link)) {
             LOGGER.debug("A link to a directory, walked on its own or not at all: {}", link);
         } else {
             linkNotEntered(link);
@@ -1250,14 +1250,14 @@ public final class SourceFileIndexer {
     }
 
     /**
-     * Returns whether a directory is one of the subtrees.
+     * Returns whether a directory is one of the subtrees or lies on the way to one.
      *
      * @param directory the directory
-     * @return {@code true} for a subtree
+     * @return {@code true} for a subtree or a directory above one
      */
-    private boolean isSubtree(final Path directory) {
+    private boolean leadsToASubtree(final Path directory) {
         for (final Path subtree : subtrees) {
-            if (subtree.equals(directory)) {
+            if (subtree.startsWith(directory)) {
                 return true;
             }
         }

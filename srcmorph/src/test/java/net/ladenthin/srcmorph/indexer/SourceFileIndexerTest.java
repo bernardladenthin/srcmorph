@@ -430,6 +430,34 @@ public class SourceFileIndexerTest {
     }
 
     @Test
+    public void collectCandidates_aRootThatIsALinkToADirectoryThatCannotBeListed_keepsItsSummaries() throws Exception {
+        // arrange
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path target = Files.createDirectories(temp.resolve("target"));
+        writeJava(target.resolve("A.java"), "class A {}\n");
+        final Path link = temp.resolve("link");
+        CommonTestFixtures.directoryLink(link, target);
+        final SourceFileIndexer indexer = indexer(temp, temp.resolve("out"), Collections.<String>emptyList(), 0L, 0L);
+        final Path summary = indexer.targetFile(link.resolve("A.java"));
+        writeSummary(summary, "file", "A.");
+        final ListAppender<ILoggingEvent> log = captureLog();
+
+        // act
+        final List<Path> candidates;
+        try (AutoCloseable denied = CommonTestFixtures.unlistable(target)) {
+            candidates = indexer.collectCandidates(link);
+        } finally {
+            release(log);
+        }
+        final List<Path> orphans = indexer.orphanedSummaries(candidates);
+
+        // assert: a root that cannot be read, not a link left out
+        assertThat(candidates, is(equalTo(Collections.<Path>emptyList())));
+        assertThat(String.join("\n", warnings(log)), containsString("Cannot read " + link));
+        assertThat(orphans, is(equalTo(Collections.<Path>emptyList())));
+    }
+
+    @Test
     public void collectCandidates_aRootThatIsALink_isEntered() throws Exception {
         // arrange
         final Path temp = Files.createTempDirectory("ai-index-test");

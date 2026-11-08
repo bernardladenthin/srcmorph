@@ -8,7 +8,6 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.OptionalLong;
 import net.ladenthin.srcmorph.config.ModelDefinition;
@@ -31,7 +30,6 @@ import net.ladenthin.srcmorph.provider.OpenAiCompatibleGenerationProvider;
 import net.ladenthin.srcmorph.provider.ProviderConfig;
 import net.ladenthin.srcmorph.provider.ProviderConfigFactory;
 import net.ladenthin.srcmorph.routing.RuleSelector;
-import net.ladenthin.srcmorph.support.DirectoryLinks;
 import net.ladenthin.srcmorph.support.UrlUserInfo;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -74,11 +72,14 @@ final class EngineSupport {
     /**
      * Resolves the configured subtree strings against {@code basePath}. Used by {@link GenerateEngine} and
      * {@link AggregatePackagesEngine}. A subtree that another one holds, or that is listed twice, is walked
-     * by that one already and is left out, so no file is collected twice.
+     * by that one already and is left out, so no file is collected twice; they are compared by their real
+     * paths, so a subtree behind a link inside another (which the other's walk does not enter) is kept,
+     * unless the link's target lies in a subtree too.
      *
      * @param basePath absolute, normalised project base directory
      * @param subtrees configured subtree strings, or {@code null}/empty for none
-     * @return list of resolved subtree paths, none inside another; empty if none are configured
+     * @return list of resolved subtree paths, none inside another by its real path; empty if none are
+     *         configured
      * @throws SrcMorphException if a subtree does not exist, or lies outside {@code basePath} (another
      *                           drive included), where its output would leave the output directory
      */
@@ -89,6 +90,7 @@ final class EngineSupport {
         }
 
         final List<Path> resolved = new ArrayList<>(subtrees.size());
+        final List<Path> realPaths = new ArrayList<>(subtrees.size());
 
         for (final String subtree : subtrees) {
             final Path path = basePath.resolve(subtree).normalize();
@@ -99,55 +101,45 @@ final class EngineSupport {
             if (!path.toFile().isDirectory()) {
                 throw new SrcMorphException("Subtree '" + subtree + "' does not exist: " + path);
             }
-            addOutermost(resolved, path);
+            final Path realPath;
+            try {
+                realPath = path.toRealPath();
+            } catch (final IOException e) {
+                throw new SrcMorphException("Subtree '" + subtree + "' cannot be resolved: " + path, e);
+            }
+            addOutermost(resolved, realPaths, path, realPath);
         }
 
         return resolved;
     }
 
     /**
-     * Adds a subtree unless one already added holds it, and drops those it holds. A subtree that lies
-     * behind a link below another ({@link #behindALink(Path, Path)}) is no part of it: the walk of the
-     * other does not enter the link, so both are kept.
+     * Adds a subtree unless one already added holds it, and drops those it holds, by their real paths: a
+     * subtree behind a link inside another is no part of it (the walk of the other does not enter the
+     * link), and one whose link leads into another is.
      *
-     * @param resolved the subtrees so far, changed in place
-     * @param path     the subtree to add
+     * @param resolved  the subtrees so far, changed in place
+     * @param realPaths their real paths, changed in place with them
+     * @param path      the subtree to add
+     * @param realPath  its real path
      */
-    private static void addOutermost(final List<Path> resolved, final Path path) {
-        for (final Path other : resolved) {
-            if (path.startsWith(other) && !behindALink(other, path)) {
-                LOGGER.info("Subtree {} lies in subtree {}; its files are collected once", path, other);
+    private static void addOutermost(
+            final List<Path> resolved, final List<Path> realPaths, final Path path, final Path realPath) {
+        for (int i = 0; i < resolved.size(); i++) {
+            if (realPath.startsWith(realPaths.get(i))) {
+                LOGGER.info("Subtree {} lies in subtree {}; its files are collected once", path, resolved.get(i));
                 return;
             }
         }
-        for (final Iterator<Path> iterator = resolved.iterator(); iterator.hasNext(); ) {
-            final Path other = iterator.next();
-            if (other.startsWith(path) && !behindALink(path, other)) {
-                LOGGER.info("Subtree {} lies in subtree {}; its files are collected once", other, path);
-                iterator.remove();
+        for (int i = resolved.size() - 1; i >= 0; i--) {
+            if (realPaths.get(i).startsWith(realPath)) {
+                LOGGER.info("Subtree {} lies in subtree {}; its files are collected once", resolved.get(i), path);
+                resolved.remove(i);
+                realPaths.remove(i);
             }
         }
         resolved.add(path);
-    }
-
-    /**
-     * Returns whether a subtree, or a directory between it and the subtree that holds it, is a link to a
-     * directory ({@link DirectoryLinks}), which no walk enters below its root.
-     *
-     * @param outer the subtree that holds {@code inner}
-     * @param inner the subtree below it, an existing directory
-     * @return {@code true} when a link lies on the way from {@code outer} down to {@code inner}
-     */
-    private static boolean behindALink(final Path outer, final Path inner) {
-        final DirectoryLinks links = new DirectoryLinks();
-        for (@Nullable Path directory = inner;
-                directory != null && !directory.equals(outer);
-                directory = directory.getParent()) {
-            if (!links.isDirectoryNoLink(directory)) {
-                return true;
-            }
-        }
-        return false;
+        realPaths.add(realPath);
     }
 
     /**

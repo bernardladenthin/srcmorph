@@ -134,22 +134,23 @@ public class EngineSupportTest {
     }
 
     @Test
-    public void resolveSubtrees_aSubtreeBehindALinkInsideAnother_isKept() throws Exception {
-        // arrange: src/shared and src/deep/lib lie behind links, which the walk of src does not enter
+    public void resolveSubtrees_aSubtreeBehindALink_isKeptUnlessItsTargetLiesInASubtree() throws Exception {
+        // arrange: docs/latest leads into docs, src/shared out of src, src/deep/lib into src/shared's target
+        Files.createDirectories(tempDir.resolve("docs/v2"));
         Files.createDirectories(tempDir.resolve("shared/lib"));
         Files.createDirectories(tempDir.resolve("src/deep"));
+        CommonTestFixtures.directoryLink(tempDir.resolve("docs/latest"), tempDir.resolve("docs/v2"));
         CommonTestFixtures.directoryLink(tempDir.resolve("src/shared"), tempDir.resolve("shared"));
         CommonTestFixtures.directoryLink(tempDir.resolve("src/deep/lib"), tempDir.resolve("shared/lib"));
 
         // act
         final List<Path> resolved = EngineSupport.resolveSubtrees(
-                tempDir, Arrays.asList("src/shared", "src", "src/deep/lib", "src/shared/lib"));
+                tempDir, Arrays.asList("docs/latest", "docs", "src/shared", "src", "src/deep/lib"));
 
-        // assert: src/shared/lib lies in src/shared, behind no further link
+        // assert: docs walks docs/v2 once, src/shared walks shared/lib once
         assertThat(
                 resolved,
-                is(Arrays.asList(
-                        tempDir.resolve("src/shared"), tempDir.resolve("src"), tempDir.resolve("src/deep/lib"))));
+                is(Arrays.asList(tempDir.resolve("docs"), tempDir.resolve("src/shared"), tempDir.resolve("src"))));
     }
 
     @Test

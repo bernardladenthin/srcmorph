@@ -162,6 +162,21 @@ public class ProjectIndexerTest {
     }
 
     @Test
+    public void aggregate_anOutputDirectoryThatIsALinkToADirectoryThatCannotBeListed_fails() throws Exception {
+        // arrange
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path target = Files.createDirectories(temp.resolve("real"));
+        final Path outputRoot = temp.resolve("ai");
+        CommonTestFixtures.directoryLink(outputRoot, target);
+        final ProjectIndexer indexer = new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false, new RegenerateOn());
+
+        // act, assert
+        try (AutoCloseable denied = CommonTestFixtures.unlistable(target)) {
+            assertThrows(IOException.class, () -> indexer.aggregate(outputRoot));
+        }
+    }
+
+    @Test
     public void aggregate_noPackages_writesNothing() throws Exception {
         // arrange: the output root exists but holds no package.ai.md
         final Path outputRoot = Files.createTempDirectory("ai-index-test").resolve("ai");

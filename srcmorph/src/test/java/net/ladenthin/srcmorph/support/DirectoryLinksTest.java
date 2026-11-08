@@ -156,6 +156,15 @@ public class DirectoryLinksTest {
         // act, assert
         assertThat(links.isLinkToADirectory(directory, attributes(false, true)), is(false));
     }
+
+    @Test
+    public void isLinkToADirectory_anOtherDirectoryThatIsGone_isOne() throws Exception {
+        // arrange: a junction whose target is gone, as its attributes read on Windows
+        final Path gone = Files.createTempDirectory("ai-index-test").resolve("gone");
+
+        // act, assert
+        assertThat(links.isLinkToADirectory(gone, attributes(false, true)), is(true));
+    }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="walkFileTree">

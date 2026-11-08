@@ -23,8 +23,9 @@ The entries below hold the details; what a 1.4.0 user changes:
   defined twice in `aiDefinitions`, `promptDefinitions` or `factDefinitions` fails the run instead of
   the last one winning.
 - **A link to a directory below a subtree or in the output directory is no longer walked** (on
-  Windows a junction, which 1.4.0 entered): name a linked directory whose files you want as a subtree
-  of its own; with `pruneOrphans` the summaries 1.4.0 wrote below it are deleted otherwise.
+  Windows a junction, which 1.4.0 entered): name a linked directory whose files you want, and whose
+  target no subtree holds, as a subtree of its own; with `pruneOrphans` the summaries 1.4.0 wrote below
+  it are deleted otherwise.
 - **The plugin's `G` is srcmorph's version**, no longer the project's: a reader or a script that took
   the header's `G` for the project version reads `projectName` and the build instead.
 - **The first run rewrites every summary**, one model call each: a summary of 1.4.0 records no `M`
@@ -685,8 +686,9 @@ The entries below hold the details; what a 1.4.0 user changes:
   for a file and found nothing, so a linked output directory got no `project.ai.md`. A link to a file
   is still taken, and a directory with another reparse point (a cloud file placeholder) still counts
   as a directory; a volume mounted into a folder carries a junction's reparse point and is taken for
-  a link. A subtree behind a link inside another subtree is now kept as a subtree of its own (it was
-  dropped as part of the other). A junction whose target is gone is such a link too (the project
+  a link. Subtrees are compared by their real paths: one behind a link inside another subtree is now
+  kept as a subtree of its own (it was dropped as part of the other), unless the link leads into a
+  subtree, whose walk collects its files once. A junction whose target is gone is such a link too (the project
   phase failed on it, the file walk could not read it, and the orphan scan kept every package above
   it). A link to a summary file counts as that summary in every phase, and `pruneOrphans` removes the
   link, not its target. A walk of a linked root names the target in an error message. The summaries an

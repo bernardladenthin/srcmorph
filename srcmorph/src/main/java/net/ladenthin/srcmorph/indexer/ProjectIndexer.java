@@ -230,8 +230,8 @@ public class ProjectIndexer {
 
             @Override
             public FileVisitResult visitFileFailed(final Path file, final IOException e) throws IOException {
-                if (new DirectoryLinks().isLinkToADirectory(file)) {
-                    // a junction whose target is gone: a link, not entered
+                if (!file.equals(rootDirectory) && new DirectoryLinks().isLinkToADirectory(file)) {
+                    // a junction whose target is gone: a link, not entered; the root is one that cannot be read
                     SourceFileIndexer.linkNotEntered(file);
                     return FileVisitResult.CONTINUE;
                 }
