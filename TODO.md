@@ -22,6 +22,16 @@ repository.
 | 3 | SonarCloud: the analysis of PR #269 reads, that of `main` does not: `main` was analysed as a short branch (`Branch name: main, type: short` in the run of 2026-11-04), the main branch `master` last three months ago | the owner renamed the main branch to `main` (2026-11-07); left: one analysis of `main` as the long branch (the push of the merge of #269, or a re-run of the last SonarQube run on `main`), then its issues are read | Owner | PR #269 |
 | 38 | Use jllama's `ChatStreamAssembler` (not in `llama` 6.0.0) | switch with its release | External | Other open items |
 | 40 | Merge PR #269 | merge | Owner | PR #269 |
+| 127 | The walk skips the output directory also when it is the subtree or the base itself: nothing is planned | skip it only below the walk's root, else leave its `.ai.md` files out; tests | Claude | Review 2026-11-08 (4) |
+| 128 | Secrets: the lookbehind of bare `pass` also guards `passphrase` (`gpgPassphrase=` is missed) | the lookbehind for `pass` only; test | Claude | Review 2026-11-08 (4) |
+| 129 | Secrets: `(?![a-z])` after the key is redundant (the separator follows) | drop it in all four copies | Claude | Review 2026-11-08 (4) |
+| 130 | run.py's `contentMatches` reads `\w`, `\s` and `(?i)` in Unicode, Java in ASCII | `re.ASCII`; test | Claude | Review 2026-11-08 (4) |
+| 131 | camel-yaml: the `id:`/`description:` lines repeat without a possessive quantifier | `)*+` | Claude | Review 2026-11-08 (4) |
+| 132 | camel-yaml: a comment or blank line between `- from:` and `uri:` is no route | allow such lines; tests | Claude | Review 2026-11-08 (4) |
+| 133 | CHANGELOG Upgrading lacks score.py's `--meta`/`--scores`; profiles/README lacks the new spellings | add them | Claude | Review 2026-11-08 (4) |
+| 134 | Secrets: any value that starts with `${` counts as a reference (`${A}hunter2`, `${X:default}`) | exempt only a whole `${NAME}`; tests | Claude | Review 2026-11-08 (4) |
+| 135 | Secrets: a flag or number (`password.required` aside: `token=false`, `secret=3600`, a log level) is a secret | exempt those values; tests | Claude | Review 2026-11-08 (4) |
+| 136 | Secrets: the placeholders `@db.password@`, `"${X}"` and `#{...}` count as values | exempt them; tests; document the rest (plurals, qualifiers, URL credentials, `account-key`, continuation lines) as known limits | Claude | Review 2026-11-08 (4) |
 
 ## Open
 
@@ -34,6 +44,10 @@ repository.
   #269's code smells left: the cognitive complexity of nine methods and an eight-parameter method
   (refactors to report, not to apply), "test methods should not be public" (the owner's guides decide
   the other way) and a few false positives (comments read as code).
+
+### Review 2026-11-08 (4)
+
+The two reviews of b2698002: rows 127 to 136.
 
 ### Known limits, for the next model round (no open work)
 
