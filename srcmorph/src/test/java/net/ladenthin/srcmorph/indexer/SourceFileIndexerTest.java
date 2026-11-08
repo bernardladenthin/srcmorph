@@ -295,6 +295,23 @@ public class SourceFileIndexerTest {
     }
 
     @Test
+    public void collectCandidates_aSubtreeHoldingTheOutputDirectory_leavesTheSummariesOut() throws Exception {
+        // arrange: the base directory as the subtree, the output directory below it
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        writeJava(temp.resolve("docker/Dockerfile.dev"), "FROM alpine\n");
+        writeJava(temp.resolve("out/docker/Dockerfile.dev.ai.md"), "### Dockerfile.dev\n");
+        final SourceFileIndexer indexer = indexerWithNames(temp, Arrays.asList("Dockerfile.*"));
+
+        // act
+        final List<Path> candidates = indexer.collectCandidates(temp);
+
+        // assert
+        assertThat(candidates, is(equalTo(Collections.singletonList(temp.resolve("docker/Dockerfile.dev")))));
+        assertThat(indexer.enterDirectory(temp.resolve("out")), is(FileVisitResult.SKIP_SUBTREE));
+        assertThat(indexer.enterDirectory(temp.resolve("out/../docker")), is(FileVisitResult.CONTINUE));
+    }
+
+    @Test
     public void walkFailed_aPathThatCannotBeRead_goesOnWarningUnlessAnExcludeTakesIt() throws Exception {
         // arrange
         final Path temp = Files.createTempDirectory("ai-index-test");

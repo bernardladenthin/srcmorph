@@ -25,8 +25,9 @@ python score.py --work <copy of corpus-languages> --out ../languages-2026-11/lan
     --meta ../languages-2026-11/languages/run1/meta --facts facts-languages.json --scores <dir>
 ```
 
-`--meta` names the run's own cut-offs (required with an `--out` other than the card's), `--scores` a
-directory of its own (without it, the card's `scores/` is overwritten).
+`--meta` names the run's own cut-offs and `--scores` a directory of its own; score.py refuses an
+`--out` other than the card's without them (it would apply the card's cut-offs and overwrite the
+card's `scores/`).
 
 The quality figures of finding 7 and of `profiles/README.md` (per run and the mean, min and max of
 each model) come from `repeat.py`, with a copy of `corpus-languages` as the work directory (as for

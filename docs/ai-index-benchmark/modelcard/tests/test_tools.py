@@ -69,6 +69,14 @@ class CardMetricsTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             score.meta_directory("elsewhere/out", None)
 
+    def test_scoresDirectory_isTheCardsOnlyForTheCardsOutputs(self):
+        self.assertEqual(score.scores_directory(str(score.CARD_OUT), None), str(score.CARD_SCORES))
+        self.assertEqual(score.scores_directory(str(score.CARD_OUT), "mine"), "mine")
+        self.assertEqual(score.scores_directory("elsewhere/out", "elsewhere/scores"), "elsewhere/scores")
+        for scores in (None, str(score.CARD_SCORES)):
+            with self.assertRaises(ValueError):
+                score.scores_directory("elsewhere/out", scores)
+
 
 class ValidateTest(unittest.TestCase):
 
@@ -226,9 +234,12 @@ class RulesTest(unittest.TestCase):
         self.assertTrue(re.search(pattern, "a=1\nsigning.password = x\n"))
         self.assertFalse(re.search(pattern, "spring.datasource.password=${DB_PASSWORD}\n# token=x\n"))
         for text in ("aws.secretKey=AKIAX\n", "app.secret-key=abc\n", "aws.secret-access-key=x\n",
-                     "jwt.secret.key=x\n", "mail.smtp.password hunter2\n"):
+                     "jwt.secret.key=x\n", "mail.smtp.password hunter2\n", "db.pwd=x\n", "keystore.pass=x\n",
+                     "signing.passphrase=x\n", "jwt.private-key=x\n", "credentials=x\n"):
             self.assertTrue(re.search(pattern, text), text)
-        for text in ("password.label=Password\n", "token.expiry 3600\n", "password=\n"):
+        for text in ("password.label=Password\n", "token.expiry 3600\n", "password=\n",
+                     "spring.datasource.password = ${DB_PASSWORD}\n", "db.password : ${X}\n", "password = \n",
+                     "compass=north\n", "passwordless=true\n"):
             self.assertFalse(re.search(pattern, text), text)
         # and a Kubernetes Secret by its kind, whatever its name, but not a Helm chart's template
         kinds = [c for c in secrets["condition"]["or"]["conditions"]
@@ -290,6 +301,13 @@ class RulesTest(unittest.TestCase):
         self.assertIn("*.gradle.kts", self.file_names(rules["gradle"]["condition"]))
         self.assertGreater(rules["gradle"]["priority"], rules["kotlin"].get("priority", 0))
         self.assertTrue(run.indexes("build.gradle.kts"))
+
+    def test_aDockerignore_isNoSourceAsInTheSelfTest(self):
+        self.assertFalse(run.indexes("Dockerfile.dockerignore"))
+        self.assertTrue(run.indexes("Dockerfile.dev"))
+        selftest = (run.REPO / "srcmorph-maven-plugin" / "srcmorph-selftest.yaml").read_text(encoding="utf-8")
+        for glob in run.EXCLUDES:
+            self.assertIn(f'- "{glob}"', selftest)
 
     def test_everyRuleOfEveryPhase_asksOnceMoreOnAnIncompleteAnswer(self):
         definition = {"key": "m", "provider": "mock"}

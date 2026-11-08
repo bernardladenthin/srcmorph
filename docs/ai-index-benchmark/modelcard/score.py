@@ -83,7 +83,7 @@ Writes <scores>/files.tsv (one row per model and file) and <scores>/summary.json
 which MODEL-CARD.md is built from.
 
 Usage: python score.py --work <prepared corpus dir> [--out ...] [--scores ...] [--facts <json>]
-       [--meta <runs dir>] (--meta is required with an --out other than the card's)
+       [--meta <runs dir>] (--meta and --scores are required with an --out other than the card's)
 """
 import argparse
 import codecs
@@ -622,6 +622,21 @@ def score_file(source, body, ids, numbers, case_insensitive=False, everyday=(), 
 
 
 CARD_OUT = HERE.parent / "outputs-2026-10"
+CARD_SCORES = HERE / "scores"
+
+
+def scores_directory(out, scores):
+    """Where the scores of an --out go: --scores, or for the card's own outputs the card's scores/;
+    another output tree names a directory of its own, so the card's files.tsv and summary.json, which
+    plot.py and report.py build the card from, are not overwritten."""
+    card = Path(out).resolve() == CARD_OUT.resolve()
+    if scores is None:
+        if card:
+            return str(CARD_SCORES)
+        raise ValueError(f"--out {out} is not the card's outputs: --scores names a directory of its own")
+    if not card and Path(scores).resolve() == CARD_SCORES.resolve():
+        raise ValueError(f"--scores {scores} is the card's: the scores of --out {out} go to a directory of their own")
+    return scores
 
 
 def meta_directory(out, meta):
@@ -802,18 +817,20 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--work", required=True)
     parser.add_argument("--out", default=str(CARD_OUT))
-    parser.add_argument("--scores", default=str(HERE / "scores"))
+    parser.add_argument("--scores", help="where files.tsv and summary.json go (default: the card's scores/,"
+                        " only with the card's --out)")
     parser.add_argument("--facts", default=str(HERE / "facts.json"))
     parser.add_argument("--meta", help="the runs' meta files, for the cut-off paths (default: the card's"
                         " runs/, only with the card's --out)")
     args = parser.parse_args()
     try:
         meta = meta_directory(args.out, args.meta)
+        scores_dir = scores_directory(args.out, args.scores)
     except ValueError as e:
         parser.error(str(e))
     facts = json.loads(Path(args.facts).read_text(encoding="utf-8"))
     work = Path(args.work)
-    scores = Path(args.scores)
+    scores = Path(scores_dir)
     scores.mkdir(parents=True, exist_ok=True)
     lines = ["\t".join(TSV_COLUMNS)]
     summary = {}

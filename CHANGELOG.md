@@ -212,10 +212,10 @@ The entries below hold the details; what a 1.4.0 user changes:
   the source walk could not read. Leave it off while narrowing `subtrees` for one run: the summaries
   of the subtrees left out are orphans of that run too. A summary that stays or that the run writes
   keeps the `package.ai.md` of every directory above it; a missing default subtree (`src/main/java`)
-  and a script whose `#!` line cannot be read keep their summaries, so an empty plan deletes
-  nothing. On a case-insensitive file system that
-  compares paths by case (macOS), the summary of a source renamed only in case is an orphan once
-  and is written again.
+  and a script whose `#!` line cannot be read keep their summaries; any other plan that routes
+  fewer files than before (an exclude, a skip rule, a narrowed `fileExtensions`) makes the
+  summaries of the rest orphans. On a case-insensitive file system that compares paths by case
+  (macOS), the summary of a source renamed only in case is an orphan once and is written again.
 
 - **`partsDirectory` keeps the map-reduce answers of each file:** every map answer and every reduce
   batch's answer of a file read in chunks, in `<partsDirectory>/<path below the base>.parts.md`, so a
@@ -373,19 +373,24 @@ The entries below hold the details; what a 1.4.0 user changes:
   `.wsdl` and `.xhtml` by extension. From 260 KB a `persistence.xml`, MyBatis mapper or WSDL got the
   generic `xml-facts` on Granite; it now keeps its kind's counters on gpt-oss, which map-reduces it.
   POMs keep their own tiers.
-- **Secrets skip a properties file with a secret key or a blank separator:** the properties branch
-  of the secrets rule (self-test, CLI twin, Luna example, run.py) also takes `aws.secretKey=`,
-  `app.secret-key=`, `aws.secret-access-key=`, `jwt.secret.key=` and `mail.smtp.password hunter2`
-  (a blank is a separator in a properties file); a key that only starts so (`password.label`,
-  `token.expiry`) stays a source.
-- **score.py wants `--meta` with an `--out` other than the card's** (breaking for a script that left
-  it out): it applied the cut-off lists of the card's runs to any output tree. The card's quality
+- **Secrets skip a properties file with a secret key, another spelling or a blank separator:** the
+  properties branch of the secrets rule (self-test, CLI twin, Luna example, run.py) also takes
+  `aws.secretKey=`, `app.secret-key=`, `aws.secret-access-key=`, `jwt.secret.key=`, `db.pwd=`,
+  `keystore.pass=`, `signing.passphrase=`, `jwt.private-key=`, `credentials=` and
+  `mail.smtp.password hunter2` (a blank is a separator in a properties file). A reference
+  (`password = ${DB_PASSWORD}`), an empty value and a key that only starts so (`password.label`,
+  `token.expiry`, `passwordless`) stay sources; a message bundle that labels a password field
+  (`login.password=Password`) is skipped, as before.
+- **score.py wants `--meta` and `--scores` with an `--out` other than the card's** (breaking for a
+  script that left them out): it applied the cut-off lists of the card's runs to any output tree and
+  wrote over the card's `scores/`, which it now refuses for another `--out` too. The card's quality
   metric moved from plot.py to `score.card_metrics`, with a test.
 - **OpenAPI, Camel YAML and Dockerfile rules take no lookalike:** the `openapi` rule wants a version
   after `openapi:` or `swagger:` (a Spring `application.yml` with `swagger: enabled: true` goes to
-  `ops`), a Camel route's `- from:` names an endpoint (`timer:`, `kafka:`) or holds `uri:`,
-  `steps:` or `parameters:` (a list of redirects `- from: /docs/old` is no route), and the configs
-  exclude `**/*.dockerignore`, BuildKit's `Dockerfile.dockerignore` that `Dockerfile.*` took.
+  `ops`), a Camel route's `- from:` names an endpoint (`timer:`, `kafka:`, not `http:`/`https:`,
+  which no Camel consumer is) or holds `uri:`, `steps:` or `parameters:`, after an `id:` or a
+  `description:` too (a list of redirects `- from: /docs/old` is no route), and the configs and
+  run.py exclude `**/*.dockerignore`, BuildKit's `Dockerfile.dockerignore` that `Dockerfile.*` took.
 - **Secrets skip a Kubernetes Secret by its kind:** the secrets rule of the self-test, its CLI twin,
   the Luna example and run.py skips a YAML file whose head declares `kind: Secret`, whatever its
   name; `deploy/postgres.yaml` went to the `k8s` rule, in the Luna example to a remote model. A Helm
@@ -636,6 +641,9 @@ The entries below hold the details; what a 1.4.0 user changes:
   and blank the rest of the line, so `"get": {`, `"/orders": {` or `"publish": {` lost their colon
   and counted no path, operation, payload or `deprecated: true`, nor did a double-quoted YAML key. A
   string now opens only at a line's start or after a `:`, `,`, `[`, `{` or `-`.
+- **The file walk does not enter the output directory:** a subtree that holds it (`subtrees: ["."]`
+  with the default `src/site/ai`) fed srcmorph's own summaries back in: `Dockerfile.ai.md` matched
+  `Dockerfile.*` and was summarized, one level deeper with every run.
 - **The file walk does not enter an excluded directory and goes on past an unreadable one:** it
   descended everywhere and applied the excludes per file, so a directory it could not list ended the
   run with an `UncheckedIOException`, also when an exclude covered it. A directory an exclude ending

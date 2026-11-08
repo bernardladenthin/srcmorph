@@ -549,13 +549,22 @@ public final class SourceFileIndexer {
     /**
      * Returns whether the walk enters a directory: not one an exclude takes as a whole
      * ({@link SourceExcludeFilter#isExcludedDirectory(String)}), since no file below it could be a
-     * candidate; the walk opens no directory below it.
+     * candidate, nor the output directory, which a subtree such as {@code .} holds: its summaries are no
+     * sources ({@code Dockerfile.ai.md} would match {@code Dockerfile.*}). The walk opens no directory
+     * below it.
      *
      * @param directory the directory the walk reached
-     * @return {@link FileVisitResult#SKIP_SUBTREE} for an excluded directory, {@link FileVisitResult#CONTINUE}
-     *         otherwise
+     * @return {@link FileVisitResult#SKIP_SUBTREE} for an excluded directory or the output directory,
+     *         {@link FileVisitResult#CONTINUE} otherwise
      */
     FileVisitResult enterDirectory(final Path directory) {
+        if (directory
+                .toAbsolutePath()
+                .normalize()
+                .equals(outputRoot.toAbsolutePath().normalize())) {
+            LOGGER.debug("The output directory, not entered: {}", directory);
+            return FileVisitResult.SKIP_SUBTREE;
+        }
         if (excludeFilter.isExcludedDirectory(baseRelative(directory))) {
             LOGGER.debug("Excluded from indexing, not entered: {}", directory);
             return FileVisitResult.SKIP_SUBTREE;

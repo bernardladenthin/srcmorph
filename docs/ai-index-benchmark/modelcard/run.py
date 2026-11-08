@@ -118,6 +118,9 @@ EXTENSIONS = [".java", ".sql", ".h", ".c", ".cl", ".py", ".sh", ".bash", ".ksh",
 # srcmorph reads them as globs over the file name, in any case (the dockerfile rule's Dockerfile.*).
 FILE_NAMES = ["Dockerfile", "Dockerfile.*", "Containerfile", "package.json", "pyproject.toml", "openapi*.json",
               "swagger*.json", "asyncapi*.json"]
+# as the self-test, its CLI twin and the Luna example: BuildKit's Dockerfile.dockerignore, which
+# Dockerfile.* takes, is no source
+EXCLUDES = ["**/*.dockerignore"]
 
 
 def name_glob(glob):
@@ -142,10 +145,11 @@ def name_glob(glob):
 
 def indexes(file_name):
     """Whether the runs' walk collects a file of this name: by an extension of EXTENSIONS or a glob of
-    FILE_NAMES, both in any case, as srcmorph's SourceFileIndexer selects it."""
+    FILE_NAMES, both in any case, as srcmorph's SourceFileIndexer selects it, and no glob of EXCLUDES."""
     lower = file_name.lower()
-    return (any(lower.endswith(extension.lower()) for extension in EXTENSIONS)
-            or any(name_glob(name).fullmatch(file_name) for name in FILE_NAMES))
+    return ((any(lower.endswith(extension.lower()) for extension in EXTENSIONS)
+             or any(name_glob(name).fullmatch(file_name) for name in FILE_NAMES))
+            and not any(path_glob(glob).fullmatch(file_name) for glob in EXCLUDES))
 
 
 def path_glob(glob):
@@ -264,8 +268,9 @@ LANGUAGES = (("shell", {"extensions": [".sh", ".bash", ".ksh"]}, "shell", 0),
              ("k8s", _and({"extensions": YAML_EXTENSIONS}, {"contentMatches": r"(?m)^kind:[ \t]*[\"']?[A-Z]"}), "ops", 5),
              ("dockerfile", {"fileNames": ["Dockerfile", "Dockerfile.*", "Containerfile"]}, "ops", 0),
              ("camel-yaml", _and({"extensions": YAML_EXTENSIONS},
-                                {"contentMatches": r"(?m)^-[ \t]+(?:(?:route|routeTemplate|templatedRoute|rest)[ \t]*:|from[ \t]*:"
-                                                 r"""[ \t]*(?:["']?[a-z][\w+.-]*:|\r?\n[ \t]+(?:uri|steps|parameters)[ \t]*:))"""}),
+                                {"contentMatches": r"(?m)^-[ \t]+(?:(?:route|routeTemplate|templatedRoute|rest)[ \t]*:|from[ \t]*:[ \t]*"
+                                                 r"""(?:["']?(?!https?:)[a-z][\w+.-]*:|(?:#[^\n]*)?\r?\n"""
+                                                 r"(?:[ \t]+(?:id|description)[ \t]*:[^\n]*\n)*[ \t]+(?:uri|steps|parameters)[ \t]*:))"}),
               "ops", 10),
              ("compose", {"fileNames": ["docker-compose*.{yml,yaml}", "compose*.{yml,yaml}"]}, "ops", 10),
              ("ansible", _or({"pathGlob": "**/roles/*/{tasks,handlers,defaults,vars,meta}/*.{yml,yaml}"},
@@ -295,10 +300,13 @@ SECRETS_RULE = {"id": "secrets", "skip": True, "priority": 1000, "condition": _o
                    "settings-security.xml", "*.pem", "*.key", "id_rsa*", "id_ed25519*"]},
     # Maven's settings.xml (server passwords) by its root element, not an Android res/xml/settings.xml
     _and({"fileNames": ["settings.xml"]}, {"contentMatches": r"<settings[\s>]"}),
-    # a properties file that gives a password, secret, token or API key, a secret key too, a value
-    # after =, : or a blank (not a ${...} reference, nor a key that only starts so)
+    # a properties file that gives a password, secret, token, API key, private key or credentials, a
+    # secret key too, a value after =, : or a blank (not a ${...} reference, nor a key that only
+    # starts so)
     _and({"extensions": [".properties"]},
-         {"contentMatches": r"(?im)^[ \t]*+[\w.\-]*?(?:password|passwd|secret|token|api[._-]?key)(?:[._-]?(?:access[._-]?)?key)?(?:[ \t]*+[=:]|[ \t]++)[ \t]*+(?!\$\{)\S"}),
+         {"contentMatches": r"(?im)^[ \t]*+[\w.\-]*?(?:password|passwd|pwd|(?<![^._\s-])pass(?:phrase)?|secret"
+                            r"|token|api[._-]?key|private[._-]?key|credentials?)(?:[._-]?(?:access[._-]?)?key)?"
+                            r"(?![a-z])(?:[ \t]*+[=:]|[ \t]++(?![=:]))[ \t]*+(?!\$\{)\S"}),
     # a Kubernetes Secret, whatever its name (deploy/postgres.yaml), but not a Helm chart's template
     _and({"extensions": YAML_EXTENSIONS}, {"contentMatches": K8S_SECRET}, {"not": HELM_TEMPLATE}),
     # named for a vault, secrets or credentials, but not a CI workflow or action, a Helm chart's template
@@ -413,6 +421,7 @@ def phase_config(phase, work, out_dir, profile, definition, facts=False, oversiz
             "subtrees": ["java", "sql", "other"],
             "fileExtensions": EXTENSIONS,
             "fileNames": FILE_NAMES,
+            "excludes": EXCLUDES,
             "generationProvider": definition["provider"],
             "projectName": "srcmorph-modelcard",
             "force": True,

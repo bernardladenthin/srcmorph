@@ -278,6 +278,14 @@ public class ExamplesConfigBindingTest {
             {"s3.properties", "aws.secret-access-key=x\n"},
             {"jwt.properties", "jwt.secret.key=x\n"},
             {"mail.properties", "mail.smtp.password hunter2\n"},
+            // the other spellings of a password, a private key, credentials
+            {"db.properties", "db.pwd=hunter2\n"},
+            {"tls.properties", "keystore.pass=changeit\n"},
+            {"gpg.properties", "signing.passphrase=x\n"},
+            {"jwt-keys.properties", "jwt.private-key=x\n"},
+            {"cloud.properties", "credentials=x\n"},
+            // a message bundle that labels a password field: the rule cannot tell it from a password
+            {"messages_de.properties", "login.password=Passwort\n"},
             // a Kubernetes Secret, whatever its name, its kind quoted or not
             {"deploy/postgres.yaml", "apiVersion: v1\nkind: Secret\ndata:\n  password: eA==\n"},
             {"deploy/registry.yml", "apiVersion: v1\nkind: \"Secret\"\ntype: kubernetes.io/dockerconfigjson\n"},
@@ -315,6 +323,9 @@ public class ExamplesConfigBindingTest {
             {"empty.properties", "password=\n"},
             {"messages.properties", "password.label=Password\ntoken.expiry=3600\n"},
             {"labels.properties", "password.label Password\ntoken.expiry 3600\nsecret.question.label: Q\n"},
+            // a reference or an empty value with a blank before the separator, a word that only holds pass
+            {"spaced.properties", "spring.datasource.password = ${DB_PASSWORD}\ndb.password : ${X}\npassword = \n"},
+            {"words.properties", "compass=north\nbypass.cache=true\npasswordless=true\n"},
             {"log4j2.properties", "appender.out.type = Console\n"},
         };
 
@@ -355,7 +366,10 @@ public class ExamplesConfigBindingTest {
             {"camel/timer.yaml", "- from:\n    uri: timer:tick\n", "camel-yaml"},
             {"camel/kafka.yaml", "- from: \"kafka:orders\"\n", "camel-yaml"},
             {"camel/orders.yaml", "- route:\n    id: orders\n", "camel-yaml"},
+            {"camel/named.yaml", "- from:\n    id: from-1\n    description: x\n    uri: timer:x\n", "camel-yaml"},
+            {"camel/noted.yaml", "- from:  # the clock\n    uri: timer:x\n", "camel-yaml"},
             {"docs/redirects.yaml", "- from: /docs/old\n  to: /docs/new\n", "ops"},
+            {"docs/moved.yaml", "- from: https://old.example.com/a\n  to: /new\n", "ops"},
         };
 
         // act, assert
