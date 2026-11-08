@@ -22,6 +22,20 @@ repository.
 | 3 | SonarCloud: the analysis of PR #269 reads, that of `main` does not: `main` was analysed as a short branch (`Branch name: main, type: short` in the run of 2026-11-04), the main branch `master` last three months ago | the owner renamed the main branch to `main` (2026-11-07); left: one analysis of `main` as the long branch (the push of the merge of #269, or a re-run of the last SonarQube run on `main`), then its issues are read | Owner | PR #269 |
 | 38 | Use jllama's `ChatStreamAssembler` (not in `llama` 6.0.0) | switch with its release | External | Other open items |
 | 40 | Merge PR #269 | merge | Owner | PR #269 |
+| 85 | Orphan scan reads the node type from the whole file: a body line `- X: ...` overrides it | read the header block only (`AiMdDocumentCodec`), test with a body bullet | Claude | Final review 2026-11-08 |
+| 86 | pruneOrphans deletes the summaries of a source directory the walk could not read | keep every orphan below an unreadable source path, test with `unlistable` | Claude | Final review 2026-11-08 |
+| 87 | pruneOrphans leaves the `package.ai.md` of a deleted package; parent and project read it | list and prune a `package.ai.md` whose directory has no file summary and no sub-package left, test | Claude | Final review 2026-11-08 |
+| 88 | A source named `project` below the root is summarized but never aggregated nor found as an orphan | skip `project.ai.md` only in the output root, test | Claude | Final review 2026-11-08 |
+| 89 | macOS: a case-only rename makes the old summary an orphan | document as a limit | Claude | Final review 2026-11-08 |
+| 90 | No test keeps an unreadable header or an unreadable output subdirectory | tests in SourceFileIndexerTest | Claude | Final review 2026-11-08 |
+| 91 | MODEL-CARD: "Qwen3.8 best in every run after Muse" (Luna led the card's run) | reword (2 places) | Claude | Final review 2026-11-08 |
+| 92 | MODEL-CARD: "Luna had the best single run" (Muse 100 %) | reword | Claude | Final review 2026-11-08 |
+| 93 | MODEL-CARD: Muse "the steadiest of the top group" (Qwen3.8 steadier) | reword: in search | Claude | Final review 2026-11-08 |
+| 94 | MODEL-CARD: "seven configurations" / "the six top hosted configurations" under Repeatability | eight / six hosted | Claude | Final review 2026-11-08 |
+| 95 | CHANGELOG Upgrading: "eleven kinds" leaves out java-ee-facts and jspx-facts (include changed files) | thirteen, name them | Claude | Final review 2026-11-08 |
+| 96 | CHANGELOG Fixed: "Nine fact counters" lists ten kinds | ten kinds | Claude | Final review 2026-11-08 |
+| 97 | TODO names `OpenAiCompatibleAiGenerationProviderTest` | `OpenAiCompatibleGenerationProviderTest` | Claude | Final review 2026-11-08 |
+| 98 | Core README field table lacks `partsDirectory` | add it to the Output row | Claude | Final review 2026-11-08 |
 
 ## Open
 
@@ -34,6 +48,11 @@ repository.
   #269's code smells left: the cognitive complexity of nine methods and an eight-parameter method
   (refactors to report, not to apply), "test methods should not be public" (the owner's guides decide
   the other way) and a few false positives (comments read as code).
+
+### Final review 2026-11-08
+
+The two reviews of 5e85d239 (whole tree, delta to `main`): rows 85 to 98; three medium findings, all of
+`pruneOrphans` (85 to 87), the rest low.
 
 ### Known limits, for the next model round (no open work)
 
