@@ -123,8 +123,8 @@ public final class SourceFileIndexer {
     private final AiMdDocumentCodec documentCodec = new AiMdDocumentCodec();
 
     /**
-     * The source files and directories {@link #collectCandidates(Path)} could not read (and no exclude takes
-     * whole): their summaries are no orphans.
+     * The source files and directories the run does not see ({@link #keepSummariesBelow(Path)}): their
+     * summaries are no orphans.
      */
     private final List<Path> unreadableSources = new ArrayList<>();
 
@@ -345,13 +345,17 @@ public final class SourceFileIndexer {
         orphans.addAll(orphaned);
         orphans.addAll(orphanedPackageFiles(collector, produced, orphaned));
         orphans.sort(BY_PATH);
+        for (final Path source : unreadableSources) {
+            LOGGER.warn("No summary of {} is an orphan: it is missing or could not be read", source);
+        }
         return orphans;
     }
 
     /**
      * Returns the package files that would be left in a directory without any summary and any sub-package
-     * once {@code orphaned} are gone: the deepest first, so a package that is kept keeps the packages above
-     * it.
+     * once {@code orphaned} are gone. A summary that stays or that the run writes keeps the package of its
+     * directory and of every directory above it up to the output root, and so does a package that is kept;
+     * the deepest are decided first, so a kept package is known before the packages above it.
      *
      * @param collector the walk of the output root
      * @param produced  the summaries the run's sources are summarized into, written yet or not
@@ -363,11 +367,11 @@ public final class SourceFileIndexer {
         final Set<Path> occupied = new HashSet<>(new Java8CompatibilityHelper()
                 .hashMapCapacityFor(collector.summaries.size() + produced.size() + collector.packageFiles.size()));
         for (final Path summary : produced) {
-            occupy(occupied, summary.getParent());
+            occupy(occupied, summary.getParent(), collector.root);
         }
         for (final Path summary : collector.summaries) {
             if (!orphaned.contains(summary)) {
-                occupy(occupied, summary.getParent());
+                occupy(occupied, summary.getParent(), collector.root);
             }
         }
         final List<Path> packageFiles = new ArrayList<>(collector.packageFiles);
@@ -382,7 +386,7 @@ public final class SourceFileIndexer {
                     || collector.holdsUnreadable(directory)
                     || belowUnreadableSource(packageFile)
                     || !AiMdHeaderCodec.NODE_TYPE_PACKAGE.equals(nodeType(packageFile))) {
-                occupy(occupied, directory.getParent());
+                occupy(occupied, directory.getParent(), collector.root);
             } else {
                 orphans.add(packageFile);
             }
@@ -391,14 +395,17 @@ public final class SourceFileIndexer {
     }
 
     /**
-     * Marks a directory as one that keeps its package file.
+     * Marks a directory and every directory above it up to the output root as ones that keep their package
+     * file. A directory already marked has its ancestors marked, so the walk up ends there.
      *
      * @param occupied  the directories that keep theirs
      * @param directory the directory, or {@code null} above the file system's root
+     * @param root      the output root, normalized
      */
-    private static void occupy(final Set<Path> occupied, final @Nullable Path directory) {
-        if (directory != null) {
-            occupied.add(directory);
+    private static void occupy(final Set<Path> occupied, final @Nullable Path directory, final Path root) {
+        Path current = directory;
+        while (current != null && current.startsWith(root) && occupied.add(current)) {
+            current = current.getParent();
         }
     }
 
@@ -432,7 +439,6 @@ public final class SourceFileIndexer {
                     .resolve(pathSupport.relativizeFromSrc(baseDirectory, source))
                     .normalize();
             if (summary.startsWith(output) || summary.equals(targetFile(source))) {
-                LOGGER.warn("{} is kept: the source path {} could not be read", summary, source);
                 return true;
             }
         }
@@ -558,6 +564,17 @@ public final class SourceFileIndexer {
     }
 
     /**
+     * Keeps every summary of a source path the run does not see: a file or directory the walk could not
+     * read, or a subtree that is missing. {@link #orphanedSummaries(Collection)} lists none of the summaries
+     * of the file, or below the output directory of the directory, whose sources are not known.
+     *
+     * @param sourcePath the source file or directory
+     */
+    public void keepSummariesBelow(final Path sourcePath) {
+        unreadableSources.add(sourcePath);
+    }
+
+    /**
      * Goes on with the walk after a file or a directory could not be read (a directory without the
      * permission to list it, a file that vanished during the walk): nothing below it is a candidate, with a
      * warning, or only a debug line for a directory an exclude takes as a whole, whose files would not be
@@ -573,7 +590,7 @@ public final class SourceFileIndexer {
             LOGGER.debug("Cannot read the excluded {}: {}", path, e.toString());
         } else {
             LOGGER.warn("Cannot read {}, so nothing of it is indexed: {}", path, e.toString());
-            unreadableSources.add(path);
+            keepSummariesBelow(path);
         }
         return FileVisitResult.CONTINUE;
     }
@@ -925,7 +942,7 @@ public final class SourceFileIndexer {
 
     /**
      * Returns whether a file's {@code #!} line names one of the interpreters; a file that cannot be read
-     * does not, with a warning.
+     * does not, with a warning, and its summary is kept ({@link #keepSummariesBelow(Path)}).
      *
      * @param path the file
      * @return {@code true} when it does
@@ -938,6 +955,7 @@ public final class SourceFileIndexer {
             // a file without an extension may be anything (a socket file, one another process locks):
             // one that cannot be read is no script of ours, and the walk goes on
             LOGGER.warn("Cannot read the first line of {}, so it is not indexed: {}", path, e.toString());
+            keepSummariesBelow(path);
             return false;
         }
         final String interpreter = Shebang.interpreter(head);

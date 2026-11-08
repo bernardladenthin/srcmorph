@@ -1600,5 +1600,26 @@ public class GenerateEngineTest {
         assertThat(result.written(), is(1));
         assertThat(String.join("\n", capturedMessages(Level.INFO)), not(containsString("Orphaned summaries")));
     }
+
+    @Test
+    public void execute_pruneOrphansAndAMissingDefaultSubtree_keepsEverySummary() throws Exception {
+        // arrange: the index of an earlier run, then the base directory without its src
+        final SrcMorphConfiguration config = baseConfig();
+        new GenerateEngine(config).execute();
+        Files.move(tempDir.resolve("src"), tempDir.resolve("moved"));
+        config.setPruneOrphans(true);
+        logAppender.list.clear();
+
+        // act
+        final GenerateResult result = new GenerateEngine(config).execute();
+
+        // assert
+        assertThat(result.written(), is(0));
+        assertThat(Files.exists(fooSummary()), is(true));
+        assertThat(String.join("\n", capturedMessages(Level.INFO)), not(containsString("Orphaned summaries")));
+        assertThat(
+                capturedMessages(Level.WARN),
+                is(Collections.singletonList("Skipping missing subtree: " + tempDir.resolve("src/main/java"))));
+    }
     // </editor-fold>
 }

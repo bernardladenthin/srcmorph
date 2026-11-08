@@ -291,9 +291,10 @@ SECRETS_RULE = {"id": "secrets", "skip": True, "priority": 1000, "condition": _o
                    "settings-security.xml", "*.pem", "*.key", "id_rsa*", "id_ed25519*"]},
     # Maven's settings.xml (server passwords) by its root element, not an Android res/xml/settings.xml
     _and({"fileNames": ["settings.xml"]}, {"contentMatches": r"<settings[\s>]"}),
-    # a properties file that gives a password, secret, token or API key a value (not a ${...} reference)
+    # a properties file that gives a password, secret, token or API key, a secret key too, a value
+    # after =, : or a blank (not a ${...} reference, nor a key that only starts so)
     _and({"extensions": [".properties"]},
-         {"contentMatches": r"(?im)^[ \t]*+[\w.\-]*?(?:password|passwd|secret|token|api[._-]?key)[ \t]*+[=:][ \t]*+(?!\$\{)\S"}),
+         {"contentMatches": r"(?im)^[ \t]*+[\w.\-]*?(?:password|passwd|secret|token|api[._-]?key)(?:[._-]?(?:access[._-]?)?key)?(?:[ \t]*+[=:]|[ \t]++)[ \t]*+(?!\$\{)\S"}),
     # a Kubernetes Secret, whatever its name (deploy/postgres.yaml), but not a Helm chart's template
     _and({"extensions": YAML_EXTENSIONS}, {"contentMatches": K8S_SECRET}, {"not": HELM_TEMPLATE}),
     # named for a vault, secrets or credentials, but not a CI workflow or action, a Helm chart's template

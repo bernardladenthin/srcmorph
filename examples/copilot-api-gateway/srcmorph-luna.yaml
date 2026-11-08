@@ -171,9 +171,10 @@ srcMorph:
   # read chunk by chunk (mapReduce): Luna named every name planted in the middle of a 1.6 MB SQL dump,
   # an 870 KB XML catalog and a 283 KB Java enum in three of three runs (MODEL-CARD finding 7).
   rules:
-    # Files that hold credentials are never sent to a model, whatever their extension: the highest
-    # priority, so no other rule takes them. The prompts name a secret and never copy it; this keeps
-    # the file out altogether. fileNames match the name in any case.
+    # Files that hold credentials are never sent to a model: the files named below, Maven's
+    # settings.xml, a properties file with a secret and a Kubernetes Secret, at the highest priority, so
+    # no other rule takes them. A secret in another file (a password in an application.yml) is not
+    # recognized: the prompts name a secret and never copy it. fileNames match the name in any case.
     - id: secrets
       skip: true
       priority: 1000
@@ -197,12 +198,14 @@ srcMorph:
                   - fileNames: ["settings.xml"]
                   - contentMatches: '<settings[\s>]'
             # A properties file that gives a password, secret, token or API key a value, whatever its
-            # name (gradle.properties, application.properties); a value that only names an environment
-            # variable or another property (${DB_PASSWORD}) is none. Read in the file's head.
+            # name (gradle.properties, application.properties), a secret key too (aws.secretKey,
+            # secret-access-key, jwt.secret.key), after =, : or a blank; a value that only names an
+            # environment variable or another property (${DB_PASSWORD}) is none, nor is a key that
+            # only starts so (password.label). Read in the file's head.
             - and:
                 conditions:
                   - extensions: [".properties"]
-                  - contentMatches: '(?im)^[ \t]*+[\w.\-]*?(?:password|passwd|secret|token|api[._-]?key)[ \t]*+[=:][ \t]*+(?!\$\{)\S'
+                  - contentMatches: '(?im)^[ \t]*+[\w.\-]*?(?:password|passwd|secret|token|api[._-]?key)(?:[._-]?(?:access[._-]?)?key)?(?:[ \t]*+[=:]|[ \t]++)[ \t]*+(?!\$\{)\S'
             # A Kubernetes Secret, whatever its name (deploy/postgres.yaml): its data are the
             # credentials. Not a Helm chart's template, which names the values it renders. Read in the
             # file's head, so a Secret in a later document of a long multi-document file is not seen.

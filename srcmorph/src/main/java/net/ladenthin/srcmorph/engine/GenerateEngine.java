@@ -165,7 +165,9 @@ public final class GenerateEngine {
                 ? compatibilityHelper.listOf(basePath.resolve(DEFAULT_SOURCE_SUBTREE))
                 : resolvedSubtrees) {
             if (!subtree.toFile().exists()) {
+                // its summaries are kept: an empty plan would make every one an orphan for pruneOrphans
                 LOGGER.warn("Skipping missing subtree: {}", subtree);
+                fileIndexer.keepSummariesBelow(subtree);
                 continue;
             }
             candidates.addAll(fileIndexer.collectCandidates(subtree));

@@ -47,7 +47,7 @@ public class SrcMorphConfiguration {
     public static final String DEFAULT_AI_VERSION = "0.0.0";
 
     /**
-     * Whether a {@code generate} run deletes the orphaned file summaries ({@link #isPruneOrphans()}) when the
+     * Whether a {@code generate} run deletes the orphaned summaries ({@link #isPruneOrphans()}) when the
      * configuration does not say: it does not, it lists them in its plan only, since the summary of a source
      * a narrowed {@code subtrees} leaves out for one run is an orphan too.
      */
@@ -331,11 +331,12 @@ public class SrcMorphConfiguration {
     }
 
     /**
-     * Returns whether a {@code generate} run deletes the orphaned file summaries: the {@code .ai.md} files
+     * Returns whether a {@code generate} run deletes the orphaned summaries: the {@code .ai.md} files
      * of node type {@code file} below the output directory that no file of the run's plan is summarized
      * into (the summary of a deleted, renamed or newly excluded source, or of one a skip rule takes now),
-     * which the package and project phases would otherwise go on reading. The plan lists them either way;
-     * a {@code planOnly} run and a check delete nothing.
+     * and the {@code package.ai.md} of a directory left without any summary and sub-package, which the
+     * package and project phases would otherwise go on reading. The plan lists them either way; a
+     * {@code planOnly} run and a check delete nothing.
      *
      * @return {@code true} to delete them; {@value #DEFAULT_PRUNE_ORPHANS} by default
      */
@@ -344,7 +345,7 @@ public class SrcMorphConfiguration {
     }
 
     /**
-     * Sets whether a {@code generate} run deletes the orphaned file summaries.
+     * Sets whether a {@code generate} run deletes the orphaned summaries.
      *
      * @param pruneOrphans {@code true} to delete them
      */

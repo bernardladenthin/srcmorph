@@ -455,8 +455,8 @@ public class SourceFileIndexerTest {
         assertThat(relative(out, orphans), is(equalTo(Arrays.asList("main/java/a/Gone.java.ai.md"))));
         assertThat(
                 warnings(log),
-                hasItem(out.resolve("main/java/locked/L.java.ai.md") + " is kept: the source path "
-                        + sourceRoot.resolve("locked") + " could not be read"));
+                hasItem("No summary of " + sourceRoot.resolve("locked") + " is an orphan: it is missing or could"
+                        + " not be read"));
     }
 
     @Test
@@ -491,6 +491,45 @@ public class SourceFileIndexerTest {
                         "gone/package.ai.md",
                         "gone/sub/X.java.ai.md",
                         "gone/sub/package.ai.md"))));
+    }
+
+    @Test
+    public void orphanedSummaries_aSummaryBelowADirectoryWithoutAPackageFile_keepsEveryPackageAboveIt()
+            throws Exception {
+        // arrange: a/Old.java moved to the new a/b/New.java, whose summary the run has yet to write; c holds
+        // a note by hand in a directory without a package file of its own
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path out = temp.resolve("out");
+        writeSummary(out.resolve("package.ai.md"), "package", "Root.");
+        writeSummary(out.resolve("main/java/a/Old.java.ai.md"), "file", "Old.");
+        writeSummary(out.resolve("main/java/a/package.ai.md"), "package", "A.");
+        writeSummary(out.resolve("main/java/c/package.ai.md"), "package", "C.");
+        Files.createDirectories(out.resolve("main/java/c/notes"));
+        Files.write(out.resolve("main/java/c/notes/readme.ai.md"), "# Notes\n".getBytes(StandardCharsets.UTF_8));
+        final SourceFileIndexer indexer = indexer(temp, out, Collections.<String>emptyList(), 0L, 0L);
+
+        // act
+        final List<Path> orphans =
+                indexer.orphanedSummaries(Collections.singletonList(temp.resolve("src/main/java/a/b/New.java")));
+
+        // assert
+        assertThat(relative(out, orphans), is(equalTo(Arrays.asList("main/java/a/Old.java.ai.md"))));
+    }
+
+    @Test
+    public void orphanedSummaries_aKeptPackage_keepsThePackagesAboveIt() throws Exception {
+        // arrange: x/y holds no summary, but its package file is none by its header and so is kept
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path out = temp.resolve("out");
+        writeSummary(out.resolve("x/package.ai.md"), "package", "X.");
+        writeSummary(out.resolve("x/y/package.ai.md"), "file", "Not a package by its header.");
+        final SourceFileIndexer indexer = indexer(temp, out, Collections.<String>emptyList(), 0L, 0L);
+
+        // act
+        final List<Path> orphans = indexer.orphanedSummaries(Collections.<Path>emptyList());
+
+        // assert
+        assertThat(orphans, is(equalTo(Collections.<Path>emptyList())));
     }
 
     @Test
@@ -1121,16 +1160,19 @@ public class SourceFileIndexerTest {
         final Path locked = temp.resolve("bin/locked");
         writeJava(locked, "#!/bin/bash\n");
         writeJava(temp.resolve("bin/deploy"), "#!/bin/bash\n");
+        // summaries of an earlier run: the locked script's stays, the one of a deleted script is an orphan
+        writeSummary(temp.resolve("out/bin/locked.ai.md"), "file", "Locked.");
+        writeSummary(temp.resolve("out/bin/gone.ai.md"), "file", "Gone.");
         final SourceFileIndexer indexer =
                 indexer(temp, Collections.<String>emptyList(), Arrays.asList("bash"), 256, 0L);
 
         // act
-        final List<String> selected;
+        final List<Path> candidates;
         if (FileSystems.getDefault().supportedFileAttributeViews().contains("posix")) {
             // no read permission (the test does not run as root)
             Files.setPosixFilePermissions(locked, Collections.emptySet());
             try {
-                selected = names(indexer.collectCandidates(temp));
+                candidates = indexer.collectCandidates(temp);
             } finally {
                 Files.setPosixFilePermissions(locked, PosixFilePermissions.fromString("rw-------"));
             }
@@ -1138,12 +1180,14 @@ public class SourceFileIndexerTest {
             // Windows refuses a read of a range another handle locks
             try (FileChannel channel = FileChannel.open(locked, StandardOpenOption.WRITE);
                     FileLock lock = channel.lock()) {
-                selected = names(indexer.collectCandidates(temp));
+                candidates = indexer.collectCandidates(temp);
             }
         }
+        final List<Path> orphans = indexer.orphanedSummaries(candidates);
 
         // assert
-        assertThat(selected, is(equalTo(Arrays.asList("deploy"))));
+        assertThat(names(candidates), is(equalTo(Arrays.asList("deploy"))));
+        assertThat(orphans, is(equalTo(Collections.singletonList(temp.resolve("out/bin/gone.ai.md")))));
     }
     // </editor-fold>
 

@@ -192,6 +192,11 @@ class RulesTest(unittest.TestCase):
         self.assertIn(f"contentMatches: '{pattern}'", selftest)
         self.assertTrue(re.search(pattern, "a=1\nsigning.password = x\n"))
         self.assertFalse(re.search(pattern, "spring.datasource.password=${DB_PASSWORD}\n# token=x\n"))
+        for text in ("aws.secretKey=AKIAX\n", "app.secret-key=abc\n", "aws.secret-access-key=x\n",
+                     "jwt.secret.key=x\n", "mail.smtp.password hunter2\n"):
+            self.assertTrue(re.search(pattern, text), text)
+        for text in ("password.label=Password\n", "token.expiry 3600\n", "password=\n"):
+            self.assertFalse(re.search(pattern, text), text)
         # and a Kubernetes Secret by its kind, whatever its name, but not a Helm chart's template
         kinds = [c for c in secrets["condition"]["or"]["conditions"]
                  if c.get("and", {}).get("conditions", [{}])[0] == {"extensions": run.YAML_EXTENSIONS}]

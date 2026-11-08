@@ -271,6 +271,12 @@ public class ExamplesConfigBindingTest {
             {"ci.properties", "ossrhPassword=x\ngithub.token: ghp_x\n"},
             {"client.properties", "  client-secret=x\n"},
             {"api.properties", "maps.api-key=x\n"},
+            // a secret key by any spelling, and a blank as the separator
+            {"aws.properties", "aws.secretKey=AKIAX\n"},
+            {"app.properties", "app.secret-key=abc\n"},
+            {"s3.properties", "aws.secret-access-key=x\n"},
+            {"jwt.properties", "jwt.secret.key=x\n"},
+            {"mail.properties", "mail.smtp.password hunter2\n"},
             // a Kubernetes Secret, whatever its name, its kind quoted or not
             {"deploy/postgres.yaml", "apiVersion: v1\nkind: Secret\ndata:\n  password: eA==\n"},
             {"deploy/registry.yml", "apiVersion: v1\nkind: \"Secret\"\ntype: kubernetes.io/dockerconfigjson\n"},
@@ -307,6 +313,7 @@ public class ExamplesConfigBindingTest {
             {"gradle.properties", "# signing.password=x\norg.gradle.jvmargs=-Xmx2g\n"},
             {"empty.properties", "password=\n"},
             {"messages.properties", "password.label=Password\ntoken.expiry=3600\n"},
+            {"labels.properties", "password.label Password\ntoken.expiry 3600\nsecret.question.label: Q\n"},
             {"log4j2.properties", "appender.out.type = Console\n"},
         };
 
