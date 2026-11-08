@@ -21,14 +21,18 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 import net.ladenthin.srcmorph.cli.configuration.CCommand;
 import net.ladenthin.srcmorph.cli.configuration.CConfiguration;
 import net.ladenthin.srcmorph.config.ConditionGroup;
 import net.ladenthin.srcmorph.config.ModelDefinition;
 import net.ladenthin.srcmorph.config.PromptDefinition;
+import net.ladenthin.srcmorph.config.RangeCondition;
 import net.ladenthin.srcmorph.config.RoutingRule;
 import net.ladenthin.srcmorph.config.RuleCondition;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
@@ -456,8 +460,10 @@ public class ExamplesConfigBindingTest {
 
     /**
      * The XML tiers leave out a kind's file by the kind rule's own conditions, copied into their
-     * {@code not}: every name or content condition of every rule that takes an XML file by name or by
-     * content, in rule order. A kind rule added or changed without its copy in the tiers fails here.
+     * {@code not}: every name, path or content condition of every rule that takes a file of the tiers'
+     * extensions by name, path or content, in rule order. A kind rule added or changed without its copy in
+     * the tiers fails here. The POM rule is left out: the POM tiers outrank the XML tiers from the same
+     * size on.
      *
      * @throws Exception if the example cannot be read
      */
@@ -469,15 +475,29 @@ public class ExamplesConfigBindingTest {
                 .srcMorph
                 .getRules();
         final ObjectMapper json = SrcMorphConfigurationFileLoader.newJsonMapper();
-        final Set<String> notKinds = Set.of("huge-xml", "big-xml", "xml", "huge-pom", "big-pom");
+        final Map<String, RoutingRule> byId = new HashMap<>();
+        for (final RoutingRule rule : rules) {
+            byId.put(rule.getId(), rule);
+        }
+        final Function<String, RoutingRule> tier = id -> Objects.requireNonNull(byId.get(id), id);
+        final List<String> tierExtensions = Objects.requireNonNull(Objects.requireNonNull(
+                                Objects.requireNonNull(tier.apply("big-xml").getCondition())
+                                        .getAnd())
+                        .getConditions())
+                .get(0)
+                .getExtensions();
+        final Set<String> notKinds = Set.of("huge-xml", "big-xml", "xml", "huge-pom", "big-pom", "pom");
         final List<JsonNode> kindConditions = new ArrayList<>();
         for (final RoutingRule rule : rules) {
             final RuleCondition condition = rule.getCondition();
-            if (rule.isSkip() || condition == null || notKinds.contains(rule.getId()) || !takesXml(condition)) {
+            if (rule.isSkip()
+                    || condition == null
+                    || notKinds.contains(rule.getId())
+                    || !takesXml(condition, Objects.requireNonNull(tierExtensions))) {
                 continue;
             }
             for (final RuleCondition leaf : leaves(condition)) {
-                if (leaf.getFileNames() != null || leaf.getContentMatches() != null) {
+                if (leaf.getFileNames() != null || leaf.getPathGlob() != null || leaf.getContentMatches() != null) {
                     kindConditions.add(json.valueToTree(leaf));
                 }
             }
@@ -485,6 +505,11 @@ public class ExamplesConfigBindingTest {
 
         // pre-assert
         assertThat("jee, mybatis, bpmn, persistence, integration", kindConditions.size(), is(5));
+        assertThat(tierExtensions, is(equalTo(List.of(".xml", ".xsd", ".xsl", ".xslt"))));
+        assertThat(tier.apply("big-pom").getPriority() > tier.apply("big-xml").getPriority(), is(true));
+        assertThat(tier.apply("huge-pom").getPriority() > tier.apply("huge-xml").getPriority(), is(true));
+        assertThat(minSize(tier.apply("big-pom")) <= minSize(tier.apply("big-xml")), is(true));
+        assertThat(minSize(tier.apply("huge-pom")) <= minSize(tier.apply("huge-xml")), is(true));
 
         // act, assert
         for (final RoutingRule rule : rules) {
@@ -507,22 +532,47 @@ public class ExamplesConfigBindingTest {
     }
 
     /**
-     * Whether a condition can take an XML file of the tiers by its own name or content: it names the
-     * {@code .xml} extension or a file name ending in it.
+     * Whether a condition can take a file of the XML tiers by its own name, path or content: it names one
+     * of their extensions, or a file name or path glob ending in one.
      *
-     * @param condition the rule's condition
-     * @return whether it names an XML file
+     * @param condition  the rule's condition
+     * @param extensions the extensions of the XML tiers
+     * @return whether it names a file of the tiers
      */
-    private static boolean takesXml(final RuleCondition condition) {
+    private static boolean takesXml(final RuleCondition condition, final List<String> extensions) {
         for (final RuleCondition leaf : leaves(condition)) {
-            final List<String> extensions = leaf.getExtensions();
+            final List<String> names = new ArrayList<>();
             final List<String> fileNames = leaf.getFileNames();
-            if ((extensions != null && extensions.contains(".xml"))
-                    || (fileNames != null && fileNames.stream().anyMatch(name -> name.endsWith(".xml")))) {
+            if (fileNames != null) {
+                names.addAll(fileNames);
+            }
+            final String pathGlob = leaf.getPathGlob();
+            if (pathGlob != null) {
+                names.add(pathGlob);
+            }
+            final List<String> leafExtensions = leaf.getExtensions();
+            if ((leafExtensions != null && leafExtensions.stream().anyMatch(extensions::contains))
+                    || names.stream().anyMatch(name -> extensions.stream().anyMatch(name::endsWith))) {
                 return true;
             }
         }
         return false;
+    }
+
+    /**
+     * The minimum size of a tier: the {@code size} condition of its {@code and} group.
+     *
+     * @param rule the tier
+     * @return its exclusive minimum size in bytes
+     */
+    private static long minSize(final RoutingRule rule) {
+        for (final RuleCondition leaf : leaves(Objects.requireNonNull(rule.getCondition()))) {
+            final RangeCondition size = leaf.getSize();
+            if (size != null) {
+                return size.getMin();
+            }
+        }
+        throw new IllegalStateException(rule.getId() + " has no size condition");
     }
 
     /**

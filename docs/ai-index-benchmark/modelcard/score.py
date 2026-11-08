@@ -809,6 +809,15 @@ def card_metrics(rows):
             "quality": (recall["java"] + recall["sql"] + recall["other"] + fmt_share) / 4}
 
 
+def cost_per_mb(run, mb):
+    """The USD an OpenRouter run cost per MB of source code, or None: another backend reports no cost,
+    and a run whose cost lookup failed records costUsd null (run.py's cost_failed); a chart leaves it
+    out."""
+    if run["backend"] != "openrouter" or run["cost"] is None:
+        return None
+    return run["cost"] / mb
+
+
 def tsv_line(row):
     return "\t".join(tsv_cell(row, c) for c in TSV_COLUMNS)
 

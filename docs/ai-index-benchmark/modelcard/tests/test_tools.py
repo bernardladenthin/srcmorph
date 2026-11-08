@@ -41,6 +41,12 @@ def args(**overrides):
 class CardMetricsTest(unittest.TestCase):
     """score.card_metrics, the quality plot.py charts and the card ranks by."""
 
+    def test_costPerMb_isNoneForAnotherBackendAndAFailedLookup(self):
+        self.assertEqual(score.cost_per_mb({"backend": "openrouter", "cost": 0.5}, 2.0), 0.25)
+        self.assertEqual(score.cost_per_mb({"backend": "openrouter", "cost": 0.0}, 2.0), 0.0)
+        self.assertIsNone(score.cost_per_mb({"backend": "openrouter", "cost": None}, 2.0))
+        self.assertIsNone(score.cost_per_mb({"backend": "local", "cost": 0.5}, 2.0))
+
     @staticmethod
     def row(file, kind, recall, failed="", lead="True", numbers="0"):
         return {"file": file, "kind": kind, "recall": recall, "failed": failed, "lead": lead,
@@ -361,14 +367,60 @@ class RulesTest(unittest.TestCase):
         theirs = {r["id"]: r for r in luna["srcMorph"]["rules"]}
         ours = {r["id"]: r for r in run.file_rules(run.PROFILES / "v3", "m", facts=True)}
 
-        for kind in ("persistence", "integration", "wsdl", "facelets", "openapi", "asyncapi", "avro", "graphql",
-                     "camel-yaml", "compose", "ansible", "gradle", "properties", "powershell", "batch", "pyproject", "kotlin",
-                     "groovy", "scala", "java-ee"):
-            for field in ("condition", "promptKey", "factsKey"):
+        # The conditions that differ, by the leaves only one side has. Luna's own take files run.py's walk
+        # never collects (no extension or name of its lists, no #! line read), so they route nothing
+        # differently; run.py's xml rule names .wsdl, which the wsdl rule takes first in both.
+        differences = {
+            "dockerfile": ({"fileNames:*.dockerfile"}, set()),
+            "ops": ({"fileNames:Jenkinsfile", "fileNames:.gitlab-ci.yml"}, set()),
+            "perl": ({"extensions:.t", "extensions:.cgi", "extensions:.psgi", "interpreters:perl"}, set()),
+            "shell": ({"extensions:.zsh", "extensions:.bats", "interpreters:bash", "interpreters:sh",
+                       "interpreters:ksh", "interpreters:zsh", "interpreters:dash"}, set()),
+            "xml": (set(), {"extensions:.wsdl"}),
+        }
+        # jspx: JSP documents, a kind no corpus of the card holds
+        self.assertEqual(set(theirs) - set(ours), {"jspx"})
+        self.assertEqual(set(ours) - set(theirs), set())
+        for kind in ours:
+            for field in ("promptKey", "factsKey"):
                 self.assertEqual(ours[kind].get(field), theirs[kind].get(field), f"{kind} {field}")
             self.assertEqual(ours[kind].get("priority", 0), theirs[kind].get("priority", 0), kind)
-            for extension in self.extensions(theirs[kind]["condition"]):
-                self.assertIn(extension, run.EXTENSIONS, kind)
+            if kind not in differences:
+                # the fallback has no condition
+                self.assertEqual(ours[kind].get("condition"), theirs[kind].get("condition"), kind)
+                for extension in self.extensions(theirs[kind].get("condition", {})):
+                    self.assertIn(extension, run.EXTENSIONS, kind)
+                continue
+            theirs_only, ours_only = differences[kind]
+            mine, luna_leaves = self.leaves(ours[kind]["condition"]), self.leaves(theirs[kind]["condition"])
+            self.assertEqual((luna_leaves - mine, mine - luna_leaves), (theirs_only, ours_only), kind)
+            # a file only Luna's condition names is not collected, or run.py's rule takes it too
+            # (.gitlab-ci.yml by its extension)
+            for leaf in theirs_only:
+                field, value = leaf.split(":", 1)
+                name = {"extensions": "a" + value, "fileNames": value.replace("*", "a")}.get(field)
+                if name is not None:
+                    self.assertTrue(not run.indexes(name)
+                                    or run.condition_matches(ours[kind]["condition"], name, ""), leaf)
+        self.assertGreater(ours["wsdl"]["priority"], ours["xml"].get("priority", 0))
+        self.assertIn(".wsdl", self.extensions(ours["wsdl"]["condition"]))
+
+    @staticmethod
+    def leaves(condition):
+        """Every leaf of a condition as "field:value", through its and / or groups (a not as "not:" and
+        its leaves)."""
+        found = set()
+        for field, value in condition.items():
+            if field in ("and", "or"):
+                for inner in value["conditions"]:
+                    found |= RulesTest.leaves(inner)
+            elif field == "not":
+                found |= {"not:" + leaf for leaf in RulesTest.leaves(value)}
+            elif isinstance(value, list):
+                found |= {f"{field}:{entry}" for entry in value}
+            else:
+                found.add(f"{field}:{value}")
+        return found
 
     @staticmethod
     def extensions(condition):

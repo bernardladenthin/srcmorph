@@ -267,7 +267,7 @@ LANGUAGES = (("shell", {"extensions": [".sh", ".bash", ".ksh"]}, "shell", 0),
              ("graphql", {"extensions": [".graphql", ".graphqls", ".gql"]}, "contract", 0),
              ("actions", {"pathGlob": "**/.github/{workflows,actions}/**/*.{yml,yaml}"}, "ops", 10),
              # the kind as k8s-facts.tsv counts it: quoted or not
-             ("k8s", _and({"extensions": YAML_EXTENSIONS}, {"contentMatches": r"(?m)^kind:[ \t]*[\"']?[A-Z]"}), "ops", 5),
+             ("k8s", _and({"extensions": YAML_EXTENSIONS}, {"contentMatches": r"""(?m)^kind:[ \t]*["']?[A-Z]"""}), "ops", 5),
              ("dockerfile", {"fileNames": ["Dockerfile", "Dockerfile.*", "Containerfile"]}, "ops", 0),
              ("camel-yaml", _and({"extensions": YAML_EXTENSIONS},
                                 {"contentMatches": r"(?m)^-[ \t]+(?:(?:route|routeTemplate|templatedRoute|rest)[ \t]*:|from[ \t]*:[ \t]*"

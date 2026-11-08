@@ -667,7 +667,9 @@ public final class SourceFileIndexer {
     }
 
     /**
-     * Plans the run, with the window check when both supports are given.
+     * Plans the run, with the window check when both supports are given. A candidate whose content
+     * cannot be read is left out with a warning, and its summary is kept
+     * ({@link #keepSummariesBelow(Path)}).
      *
      * @param candidates               the candidate files
      * @param rules                    the routing rules in declaration order
@@ -692,7 +694,15 @@ public final class SourceFileIndexer {
             final String fileName = fileNamePath != null ? fileNamePath.toString() : file.toString();
             // the size a rule and the plan see is that of the bytes the checksum is taken over (\n line
             // endings, no byte order mark): the same on a CRLF and an LF checkout
-            final byte[] bytes = Files.readAllBytes(file);
+            final byte[] bytes;
+            try {
+                bytes = Files.readAllBytes(file);
+            } catch (final IOException e) {
+                // a file whose attributes the walk read but not its content (no read permission, a lock)
+                LOGGER.warn("Cannot read {}, so it is not indexed: {}", file, e.toString());
+                keepSummariesBelow(file);
+                continue;
+            }
             final String source = SourceLines.normalize(SourceLines.decode(bytes));
             final long fileSizeBytes = SourceLines.size(bytes);
             final int lineCount = lineFiltersUsed ? SourceLines.count(source) : 0;

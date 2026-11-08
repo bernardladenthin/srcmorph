@@ -394,7 +394,9 @@ The entries below hold the details; what a 1.4.0 user changes:
 - **score.py wants `--meta` and `--scores` with an `--out` other than the card's** (breaking for a
   script that left them out): it applied the cut-off lists of the card's runs to any output tree and
   wrote over the card's `scores/`, which it now refuses for another `--out` too. The card's quality
-  metric moved from plot.py to `score.card_metrics`, with a test. run.py likewise wants `--meta`
+  metric moved from plot.py to `score.card_metrics`, with a test, and so did the cost per MB
+  (`score.cost_per_mb`): a run whose cost lookup failed (`costUsd` null) is left out of the cost
+  charts, where plot.py divided it and stopped. run.py likewise wants `--meta`
   with another `--out`: it wrote that run's records over the card's `runs/`.
 - **OpenAPI, Camel YAML and Dockerfile rules take no lookalike:** the `openapi` rule wants a version
   after `openapi:` or `swagger:` (a Spring `application.yml` with `swagger: enabled: true` goes to
@@ -662,8 +664,9 @@ The entries below hold the details; what a 1.4.0 user changes:
   descended everywhere and applied the excludes per file, so a directory it could not list ended the
   run with an `UncheckedIOException`, also when an exclude covered it. A directory an exclude ending
   in `/**` takes as a whole (`target/**`, `**/generated/**`) is no longer entered; a file or
-  directory that cannot be read is left out with a warning (a debug line when excluded). The
-  candidates and their order are unchanged.
+  directory that cannot be read is left out with a warning (a debug line when excluded), and so is a
+  source whose content cannot be read (no read permission, a lock), which ended plan, check and
+  generate; its summary is kept. The candidates and their order are unchanged.
 - **`All` checks the package and the project phase before the file phase** (their rule, prompts and
   model, as `Check` does), so a missing `packageRules` or a wrong phase rule fails before any file is
   sent and billed, not after the whole file phase; with `planOnly` only the file phase is planned.

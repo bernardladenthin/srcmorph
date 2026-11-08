@@ -29,7 +29,7 @@ import matplotlib.pyplot as plt  # noqa: E402
 from matplotlib.text import Text  # noqa: E402
 from matplotlib.transforms import Bbox  # noqa: E402
 
-import score  # noqa: E402  the card's quality metric
+import score  # noqa: E402  the card's quality metric and cost per MB
 
 HERE = Path(__file__).resolve().parent
 OUT = HERE / "charts"
@@ -349,7 +349,7 @@ def deck(data, mb):
                   "Seconds per source file (log scale)", "", "quality-vs-speed", "",
                   [(("openrouter", "huggingface"), (0, (4, 3)), "hosted"), (("local",), (0, (1, 2)), "local")],
                   DECK, DECK_SPEED_LABELS)
-    scatter_chart(scatter_runs(DECK_COST), "light", lambda d: d["cost"] / mb,
+    scatter_chart(scatter_runs(DECK_COST), "light", lambda d: score.cost_per_mb(d, mb),
                   "USD per MB of source code (log scale)", "", "quality-vs-cost", "",
                   [(("openrouter",), (0, (4, 3)), "")], DECK, DECK_COST_LABELS)
     best = {}
@@ -374,7 +374,7 @@ def main():
                       "with reasoning switched off. Hosted times depend on the "
                       "provider's load; local times are one RTX 3070 Laptop (8 GB).",
                       [(("openrouter", "huggingface", "copilot"), (0, (4, 3)), "hosted"), (("local",), (0, (1, 2)), "local")])
-        scatter_chart(data, theme, lambda d: d["cost"] / mb if d["backend"] == "openrouter" else None,
+        scatter_chart(data, theme, lambda d: score.cost_per_mb(d, mb),
                       "USD per MB of source code (log scale, lower is cheaper)",
                       "Quality against cost (OpenRouter)", "quality-vs-cost",
                       "Dashed line: no other model is both cheaper and better. Arrows: the same model with "

@@ -1249,6 +1249,49 @@ public class SourceFileIndexerTest {
     }
 
     @Test
+    public void classify_aSourceWhoseContentCannotBeRead_isLeftOutWithAWarningAndKeepsItsSummary() throws Exception {
+        // arrange
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path locked = temp.resolve("a/Locked.java");
+        final Path open = temp.resolve("a/Open.java");
+        writeJava(locked, "class Locked {}\n");
+        writeJava(open, "class Open {}\n");
+        writeSummary(temp.resolve("out/a/Locked.java.ai.md"), "file", "Locked.");
+        writeSummary(temp.resolve("out/a/Gone.java.ai.md"), "file", "Gone.");
+        final SourceFileIndexer indexer = indexerWithNames(temp, Collections.<String>emptyList());
+        final List<RoutingRule> rules = Arrays.asList(rule("fallback", null, false, true));
+        final ListAppender<ILoggingEvent> log = captureLog();
+
+        // act
+        final List<Path> candidates = indexer.collectCandidates(temp);
+        final IndexPlan plan;
+        if (FileSystems.getDefault().supportedFileAttributeViews().contains("posix")) {
+            // no read permission (the test does not run as root)
+            Files.setPosixFilePermissions(locked, Collections.emptySet());
+            try {
+                plan = indexer.classify(candidates, rules);
+            } finally {
+                Files.setPosixFilePermissions(locked, PosixFilePermissions.fromString("rw-------"));
+            }
+        } else {
+            // Windows refuses a read of a range another handle locks
+            try (FileChannel channel = FileChannel.open(locked, StandardOpenOption.WRITE);
+                    FileLock lock = channel.lock()) {
+                plan = indexer.classify(candidates, rules);
+            }
+        }
+        final List<Path> orphans = indexer.orphanedSummaries(Collections.singletonList(open));
+
+        // assert
+        assertThat(candidates, is(equalTo(Arrays.asList(locked, open))));
+        assertThat(plan.routedCount(), is(equalTo(1)));
+        assertThat(promptKeyOf(plan, open), is(equalTo("fallback")));
+        assertThat(
+                String.join("\n", warnings(log)), containsString("Cannot read " + locked + ", so it is not indexed"));
+        assertThat(orphans, is(equalTo(Collections.singletonList(temp.resolve("out/a/Gone.java.ai.md")))));
+    }
+
+    @Test
     public void collectCandidates_aFileWithoutAnExtensionThatCannotBeRead_isSkippedAndTheWalkGoesOn() throws Exception {
         // arrange
         final Path temp = Files.createTempDirectory("ai-index-test");
