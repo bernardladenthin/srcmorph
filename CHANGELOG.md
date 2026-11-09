@@ -379,6 +379,17 @@ The entries below hold the details; what a 1.4.0 user changes:
 
 ### Changed
 
+- **Dependencies, build plugins and Actions, in step with the sibling repositories:** Jackson 2.23.0,
+  maven-enforcer-plugin 3.7.0 in `examples/build-your-own-jar` (the reactor had it already),
+  `actions/setup-java` 6.2.0 in the `linearity-jdk8` job and `anthropics/claude-code-action` v1.0.269.
+  `bernardladenthin/actions` is pinned at v1.1.1: its actions and reusable workflows run
+  `actions/setup-java` 6.2.0, `github/codeql-action` 4.39.3, `gradle/actions/setup-gradle` 6.4.1 and
+  `softprops/action-gh-release` 3.0.4, and `verify-signing-key-gradle` signs with Gradle 9.9.0 by
+  default. Error Prone 2.52.0 (#273, already on `main`) reports the `StringBuffer` of the `${name}`
+  substitution in `SrcMorphConfigurationFileLoader` as `JdkObsolete`, which `-Werror` turned into a
+  failed compile; the substitution copies into a `StringBuilder` by hand now, because the
+  `StringBuilder` overload of `Matcher.appendReplacement` is Java 9+ and the core is release 8. The
+  output is unchanged.
 - **The configuration loader refuses a fraction in a whole-number key** (breaking), naming the key:
   Jackson cut `charsPerToken: 2.5` to `2` and `0.5` to `0`, which switches srcmorph to the static
   `maxInputChars`; run.py's `--chars-per-token 0.5` reached srcmorph that way. A floating-point key
