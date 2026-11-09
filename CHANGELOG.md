@@ -390,6 +390,9 @@ The entries below hold the details; what a 1.4.0 user changes:
   failed compile; the substitution copies into a `StringBuilder` by hand now, because the
   `StringBuilder` overload of `Matcher.appendReplacement` is Java 9+ and the core is release 8. The
   output is unchanged.
+- **CI: the live test's llama-server is b12211** (was b11946), the newest
+  `ghcr.io/ggml-org/llama.cpp:server-*` image on 2026-11-09, pinned by digest. `OpenAiCompatibleLiveTest`
+  passes against it locally (the running-server and the jllama-server cases).
 - **The configuration loader refuses a fraction in a whole-number key** (breaking), naming the key:
   Jackson cut `charsPerToken: 2.5` to `2` and `0.5` to `0`, which switches srcmorph to the static
   `maxInputChars`; run.py's `--chars-per-token 0.5` reached srcmorph that way. A floating-point key
