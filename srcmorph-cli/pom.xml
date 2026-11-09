@@ -52,7 +52,7 @@ SPDX-License-Identifier: Apache-2.0
         <!-- checker.version also drives the org.checkerframework:checker annotation-processor
              artifact below; the checker-qual dependency version itself is managed by the
              parent's <dependencyManagement> (see comment above <dependencies>). -->
-        <checker.version>4.3.1</checker.version>
+        <checker.version>4.4.0</checker.version>
         <archunit.version>1.5.1</archunit.version>
         <spotbugs.version>4.10.5.0</spotbugs.version>
         <lombok.version>1.18.48</lombok.version>
