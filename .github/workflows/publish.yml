@@ -203,14 +203,14 @@ jobs:
       # A real llama.cpp llama-server for OpenAiCompatibleLiveTest, serving the committed SmolLM2
       # GGUF: the openai-compatible provider's HTTP path against a real server on every run, with no
       # secret and no cost. The stub-server test pins the request; this one proves a real server
-      # accepts it. Pinned by tag and digest (b11946, the build it was first verified against).
+      # accepts it. Pinned by tag and digest (b12211, the newest server image on 2026-11-09).
       # Dependabot does not move a pin inside a `docker run`, so bump it by hand with llama.cpp.
       - name: Start llama-server for the openai-compatible live test
         run: |
           set -euo pipefail
           docker run -d --name llama-server -p 127.0.0.1:8080:8080 \
             -v "$GITHUB_WORKSPACE/srcmorph/src/test/resources:/models:ro" \
-            ghcr.io/ggml-org/llama.cpp:server-b11946@sha256:d880b2a0e478795ce99d0a275732f5a50e579cb234ae7d2d3815afc909fd02f2 \
+            ghcr.io/ggml-org/llama.cpp:server-b12211@sha256:30300ecfcb7ef05dc9413867dd7d03c9ce66eef00fec3576a6a15e9bf2b0bae7 \
             -m /models/SmolLM2-135M-Instruct-Q3_K_M.gguf --host 0.0.0.0 --port 8080 -c 8192 -t 2
           for _ in $(seq 1 60); do
             if curl -fsS http://127.0.0.1:8080/health >/dev/null 2>&1; then
