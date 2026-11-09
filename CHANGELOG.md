@@ -378,6 +378,13 @@ The entries below hold the details; what a 1.4.0 user changes:
   search scores from `scores/` (Pearson and Spearman, the card's 32 runs by default).
 
 ### Changed
+- **CI: every artifact upload and download step times out**, after the minutes of the repository
+  variable `ARTIFACT_TIMEOUT_MINUTES`, else 20 (7 steps in `publish.yml`). In a Publish run of
+  java-llama.cpp an `upload-artifact` step hung for hours after a build of a minute and a half,
+  with GitHub's 360-minute default the only limit; the longest transfer measured over two complete
+  runs of that pipeline took 18 s. The workflow's top-level `env` reads the variable with the
+  default, each step says `timeout-minutes: ${{ fromJSON(env.ARTIFACT_TIMEOUT_MINUTES) }}`, the
+  layout `common/check-artifact-timeouts` of bernardladenthin/actions checks.
 
 - **Dependencies, build plugins and Actions, in step with the sibling repositories:** Jackson 2.23.0,
   maven-enforcer-plugin 3.7.0 in `examples/build-your-own-jar` (the reactor had it already),
