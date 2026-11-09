@@ -6,7 +6,7 @@ package net.ladenthin.srcmorph.config;
 import java.io.File;
 import java.util.List;
 import lombok.ToString;
-import net.ladenthin.srcmorph.prompt.AiPromptDefinition;
+import net.ladenthin.srcmorph.support.GeneratorVersion;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -16,8 +16,8 @@ import org.jspecify.annotations.Nullable;
  * of that file.
  *
  * <p>The plugin fills what the file leaves unset from the Maven project ({@code baseDirectory},
- * {@code subtrees}, {@code projectName}, {@code pluginVersion}); see the plugin module's
- * {@code AbstractAiIndexMojo}.</p>
+ * {@code subtrees}, {@code projectName}, {@code generatorVersion}); see the plugin module's
+ * {@code AbstractSrcMorphMojo}.</p>
  *
  * <p>Deliberately excluded: the per-goal {@code skip}/{@code skipFile}/{@code skipPackage}/
  * {@code skipProject} flags. Those are a Maven lifecycle concern (whether an execution runs at all) and
@@ -27,12 +27,18 @@ import org.jspecify.annotations.Nullable;
  * configuration file (a Jackson {@code ObjectMapper}/{@code YAMLMapper}) and a plain caller populate it
  * the same way.</p>
  */
-@SuppressWarnings({"NullAway.Init", "initialization.fields.uninitialized"})
 @ToString
 public class SrcMorphConfiguration {
 
     /** Default output directory (relative to {@link #baseDirectory}) when none is configured. */
     public static final String DEFAULT_OUTPUT_DIRECTORY = "src/site/ai";
+
+    /**
+     * How many characters of a file a {@code contentMatches} condition reads unless
+     * {@link #getContentHeadChars() contentHeadChars} says otherwise: enough for the header of a Kubernetes manifest, an OpenAPI
+     * document or a Camel route, and cheap for a large file.
+     */
+    public static final int DEFAULT_CONTENT_HEAD_CHARS = 16_384;
 
     /** Default AI generation provider name when none is configured. */
     public static final String DEFAULT_GENERATION_PROVIDER = "mock";
@@ -40,38 +46,52 @@ public class SrcMorphConfiguration {
     /** Default AI summarisation logic version when none is configured. */
     public static final String DEFAULT_AI_VERSION = "0.0.0";
 
+    /**
+     * Whether a {@code generate} run deletes the orphaned summaries ({@link #isPruneOrphans()}) when the
+     * configuration does not say: it does not, it lists them in its plan only, since the summary of a source
+     * a narrowed {@code subtrees} leaves out for one run is an orphan too.
+     */
+    public static final boolean DEFAULT_PRUNE_ORPHANS = false;
+
     /** Creates a new {@link SrcMorphConfiguration} with every default applied. */
     public SrcMorphConfiguration() {
         // no-op
     }
 
-    private File baseDirectory;
+    private @Nullable File baseDirectory;
     private File outputDirectory = new File(DEFAULT_OUTPUT_DIRECTORY);
     private boolean force;
+    private RegenerateOn regenerateOn = new RegenerateOn();
     private @Nullable List<String> subtrees;
     private @Nullable List<String> excludes;
     private @Nullable List<String> fileExtensions;
+    private @Nullable List<String> fileNames;
+    private @Nullable List<String> fileInterpreters;
+    private int contentHeadChars = DEFAULT_CONTENT_HEAD_CHARS;
     private long minFileSizeBytes;
     private long maxFileSizeBytes;
     private boolean planOnly;
+    private boolean pruneOrphans = DEFAULT_PRUNE_ORPHANS;
     private String generationProvider = DEFAULT_GENERATION_PROVIDER;
-    private @Nullable List<AiPromptDefinition> promptDefinitions;
-    private @Nullable List<AiModelDefinition> aiDefinitions;
+    private @Nullable List<PromptDefinition> promptDefinitions;
+    private @Nullable List<ModelDefinition> aiDefinitions;
     private @Nullable File modelDirectory;
     private @Nullable File profileDirectory;
     private @Nullable File runRecordFile;
-    private @Nullable List<AiFieldGenerationConfig> fieldGenerations;
-    private @Nullable List<AiFactDefinition> factDefinitions;
-    private String pluginVersion = "";
+    private @Nullable File partsDirectory;
+    private @Nullable List<RoutingRule> rules;
+    private @Nullable List<FactDefinition> factDefinitions;
+    private String generatorVersion = new GeneratorVersion().version();
     private String aiVersion = DEFAULT_AI_VERSION;
     private @Nullable String projectName;
 
     /**
-     * Returns the project base directory.
+     * Returns the project base directory: the configuration file's loader always sets it, a configuration
+     * built in code has none until {@link #setBaseDirectory(File)}, and the engines refuse to run without one.
      *
-     * @return the base directory
+     * @return the base directory, or {@code null} when none is set
      */
-    public File getBaseDirectory() {
+    public @Nullable File getBaseDirectory() {
         return baseDirectory;
     }
 
@@ -80,7 +100,7 @@ public class SrcMorphConfiguration {
      *
      * @param baseDirectory the base directory
      */
-    public void setBaseDirectory(final File baseDirectory) {
+    public void setBaseDirectory(final @Nullable File baseDirectory) {
         this.baseDirectory = baseDirectory;
     }
 
@@ -103,7 +123,7 @@ public class SrcMorphConfiguration {
     }
 
     /**
-     * Returns whether AI fields are regenerated even when they already have a value.
+     * Returns whether every summary is rewritten, whatever {@link #getRegenerateOn()} says.
      *
      * @return {@code true} to always regenerate
      */
@@ -112,12 +132,31 @@ public class SrcMorphConfiguration {
     }
 
     /**
-     * Sets whether AI fields are regenerated even when they already have a value.
+     * Sets whether every summary is rewritten, whatever {@link #getRegenerateOn()} says.
      *
      * @param force {@code true} to always regenerate
      */
     public void setForce(final boolean force) {
         this.force = force;
+    }
+
+    /**
+     * Returns which changes rewrite an existing summary, one switch per header field
+     * ({@link RegenerateOn}); {@link #isForce() force} rewrites every summary regardless.
+     *
+     * @return the switches, every one on by default
+     */
+    public RegenerateOn getRegenerateOn() {
+        return regenerateOn;
+    }
+
+    /**
+     * Sets which changes rewrite an existing summary.
+     *
+     * @param regenerateOn the switches; {@code null} (an empty {@code regenerateOn:}) turns every one on
+     */
+    public void setRegenerateOn(final @Nullable RegenerateOn regenerateOn) {
+        this.regenerateOn = regenerateOn != null ? regenerateOn : new RegenerateOn();
     }
 
     /**
@@ -176,6 +215,67 @@ public class SrcMorphConfiguration {
     }
 
     /**
+     * Returns the file names to index besides the extensions: globs over the name without its
+     * directory, matched in any case ({@code Dockerfile}, {@code Jenkinsfile}, {@code Dockerfile.*}), for
+     * files with no extension or one that {@link #getFileExtensions()} does not list.
+     *
+     * @return the globs, or {@code null} for none
+     */
+    public @Nullable List<String> getFileNames() {
+        return fileNames;
+    }
+
+    /**
+     * Sets the file names to index besides the extensions.
+     *
+     * @param fileNames globs over the file name, or {@code null} for none
+     */
+    public void setFileNames(final @Nullable List<String> fileNames) {
+        this.fileNames = fileNames;
+    }
+
+    /**
+     * Returns the interpreters whose scripts are indexed although they have no extension: a file
+     * without one whose {@code #!} line names one of them, or a version of one
+     * ({@link net.ladenthin.srcmorph.support.Shebang}).
+     *
+     * @return the interpreter names (e.g. {@code bash}, {@code perl}), or {@code null} for none
+     */
+    public @Nullable List<String> getFileInterpreters() {
+        return fileInterpreters;
+    }
+
+    /**
+     * Sets the interpreters whose scripts without an extension are indexed.
+     *
+     * @param fileInterpreters the interpreter names, or {@code null} for none
+     */
+    public void setFileInterpreters(final @Nullable List<String> fileInterpreters) {
+        this.fileInterpreters = fileInterpreters;
+    }
+
+    /**
+     * Returns how many characters of a file the {@code contentMatches} and {@code interpreters}
+     * conditions read.
+     *
+     * @return the characters; {@value #DEFAULT_CONTENT_HEAD_CHARS} by default
+     */
+    public int getContentHeadChars() {
+        return contentHeadChars;
+    }
+
+    /**
+     * Sets how many characters of a file the {@code contentMatches} and {@code interpreters} conditions
+     * read: more for a file whose marker comes after a long license header, at the cost of reading more
+     * of every file while planning.
+     *
+     * @param contentHeadChars the characters, at least 256 (a whole {@code #!} line)
+     */
+    public void setContentHeadChars(final int contentHeadChars) {
+        this.contentHeadChars = contentHeadChars;
+    }
+
+    /**
      * Returns the exclusive lower file-size bound in bytes.
      *
      * @return the lower bound; {@code <= 0} disables it
@@ -231,6 +331,29 @@ public class SrcMorphConfiguration {
     }
 
     /**
+     * Returns whether a {@code generate} run deletes the orphaned summaries: the {@code .ai.md} files
+     * of node type {@code file} below the output directory that no file of the run's plan is summarized
+     * into (the summary of a deleted, renamed or newly excluded source, or of one a skip rule takes now),
+     * and the {@code package.ai.md} of a directory left without any summary and sub-package, which the
+     * package and project phases would otherwise go on reading. The plan lists them either way; a
+     * {@code planOnly} run and a check delete nothing.
+     *
+     * @return {@code true} to delete them; {@value #DEFAULT_PRUNE_ORPHANS} by default
+     */
+    public boolean isPruneOrphans() {
+        return pruneOrphans;
+    }
+
+    /**
+     * Sets whether a {@code generate} run deletes the orphaned summaries.
+     *
+     * @param pruneOrphans {@code true} to delete them
+     */
+    public void setPruneOrphans(final boolean pruneOrphans) {
+        this.pruneOrphans = pruneOrphans;
+    }
+
+    /**
      * Returns the name of the AI generation provider to use.
      *
      * @return the provider name ({@code mock}, {@code llamacpp-jni} or {@code openai-compatible}); a
@@ -252,11 +375,11 @@ public class SrcMorphConfiguration {
     }
 
     /**
-     * Returns the prompt template definitions referenced by field generation configurations.
+     * Returns the prompt template definitions referenced by the rules.
      *
      * @return the prompt definitions, or {@code null} when none are configured
      */
-    public @Nullable List<AiPromptDefinition> getPromptDefinitions() {
+    public @Nullable List<PromptDefinition> getPromptDefinitions() {
         return promptDefinitions;
     }
 
@@ -265,7 +388,7 @@ public class SrcMorphConfiguration {
      *
      * @param promptDefinitions the prompt definitions, or {@code null} for none
      */
-    public void setPromptDefinitions(final @Nullable List<AiPromptDefinition> promptDefinitions) {
+    public void setPromptDefinitions(final @Nullable List<PromptDefinition> promptDefinitions) {
         this.promptDefinitions = promptDefinitions;
     }
 
@@ -274,7 +397,7 @@ public class SrcMorphConfiguration {
      *
      * @return the AI model definitions, or {@code null} when none are configured
      */
-    public @Nullable List<AiModelDefinition> getAiDefinitions() {
+    public @Nullable List<ModelDefinition> getAiDefinitions() {
         return aiDefinitions;
     }
 
@@ -283,7 +406,7 @@ public class SrcMorphConfiguration {
      *
      * @param aiDefinitions the AI model definitions, or {@code null} for none
      */
-    public void setAiDefinitions(final @Nullable List<AiModelDefinition> aiDefinitions) {
+    public void setAiDefinitions(final @Nullable List<ModelDefinition> aiDefinitions) {
         this.aiDefinitions = aiDefinitions;
     }
 
@@ -353,22 +476,44 @@ public class SrcMorphConfiguration {
     }
 
     /**
+     * Returns the directory the {@code generate} run keeps the map-reduce answers of each file in, or
+     * {@code null} to keep none: every map answer and every reduce batch's answer of a file read in
+     * chunks, in {@code <partsDirectory>/<path below the base directory>.parts.md}, so a measurement can
+     * see where the summary loses what a part said. A file read in one piece has none. A relative path
+     * resolves against the configuration file's directory.
+     *
+     * @return the parts directory, or {@code null}
+     */
+    public @Nullable File getPartsDirectory() {
+        return partsDirectory;
+    }
+
+    /**
+     * Sets the directory the {@code generate} run keeps the map-reduce answers of each file in.
+     *
+     * @param partsDirectory the parts directory, or {@code null} to keep none
+     */
+    public void setPartsDirectory(final @Nullable File partsDirectory) {
+        this.partsDirectory = partsDirectory;
+    }
+
+    /**
      * Returns the per-field AI generation configurations (routing rules) controlling which prompt and AI
      * definition each matched file uses.
      *
-     * @return the field generation rules, or {@code null} when none are configured
+     * @return the routing rules, or {@code null} when none are configured
      */
-    public @Nullable List<AiFieldGenerationConfig> getFieldGenerations() {
-        return fieldGenerations;
+    public @Nullable List<RoutingRule> getRules() {
+        return rules;
     }
 
     /**
      * Sets the per-field AI generation configurations (routing rules).
      *
-     * @param fieldGenerations the field generation rules, or {@code null} for none
+     * @param rules the routing rules, or {@code null} for none
      */
-    public void setFieldGenerations(final @Nullable List<AiFieldGenerationConfig> fieldGenerations) {
-        this.fieldGenerations = fieldGenerations;
+    public void setRules(final @Nullable List<RoutingRule> rules) {
+        this.rules = rules;
     }
 
     /**
@@ -377,7 +522,7 @@ public class SrcMorphConfiguration {
      *
      * @return the fact definitions, or {@code null} when none are configured
      */
-    public @Nullable List<AiFactDefinition> getFactDefinitions() {
+    public @Nullable List<FactDefinition> getFactDefinitions() {
         return factDefinitions;
     }
 
@@ -386,26 +531,27 @@ public class SrcMorphConfiguration {
      *
      * @param factDefinitions the fact definitions, or {@code null} for none
      */
-    public void setFactDefinitions(final @Nullable List<AiFactDefinition> factDefinitions) {
+    public void setFactDefinitions(final @Nullable List<FactDefinition> factDefinitions) {
         this.factDefinitions = factDefinitions;
     }
 
     /**
-     * Returns the generator (plugin) version recorded in every written {@code .ai.md} header.
+     * Returns the generator version recorded in every written {@code .ai.md} header ({@code G}): srcmorph's
+     * own version ({@link GeneratorVersion}) unless the configuration names another.
      *
      * @return the generator version
      */
-    public String getPluginVersion() {
-        return pluginVersion;
+    public String getGeneratorVersion() {
+        return generatorVersion;
     }
 
     /**
      * Sets the generator (plugin) version recorded in every written {@code .ai.md} header.
      *
-     * @param pluginVersion the generator version
+     * @param generatorVersion the generator version
      */
-    public void setPluginVersion(final String pluginVersion) {
-        this.pluginVersion = pluginVersion;
+    public void setGeneratorVersion(final String generatorVersion) {
+        this.generatorVersion = generatorVersion;
     }
 
     /**

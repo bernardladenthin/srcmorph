@@ -1,0 +1,108 @@
+{
+ "key": "gpt-6-luna",
+ "name": "GPT-6 Luna",
+ "backend": "openrouter",
+ "definition": {
+  "key": "gpt-6-luna",
+  "maxOutputTokens": 4096,
+  "temperature": 0.2,
+  "provider": "openai-compatible",
+  "baseUrl": "https://openrouter.ai/api/v1",
+  "contextSize": 131072,
+  "reasoningEffort": "low",
+  "remoteModel": "openai/gpt-6-luna"
+ },
+ "javaCommit": null,
+ "corpus": "corpus-enterprise",
+ "profile": "v3",
+ "javaPrompt": "file-body-oop",
+ "facts": true,
+ "oversize": null,
+ "maxChunks": null,
+ "profileHashes": {
+  "actions-facts.tsv": "ba9d8c1f95ecd1fbc32fdf4ec18daa94f12a9b8dc3e3884c5d7ce009a58b52d2",
+  "avro-facts.tsv": "e6583308a5fcb3d9faedb51121dce0aff932776a05d8c948a0c8430172f9aa31",
+  "bpmn-facts.tsv": "c8866122184147e94cb14970a4f6e02dcf9e147ebb4b809885273aef8c4f0a31",
+  "compose-facts.tsv": "2d193b8ea01e46c1d184b7014e23daa07da545c2f756c07d8f6e0473cd86229a",
+  "dmn-facts.tsv": "825a542139ca18f05785b950d48eb810e4b1ed1b4ffc1d6b8f22cb3b2aed4f90",
+  "dockerfile-facts.tsv": "7d5d139a58ba1bb85600ebed31ac288b45a2c94ae33962b6808e22c1a430bffe",
+  "facelets-facts.tsv": "1db492bf8bf6a18c968f6407e30ef9cb76078a76001bf059ca51baacf81fab9d",
+  "file-body-contract.md": "34b65f0a7de7be00bf14a2d61bc8f01ffba1dd3178345f600ab4e3a3f33c05b7",
+  "file-body-fallback.md": "2e57ccbb77fb6866ea5092e54e70e462d9fff32a0860a2df31b28a089101ee6a",
+  "file-body-oop.md": "66e9016d66782bd404e117c38cc62100374deac6a4bad223b535767383650eda",
+  "file-body-ops.md": "bba1a8aeddbb2be82e30fa511007b2753cb059af7b590943a8375c7bf8b5c72d",
+  "file-body-perl.md": "08631597d92190dd6d391a20a58e215f692b67f09953cd15f586804b86d0978c",
+  "file-body-shell.md": "85d03e187ea5417ee8104b4049fa2418a0c460bc918ffdd00109b9272c9d667b",
+  "file-body-sql.md": "7ccbdab6eefea1156e5ed29c3f8ff84a74ea99bd4cbafd85601019e5d82d828e",
+  "file-body-view.md": "a42545c0f88a7ed9dc7101b5e35d1b74a38a60a631778cd43d2e665040ced331",
+  "file-body-xml.md": "fed6968a01666d82687b711aca52ab3ceba307a4f3cc98a2e77bb5ea21c06b36",
+  "gradle-facts.tsv": "72890901e1506738b2578cdc11d7ca294ba4c663e4b36ca1b23c5c1f7112d6ad",
+  "graphql-facts.tsv": "98e82ef81dae468917392d60b0c60b8dd62037dedea84960af2ecaa6664b40c1",
+  "groovy-facts.tsv": "506ac5bdc214fb46de7d9ab1be2e5574237bf216c789044da6dd26b479e59f02",
+  "integration-facts.tsv": "5fa88940bca9b1b66d28e1d6a79ff0b12711e9553df00c1ce76e7ecbfdfe2c61",
+  "java-ee-facts.tsv": "700ac765c97b6fb49a18f21691ad0b16de43ffc126073c2498d38512331d6ed6",
+  "java-facts.tsv": "368639880755328cc631124f71567c5fc7ac483fcb4ec887512e63cb3c272b61",
+  "jee-facts.tsv": "70ac3df0f4a77c53605d9bb109b510b2573ed645f0f849bacd9c6a0cc716d02c",
+  "jsp-facts.tsv": "0adf99680b51d1f739e7a207a1eefe9efef5a993ca35c420762d52f026159c93",
+  "k8s-facts.tsv": "9e2d5971c5b5c84f6491e17078acd783ee27fc52d7c10d9493cf73f9b4e5b117",
+  "kotlin-facts.tsv": "d3264090ed3d7ab20537f3f8b72a8544657cd6b79011f18511fd2416bf6b3894",
+  "map-chunk.md": "ebc4aa4592de553fb7616b66f1e727fd94da30828c8c1d76986a8ee4e885aec3",
+  "mybatis-facts.tsv": "6860c15983745066ffba89bd6e633524c97550ce0fb82dd22a194190551be5e5",
+  "openapi-facts.tsv": "51d7ae42bcf48d8783cf57307c3c595f35aa17eadaeb6178fe707e2e57c31dc3",
+  "package-body.md": "e4398dd0c0e4a01648166b2db2decf78a42b63e5298c04739568a98e8b5406e4",
+  "perl-facts.tsv": "c5481772535c34862cbd0bd061527dce3856767d7c74ce8a1e06ab4ec08a7aec",
+  "persistence-facts.tsv": "46731d2f46731f63dc7d3374321cb7ad9ff48b1d1573951a84919cef4db2425b",
+  "pom-facts.tsv": "99d0f1f43472152ed80946ad3743b5bee42760f2f51661a3d76d5cbfaa1207b0",
+  "project-body.md": "2ccf5e75f1fb1140f98cfa1033a9b88bb3c1e7eb222cbef0387a6b0136b86241",
+  "properties-facts.tsv": "a7c7c2313792923e1f4fa576b2caa191377d5049455b0259a91122edbec4562c",
+  "proto-facts.tsv": "0d163bfbd7752fb9f736ed1ea4d7874ba1c58c1b182e6f5f9be3cafd3ba13e62",
+  "reduce-parts.md": "067474a90b6a35bc6092fccc5b9c929daccf18506fad638c0d4eee98316032b7",
+  "scala-facts.tsv": "019420f060147ac67c90c8d0690889021b20426f50ff148bcc025e1b3cc89fdf",
+  "shell-facts.tsv": "5fe10f31f0d40738533b1b7b8b4c7e8f468ae583e4dcc12a79eb5daac48efbfb",
+  "sql-facts.tsv": "758a4073153452b9ef190d082bf8b1df2fff4a10787937119ea3d52d10569bd0",
+  "terraform-facts.tsv": "a5fa06308874b12d69fff284ab0ea3e3868b151cb4d82fd7a82d83b46b2de6e3",
+  "wsdl-facts.tsv": "5ce11a4188eab548c3779bcbf00ae461b66927c10d04899c94e300c0fad6bf61",
+  "xml-facts.tsv": "2f479b71d865c5b7c3ac12a62ddd7b14d5eb4b1b9a7e481bb093ce4b377550ca"
+ },
+ "cli": {
+  "jar": "srcmorph-cli-1.5.0-SNAPSHOT.jar",
+  "sha256": "acac779d219fe7a1ebefbd9c238c4f03df2ffa001d68361a0a4dd43c48cd2686"
+ },
+ "java": "openjdk version \"25.0.1\" 2025-10-21 LTS",
+ "startedAt": "2026-11-04T12:28:27Z",
+ "phases": {
+  "GenerateFileIndex": {
+   "exit": 0,
+   "seconds": 118.1,
+   "cutOff": []
+  },
+  "AggregatePackages": {
+   "exit": 0,
+   "seconds": 115.7,
+   "cutOff": []
+  },
+  "AggregateProject": {
+   "exit": 0,
+   "seconds": 3.0,
+   "cutOff": []
+  }
+ },
+ "finishedAt": "2026-11-04T12:32:24Z",
+ "fileTokens": {
+  "files": 17,
+  "written": 17,
+  "unchanged": 0,
+  "failed": 0,
+  "calls": 17,
+  "promptTokens": 28242,
+  "cachedPromptTokens": 28191,
+  "completionTokens": 9808,
+  "seconds": 117.4330237
+ },
+ "finishReasons": {
+  "stop": 17
+ },
+ "tokenCostUsd": 0.005191,
+ "costUsd": 0.009516,
+ "files": 38
+}

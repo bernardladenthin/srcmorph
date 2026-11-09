@@ -11,16 +11,16 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 import lombok.ToString;
-import net.ladenthin.srcmorph.config.AiGenerationConfig;
-import net.ladenthin.srcmorph.config.AiModelDefinition;
-import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
+import net.ladenthin.srcmorph.config.ModelDefinition;
+import net.ladenthin.srcmorph.config.ModelRegistry;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
-import net.ladenthin.srcmorph.prompt.AiPromptSupport;
-import net.ladenthin.srcmorph.provider.AiGenerationProviderFactory;
-import net.ladenthin.srcmorph.provider.LlamaCppJniConfig;
-import net.ladenthin.srcmorph.provider.LlamaCppJniConfigFactory;
-import net.ladenthin.srcmorph.provider.OpenAiCompatibleAiGenerationProvider;
+import net.ladenthin.srcmorph.prompt.PromptCatalog;
+import net.ladenthin.srcmorph.provider.GenerationProviderFactory;
+import net.ladenthin.srcmorph.provider.OpenAiCompatibleGenerationProvider;
+import net.ladenthin.srcmorph.provider.ProviderConfig;
+import net.ladenthin.srcmorph.provider.ProviderConfigFactory;
 import net.ladenthin.srcmorph.provider.RemoteModel;
+import net.ladenthin.srcmorph.support.UrlUserInfo;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,7 +44,7 @@ public final class ListModelsEngine {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ListModelsEngine.class);
 
-    /** Asks one server for its models; {@link OpenAiCompatibleAiGenerationProvider#listModels()} by default. */
+    /** Asks one server for its models; {@link OpenAiCompatibleGenerationProvider#listModels()} by default. */
     @FunctionalInterface
     interface ModelLister {
 
@@ -56,7 +56,7 @@ public final class ListModelsEngine {
          * @return the server's models
          * @throws IOException if the server cannot be asked or its answer cannot be read
          */
-        List<RemoteModel> list(LlamaCppJniConfig config, AiPromptSupport promptSupport) throws IOException;
+        List<RemoteModel> list(ProviderConfig config, PromptCatalog promptSupport) throws IOException;
     }
 
     private final SrcMorphConfiguration config;
@@ -96,40 +96,40 @@ public final class ListModelsEngine {
      *                           invalid, or a server cannot be asked
      */
     public ModelListReport execute() throws SrcMorphException {
-        final @Nullable List<AiModelDefinition> configured = config.getAiDefinitions();
-        final List<AiModelDefinition> definitions = configured == null ? new ArrayList<>() : configured;
-        final AiModelDefinitionSupport modelDefinitionSupport =
+        final @Nullable List<ModelDefinition> configured = config.getAiDefinitions();
+        final List<ModelDefinition> definitions = configured == null ? new ArrayList<>() : configured;
+        final ModelRegistry modelDefinitionSupport =
                 EngineSupport.buildAiModelDefinitionSupport(definitions, config.getModelDirectory());
-        final AiPromptSupport promptSupport = EngineSupport.buildPromptSupport(
-                config.getPromptDefinitions(), config.getProfileDirectory(), config.getFieldGenerations());
+        final PromptCatalog promptSupport = EngineSupport.buildPromptSupport(
+                config.getPromptDefinitions(), config.getProfileDirectory(), config.getRules());
         final List<ModelListReport.Listing> listings = new ArrayList<>(definitions.size());
         final Set<String> servers = new HashSet<>(definitions.size());
-        for (final AiModelDefinition definition : definitions) {
-            final String key = definition.getKey();
-            final AiGenerationConfig pattern = modelDefinitionSupport.getConfig(key);
-            final String provider = AiGenerationProviderFactory.effectiveProvider(
-                    config.getGenerationProvider(), pattern.getProvider());
-            if (!AiGenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE.equals(provider)
+        for (final ModelDefinition definition : definitions) {
+            final String key = definition.requireKey();
+            final ModelDefinition pattern = modelDefinitionSupport.definition(key);
+            final String provider =
+                    GenerationProviderFactory.effectiveProvider(config.getGenerationProvider(), pattern.getProvider());
+            if (!GenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE.equals(provider)
                     || !servers.add(pattern.getBaseUrl().trim()
                             + '\n'
                             + pattern.getApiKeyEnv().trim())) {
                 continue;
             }
-            LOGGER.info("Listing the models of aiDefinition '{}' at {}", key, pattern.getBaseUrl());
+            final String shown = UrlUserInfo.mask(pattern.getBaseUrl());
+            LOGGER.info("Listing the models of aiDefinition '{}' at {}", key, shown);
             final List<RemoteModel> models;
             try {
-                models = lister.list(LlamaCppJniConfigFactory.fromGenerationConfig(pattern), promptSupport);
+                models = lister.list(ProviderConfigFactory.from(pattern), promptSupport);
             } catch (final IOException | IllegalArgumentException e) {
                 throw new SrcMorphException(
-                        "Listing the models of aiDefinition '" + key + "' at " + pattern.getBaseUrl() + " failed: "
-                                + e.getMessage(),
+                        "Listing the models of aiDefinition '" + key + "' at " + shown + " failed: " + e.getMessage(),
                         e);
             }
             listings.add(ModelListReport.Listing.of(key, pattern, models.size(), matching(models)));
         }
         if (listings.isEmpty()) {
             throw new SrcMorphException("None of the " + definitions.size() + " aiDefinitions has the provider '"
-                    + AiGenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE + "'; ListModels lists the models of"
+                    + GenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE + "'; ListModels lists the models of"
                     + " such a definition's baseUrl.");
         }
         return new ModelListReport(filter, listings);
@@ -146,10 +146,10 @@ public final class ListModelsEngine {
         return kept;
     }
 
-    private static List<RemoteModel> askServer(final LlamaCppJniConfig config, final AiPromptSupport promptSupport)
+    private static List<RemoteModel> askServer(final ProviderConfig config, final PromptCatalog promptSupport)
             throws IOException {
-        try (OpenAiCompatibleAiGenerationProvider provider =
-                new OpenAiCompatibleAiGenerationProvider(config, promptSupport)) {
+        try (OpenAiCompatibleGenerationProvider provider =
+                new OpenAiCompatibleGenerationProvider(config, promptSupport)) {
             return provider.listModels();
         }
     }

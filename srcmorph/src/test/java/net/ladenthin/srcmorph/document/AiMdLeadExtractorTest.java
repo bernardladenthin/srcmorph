@@ -111,4 +111,26 @@ public class AiMdLeadExtractorTest {
         assertThat(lead, is(equalTo("")));
     }
     // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="srcmorph's own lines">
+    @Test
+    public void extractLead_coverageAndFactsLinesBeforeTheLead_skipsThem() {
+        // arrange: a package read in chunks, with counters: the lead comes after srcmorph's two lines
+        final String body = "**Facts (exact, whole file):** classes: 3\n\n"
+                + "**Coverage:** 3 of 3 chunks summarized\n\n"
+                + "> Bills the orders of a customer.\n\n#### Purpose\n";
+
+        // act
+        final String lead = new AiMdLeadExtractor().extractLead(body);
+
+        // assert
+        assertThat(lead, is("Bills the orders of a customer."));
+    }
+
+    @Test
+    public void extractLead_onlySrcmorphsLines_isEmpty() {
+        // act, assert
+        assertThat(new AiMdLeadExtractor().extractLead("**Coverage:** 2 of 4 chunks summarized (sampled)\n"), is(""));
+    }
+    // </editor-fold>
 }

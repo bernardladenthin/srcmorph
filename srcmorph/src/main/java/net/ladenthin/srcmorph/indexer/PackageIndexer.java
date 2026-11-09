@@ -4,30 +4,36 @@
 package net.ladenthin.srcmorph.indexer;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
 import lombok.ToString;
-import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
-import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
-import net.ladenthin.srcmorph.document.AiGenerationResult;
+import net.ladenthin.srcmorph.config.ModelRegistry;
+import net.ladenthin.srcmorph.config.RegenerateOn;
+import net.ladenthin.srcmorph.config.RoutingRule;
 import net.ladenthin.srcmorph.document.AiMdChildEntryLineFormatter;
 import net.ladenthin.srcmorph.document.AiMdDocument;
 import net.ladenthin.srcmorph.document.AiMdDocumentCodec;
 import net.ladenthin.srcmorph.document.AiMdHeader;
 import net.ladenthin.srcmorph.document.AiMdHeaderCodec;
-import net.ladenthin.srcmorph.document.AiMdHeaderSupport;
-import net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport;
-import net.ladenthin.srcmorph.prompt.AiPromptSupport;
-import net.ladenthin.srcmorph.provider.AiGenerationProvider;
-import net.ladenthin.srcmorph.support.AiChecksumSupport;
-import net.ladenthin.srcmorph.support.AiPathSupport;
-import net.ladenthin.srcmorph.support.AiTimeSupport;
+import net.ladenthin.srcmorph.document.AiMdRewritePolicy;
+import net.ladenthin.srcmorph.facts.FactExtractor;
+import net.ladenthin.srcmorph.indexer.generation.SummaryGenerator;
+import net.ladenthin.srcmorph.indexer.generation.SummaryResult;
+import net.ladenthin.srcmorph.prompt.PromptCatalog;
+import net.ladenthin.srcmorph.prompt.PromptPreparer;
+import net.ladenthin.srcmorph.provider.GenerationProvider;
+import net.ladenthin.srcmorph.support.ChecksumSupport;
+import net.ladenthin.srcmorph.support.DirectoryLinks;
 import net.ladenthin.srcmorph.support.Java8CompatibilityHelper;
+import net.ladenthin.srcmorph.support.SourcePaths;
+import net.ladenthin.srcmorph.support.TimeSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,7 +77,7 @@ public class PackageIndexer {
     private static final String CHILD_SUMMARY_MISSING_NOTE = "(no summary available)";
 
     /**
-     * Context-type label passed to {@link AiFieldGenerationSupport} so that trim-warning
+     * Context-type label passed to {@link SummaryGenerator} so that trim-warning
      * log messages read "Trimmed AI input for package field '…'".
      */
     private static final String CONTEXT_TYPE_PACKAGE = "package";
@@ -90,34 +96,47 @@ public class PackageIndexer {
     });
 
     private final Path outputRoot;
-    private final String pluginVersion;
+    private final String generatorVersion;
     private final String aiVersion;
     private final List<Path> sourceSubtrees;
     private final List<Path> aiSubtrees;
     private final boolean force;
 
-    private final AiFieldGenerationConfig rule;
+    private final RoutingRule rule;
 
-    private final AiPathSupport pathSupport = new AiPathSupport();
-    private final AiTimeSupport timeSupport = new AiTimeSupport();
-    private final AiChecksumSupport checksumSupport = new AiChecksumSupport();
-    private final AiMdHeaderSupport headerSupport = new AiMdHeaderSupport();
+    private final SourcePaths pathSupport = new SourcePaths();
+    private final TimeSupport timeSupport = new TimeSupport();
+    private final ChecksumSupport checksumSupport = new ChecksumSupport();
+    private final AiMdRewritePolicy headerSupport;
+
+    /** The CRC32 of the rule's prompts ({@code P}). */
+    private final String promptHash;
+
+    /** The CRC32 of the rule's fact counters ({@code N}), {@code ""} without. */
+    private final String factsHash;
+
+    /** The CRC32 of the rule's model ({@code M}). */
+    private final String modelHash;
+
     private final AiMdChildEntryLineFormatter childEntryLineFormatter = new AiMdChildEntryLineFormatter();
     private final AiMdDocumentCodec documentCodec = new AiMdDocumentCodec();
     private final AiMdHeaderCodec headerCodec = new AiMdHeaderCodec();
     private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
+    private final DirectoryLinks directoryLinks = new DirectoryLinks();
 
-    private final AiFieldGenerationSupport fieldGenerationSupport;
+    private final SummaryGenerator summaryGenerator;
 
     /**
      * Creates a new {@link PackageIndexer}.
      *
      * @param baseDirectory          project base directory
      * @param outputRoot             root directory in which {@code .ai.md} files reside
-     * @param pluginVersion          plugin version recorded in headers
+     * @param generatorVersion          generator version recorded in headers
      * @param aiVersion              AI summarisation logic version recorded in headers
      * @param sourceSubtrees         source subtrees in scope; may be empty
-     * @param force                  when {@code true}, regenerate even when fields are populated
+     * @param force                  when {@code true}, rewrite every package, whatever {@code regenerateOn}
+     *                               says
+     * @param regenerateOn           which changed header fields rewrite a package
      * @param generationProvider     AI provider used to generate fields
      * @param rule                   the package phase's rule: its prompt and model
      * @param promptSupport          prompt lookup
@@ -126,16 +145,17 @@ public class PackageIndexer {
     public PackageIndexer(
             final Path baseDirectory,
             final Path outputRoot,
-            final String pluginVersion,
+            final String generatorVersion,
             final String aiVersion,
             final Collection<Path> sourceSubtrees,
             final boolean force,
-            final AiGenerationProvider generationProvider,
-            final AiFieldGenerationConfig rule,
-            final AiPromptSupport promptSupport,
-            final AiModelDefinitionSupport modelDefinitionSupport) {
+            final RegenerateOn regenerateOn,
+            final GenerationProvider generationProvider,
+            final RoutingRule rule,
+            final PromptCatalog promptSupport,
+            final ModelRegistry modelDefinitionSupport) {
         this.outputRoot = outputRoot;
-        this.pluginVersion = pluginVersion;
+        this.generatorVersion = generatorVersion;
         this.aiVersion = aiVersion;
         this.sourceSubtrees = new ArrayList<>(sourceSubtrees);
         // Inlined here (instead of calling toAiSubtrees) so the Checker Framework
@@ -147,44 +167,61 @@ public class PackageIndexer {
         }
         this.aiSubtrees = ai;
         this.force = force;
+        this.headerSupport = new AiMdRewritePolicy(
+                regenerateOn.isSource(),
+                regenerateOn.isPrompt(),
+                regenerateOn.isFacts(),
+                regenerateOn.isModel(),
+                regenerateOn.isChildren());
         this.rule = rule.copy();
-        this.fieldGenerationSupport = new AiFieldGenerationSupport(
-                generationProvider, new AiPromptPreparationSupport(promptSupport), modelDefinitionSupport);
+        this.promptHash = HeaderHashes.prompt(promptSupport, rule);
+        this.factsHash = FactExtractor.factsHash(rule.getFacts());
+        this.modelHash = HeaderHashes.model(
+                rule.requireAiDefinitionKey(), modelDefinitionSupport.definition(rule.requireAiDefinitionKey()));
+        this.summaryGenerator =
+                new SummaryGenerator(generationProvider, new PromptPreparer(promptSupport), modelDefinitionSupport);
     }
 
     /**
      * Aggregates all package directories beneath {@code rootDirectory}.
+     * A link to another directory below it is not entered ({@link DirectoryLinks}), with a warning.
      *
      * @param rootDirectory output root directory to walk
      * @return how many package index files were written, were up to date, or got an incomplete answer
      *         and were not written
      * @throws IOException if the output tree cannot be read or written
      */
-    public AiIndexTally aggregate(final Path rootDirectory) throws IOException {
-        final AiIndexTally tally = new AiIndexTally();
+    public IndexTally aggregate(final Path rootDirectory) throws IOException {
+        final IndexTally tally = new IndexTally();
         aggregateRecursive(rootDirectory, tally);
         return tally;
     }
 
-    private void aggregateRecursive(final Path directory, final AiIndexTally tally) throws IOException {
-        final List<Path> subDirectories;
-        try (Stream<Path> stream = Files.list(directory)) {
-            subDirectories =
-                    compatibilityHelper.toList(stream.filter(Files::isDirectory).sorted());
-        }
-
-        for (Path subDirectory : subDirectories) {
-            aggregateRecursive(subDirectory, tally);
+    private void aggregateRecursive(final Path directory, final IndexTally tally) throws IOException {
+        for (final Path path : entries(directory)) {
+            if (directoryLinks.isDirectoryNoLink(path)) {
+                aggregateRecursive(path, tally);
+            } else if (directoryLinks.isLinkToADirectory(path)) {
+                // a link to another directory would aggregate it twice, or loop
+                LOGGER.warn("Not entered, a link to another directory: {}", path);
+            }
         }
 
         if (matchesAggregationScope(directory) && shouldCreatePackageFile(directory)) {
-            AiIndexOutcome outcome;
+            IndexOutcome outcome;
             try {
                 outcome = writePackageFile(directory);
-            } catch (final IOException e) {
-                // one failed request (after its retries) does not end the pass
+            } catch (final IOException | RuntimeException e) {
+                // an interrupt ends the pass, as in the file phase, whatever the exception it surfaced as (an
+                // InterruptedIOException, a ClosedByInterruptException, any other after the flag was set);
+                // one failed request (after its retries) does not, nor does a timeout (a
+                // SocketTimeoutException is an InterruptedIOException as well) or an unchecked error of a
+                // provider (the llama.cpp binding throws only those)
+                if (Thread.currentThread().isInterrupted()) {
+                    throw e;
+                }
                 LOGGER.error("Summarizing the package {} failed: {}", directory, String.valueOf(e.getMessage()));
-                outcome = AiIndexOutcome.FAILED;
+                outcome = IndexOutcome.FAILED;
             }
             tally.add(outcome);
         }
@@ -208,20 +245,53 @@ public class PackageIndexer {
     }
 
     private boolean shouldCreatePackageFile(final Path directory) throws IOException {
-        try (Stream<Path> stream = Files.list(directory)) {
-            return stream.anyMatch(path -> {
-                final Path fileName = path.getFileName();
-                // Files.list never returns the filesystem root, so getFileName() is non-null here.
-                if (fileName == null) {
-                    return false;
-                }
-                final String name = fileName.toString();
-                if (Files.isDirectory(path)) {
-                    return hasPackageAiMdFile(path);
-                }
-                return isAiMdContentFile(name);
-            });
+        for (final Path path : entries(directory)) {
+            if (isPackage(path) || isAiMdContentFile(path)) {
+                return true;
+            }
         }
+        return false;
+    }
+
+    /**
+     * Lists a directory's entries, sorted by name ({@link #BY_FILE_NAME}).
+     *
+     * @param directory the directory
+     * @return its entries
+     * @throws IOException if the directory cannot be listed, also when the listing fails after it began
+     */
+    private List<Path> entries(final Path directory) throws IOException {
+        try (Stream<Path> stream = Files.list(directory)) {
+            return sorted(stream);
+        }
+    }
+
+    /**
+     * Collects a directory listing sorted by name ({@link #BY_FILE_NAME}).
+     *
+     * @param listing the listing
+     * @return its entries
+     * @throws IOException if the listing fails after it began, as {@link Files#list(Path)} reports it in an
+     *                     {@link UncheckedIOException}
+     */
+    List<Path> sorted(final Stream<Path> listing) throws IOException {
+        try {
+            return compatibilityHelper.toList(listing.sorted(BY_FILE_NAME));
+        } catch (final UncheckedIOException e) {
+            throw e.getCause();
+        }
+    }
+
+    /**
+     * Returns whether an entry of a package directory is a sub-package: a directory, no link to one
+     * ({@link DirectoryLinks}), that holds a
+     * {@link net.ladenthin.srcmorph.document.AiMdHeaderCodec#PACKAGE_AI_MD_FILENAME}.
+     *
+     * @param path the entry
+     * @return {@code true} for a sub-package
+     */
+    private boolean isPackage(final Path path) {
+        return directoryLinks.isDirectoryNoLink(path) && hasPackageAiMdFile(path);
     }
 
     /**
@@ -235,9 +305,13 @@ public class PackageIndexer {
         return Files.exists(directory.resolve(AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME));
     }
 
-    private AiIndexOutcome writePackageFile(final Path directory) throws IOException {
+    private IndexOutcome writePackageFile(final Path directory) throws IOException {
         final List<String> contents = collectContents(directory);
         final List<String> childLinks = collectChildLinks(directory);
+        // the child summaries the model reads: their hash (K) tells a file summary rewritten over the same
+        // source, which leaves the package's checksum (C) as it was
+        final StringBuilder summaries = new StringBuilder();
+        final int bodyCount = appendChildSummaries(summaries, directory);
         final Path packageFile = directory.resolve(AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME);
 
         final String nodeName = outputRoot.relativize(directory).toString().replace('\\', '/');
@@ -247,58 +321,66 @@ public class PackageIndexer {
         final String generatedAt = timeSupport.formatInstant(java.time.Instant.now());
 
         final AiMdHeader baseHeader = new AiMdHeader(
-                title,
-                AiMdHeaderCodec.HEADER_VERSION_1_0,
-                packageChecksum,
-                packageDate,
-                generatedAt,
-                pluginVersion,
-                aiVersion,
-                AiMdHeaderCodec.NODE_TYPE_PACKAGE,
-                childLinks);
+                        title,
+                        AiMdHeaderCodec.HEADER_VERSION_1_0,
+                        packageChecksum,
+                        packageDate,
+                        generatedAt,
+                        generatorVersion,
+                        aiVersion,
+                        AiMdHeaderCodec.NODE_TYPE_PACKAGE,
+                        childLinks)
+                .withHashes(
+                        promptHash,
+                        factsHash,
+                        modelHash,
+                        HeaderHashes.children(Collections.singletonList(summaries.toString())));
 
-        if (!headerSupport.shouldWrite(force, packageFile, baseHeader)) {
+        if (!headerSupport.shouldRewrite(force, packageFile, baseHeader)) {
             LOGGER.info("Unchanged package AI index file: {}", packageFile);
-            return AiIndexOutcome.UNCHANGED;
+            return IndexOutcome.UNCHANGED;
         }
 
-        final String sourceText = buildPackageSourceText(baseHeader, directory, contents);
+        final String sourceText = buildPackageSourceText(baseHeader, contents, summaries, bodyCount);
 
-        final AiGenerationResult result =
-                fieldGenerationSupport.generate(rule, packageFile, CONTEXT_TYPE_PACKAGE, sourceText, baseHeader);
+        // the call names its input by the package's path below the output root, as package-body says (a
+        // relative path heads the user message whole, an absolute one by its file name); the root package
+        // by the output directory's name
+        final Path packagePath = outputRoot.relativize(directory);
+        final Path rootName = outputRoot.getFileName();
+        final Path callName = rootName != null && packagePath.toString().isEmpty() ? rootName : packagePath;
+        final SummaryResult result = summaryGenerator.generate(rule, callName, CONTEXT_TYPE_PACKAGE, sourceText);
 
         if (!result.complete()) {
-            return AiIndexOutcome.FAILED;
+            return IndexOutcome.FAILED;
         }
 
         final AiMdDocument document = new AiMdDocument(baseHeader, result.body());
         documentCodec.write(packageFile, document);
 
         LOGGER.info("Wrote package AI index file: {}", packageFile);
-        return AiIndexOutcome.WRITTEN;
+        return IndexOutcome.WRITTEN;
     }
 
     private List<String> collectContents(final Path directory) throws IOException {
         final List<String> entries = new ArrayList<>();
 
-        try (Stream<Path> stream = Files.list(directory)) {
-            for (Path path : compatibilityHelper.toList(stream.sorted(BY_FILE_NAME))) {
-                final Path fileNamePath = path.getFileName();
-                if (fileNamePath == null) {
-                    continue;
-                }
-                final String name = fileNamePath.toString();
+        for (Path path : entries(directory)) {
+            final Path fileNamePath = path.getFileName();
+            if (fileNamePath == null) {
+                continue;
+            }
+            final String name = fileNamePath.toString();
 
-                if (Files.isDirectory(path)) {
-                    if (hasPackageAiMdFile(path)) {
-                        entries.add(name + CHILD_DIRECTORY_SUFFIX);
-                    }
-                    continue;
+            if (directoryLinks.isDirectoryNoLink(path)) {
+                if (hasPackageAiMdFile(path)) {
+                    entries.add(name + CHILD_DIRECTORY_SUFFIX);
                 }
+                continue;
+            }
 
-                if (isAiMdContentFile(name)) {
-                    entries.add(name);
-                }
+            if (isAiMdContentFile(path)) {
+                entries.add(name);
             }
         }
 
@@ -319,25 +401,23 @@ public class PackageIndexer {
     private List<String> collectChildLinks(final Path directory) throws IOException {
         final List<String> links = new ArrayList<>();
 
-        try (Stream<Path> stream = Files.list(directory)) {
-            for (Path path : compatibilityHelper.toList(stream.sorted(BY_FILE_NAME))) {
-                final Path fileNamePath = path.getFileName();
-                if (fileNamePath == null) {
-                    continue;
-                }
-                final String name = fileNamePath.toString();
+        for (Path path : entries(directory)) {
+            final Path fileNamePath = path.getFileName();
+            if (fileNamePath == null) {
+                continue;
+            }
+            final String name = fileNamePath.toString();
 
-                if (Files.isDirectory(path)) {
-                    if (hasPackageAiMdFile(path)) {
-                        final String label = name + CHILD_DIRECTORY_SUFFIX;
-                        links.add(markdownLink(label, label + AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME));
-                    }
-                    continue;
+            if (directoryLinks.isDirectoryNoLink(path)) {
+                if (hasPackageAiMdFile(path)) {
+                    final String label = name + CHILD_DIRECTORY_SUFFIX;
+                    links.add(markdownLink(label, label + AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME));
                 }
+                continue;
+            }
 
-                if (isAiMdContentFile(name)) {
-                    links.add(markdownLink(toChildDisplayName(name), name));
-                }
+            if (isAiMdContentFile(path)) {
+                links.add(markdownLink(toChildDisplayName(name), name));
             }
         }
 
@@ -371,23 +451,23 @@ public class PackageIndexer {
      * package contents.</p>
      *
      * <p>No explicit length cap is applied here: the combined text is subject to the existing
-     * trim logic in {@link net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport#preparePrompt}, which truncates at a line
+     * trim logic in {@link net.ladenthin.srcmorph.prompt.PromptPreparer#preparePrompt}, which truncates at a line
      * boundary to the computed {@code maxInputChars} budget and triggers the {@code warnOnTrim}
      * warning — so large packages degrade gracefully without a bespoke truncation scheme.</p>
      *
      * @param header    the package's own header (its title and metadata)
-     * @param directory the package directory whose child {@code .ai.md} bodies are embedded
      * @param contents  pre-collected child entry names, used only for the no-body fallback
+     * @param summaries the child summary blocks ({@code appendChildSummaries})
+     * @param bodyCount how many of them had a body
      * @return the rendered source text for the AI prompt
-     * @throws IOException if a child {@code .ai.md} file cannot be read
      */
     private String buildPackageSourceText(
-            final AiMdHeader header, final Path directory, final Collection<String> contents) throws IOException {
+            final AiMdHeader header,
+            final Collection<String> contents,
+            final CharSequence summaries,
+            final int bodyCount) {
         final StringBuilder builder = new StringBuilder();
         appendPackageHeaderLines(builder, header);
-
-        final StringBuilder summaries = new StringBuilder();
-        final int bodyCount = appendChildSummaries(summaries, directory);
 
         if (bodyCount > 0) {
             builder.append(summaries);
@@ -429,29 +509,27 @@ public class PackageIndexer {
     private int appendChildSummaries(final StringBuilder builder, final Path directory) throws IOException {
         int bodyCount = 0;
 
-        try (Stream<Path> stream = Files.list(directory)) {
-            for (Path path : compatibilityHelper.toList(stream.sorted(BY_FILE_NAME))) {
-                final Path fileNamePath = path.getFileName();
-                if (fileNamePath == null) {
-                    continue;
-                }
-                final String name = fileNamePath.toString();
+        for (Path path : entries(directory)) {
+            final Path fileNamePath = path.getFileName();
+            if (fileNamePath == null) {
+                continue;
+            }
+            final String name = fileNamePath.toString();
 
-                if (Files.isDirectory(path)) {
-                    if (hasPackageAiMdFile(path)) {
-                        final String body = readChildBody(path.resolve(AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME));
-                        if (appendChildSummary(builder, name + CHILD_DIRECTORY_SUFFIX, body)) {
-                            bodyCount++;
-                        }
-                    }
-                    continue;
-                }
-
-                if (isAiMdContentFile(name)) {
-                    final String body = readChildBody(path);
-                    if (appendChildSummary(builder, toChildDisplayName(name), body)) {
+            if (directoryLinks.isDirectoryNoLink(path)) {
+                if (hasPackageAiMdFile(path)) {
+                    final String body = readChildBody(path.resolve(AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME));
+                    if (appendChildSummary(builder, name + CHILD_DIRECTORY_SUFFIX, body)) {
                         bodyCount++;
                     }
+                }
+                continue;
+            }
+
+            if (isAiMdContentFile(path)) {
+                final String body = readChildBody(path);
+                if (appendChildSummary(builder, toChildDisplayName(name), body)) {
+                    bodyCount++;
                 }
             }
         }
@@ -529,25 +607,23 @@ public class PackageIndexer {
     private String calculatePackageChecksum(final Path directory) throws IOException {
         final StringBuilder builder = new StringBuilder();
 
-        try (Stream<Path> stream = Files.list(directory)) {
-            for (Path path : compatibilityHelper.toList(stream.sorted(BY_FILE_NAME))) {
-                final Path fileNamePath = path.getFileName();
-                if (fileNamePath == null) {
-                    continue;
-                }
-                final String name = fileNamePath.toString();
+        for (Path path : entries(directory)) {
+            final Path fileNamePath = path.getFileName();
+            if (fileNamePath == null) {
+                continue;
+            }
+            final String name = fileNamePath.toString();
 
-                if (Files.isDirectory(path)) {
-                    if (hasPackageAiMdFile(path)) {
-                        builder.append(childEntryLineFormatter.format(name, readChildPackageHeader(path)));
-                    }
-                    continue;
+            if (directoryLinks.isDirectoryNoLink(path)) {
+                if (hasPackageAiMdFile(path)) {
+                    builder.append(childEntryLineFormatter.format(name, readChildPackageHeader(path)));
                 }
+                continue;
+            }
 
-                if (isAiMdContentFile(name)) {
-                    builder.append(childEntryLineFormatter.format(
-                            name, documentCodec.read(path).header()));
-                }
+            if (isAiMdContentFile(path)) {
+                builder.append(childEntryLineFormatter.format(
+                        name, documentCodec.read(path).header()));
             }
         }
 
@@ -555,26 +631,18 @@ public class PackageIndexer {
     }
 
     private String calculatePackageDate(final Path directory) throws IOException {
-        String latest = AiTimeSupport.EPOCH_DATE;
+        String latest = TimeSupport.EPOCH_DATE;
 
-        try (Stream<Path> stream = Files.list(directory)) {
-            for (Path path : compatibilityHelper.toList(stream.sorted(BY_FILE_NAME))) {
-                final Path fileNamePath = path.getFileName();
-                if (fileNamePath == null) {
-                    continue;
+        for (Path path : entries(directory)) {
+            if (directoryLinks.isDirectoryNoLink(path)) {
+                if (hasPackageAiMdFile(path)) {
+                    latest = laterDate(latest, readChildPackageHeader(path).sourceDate());
                 }
-                final String name = fileNamePath.toString();
+                continue;
+            }
 
-                if (Files.isDirectory(path)) {
-                    if (hasPackageAiMdFile(path)) {
-                        latest = laterDate(latest, readChildPackageHeader(path).d());
-                    }
-                    continue;
-                }
-
-                if (isAiMdContentFile(name)) {
-                    latest = laterDate(latest, documentCodec.read(path).header().d());
-                }
+            if (isAiMdContentFile(path)) {
+                latest = laterDate(latest, documentCodec.read(path).header().sourceDate());
             }
         }
 
@@ -610,21 +678,40 @@ public class PackageIndexer {
     }
 
     /**
-     * Returns {@code true} when {@code name} refers to a child AI index file that should
-     * be included in content listings and checksum calculations. Excludes the
+     * Returns {@code true} when {@code path} is a child AI index file that should be included in content
+     * listings and checksum calculations. Excludes the
      * {@link net.ladenthin.srcmorph.document.AiMdHeaderCodec#PACKAGE_AI_MD_FILENAME} file itself, the
-     * project-level {@link net.ladenthin.srcmorph.document.AiMdHeaderCodec#PROJECT_AI_MD_FILENAME}
-     * (which the aggregator writes into the output root and must not fold back into its own
-     * checksum or summary on a re-run), and any
-     * {@link net.ladenthin.srcmorph.document.AiMdHeaderCodec#GENERATED_BY_PREFIX} marker files.
+     * project-level {@link net.ladenthin.srcmorph.document.AiMdHeaderCodec#PROJECT_AI_MD_FILENAME} in the
+     * output root (which the aggregator writes there and must not fold back into its own checksum or
+     * summary on a re-run; below the root a {@code project.ai.md} is the summary of a source named
+     * {@code project}), and any {@link net.ladenthin.srcmorph.document.AiMdHeaderCodec#GENERATED_BY_PREFIX}
+     * marker files.
      *
-     * @param name file name of the path under examination
+     * @param path the file under examination
      * @return {@code true} if the file is a regular content AI index entry
      */
-    private boolean isAiMdContentFile(final String name) {
+    private boolean isAiMdContentFile(final Path path) {
+        final Path fileName = path.getFileName();
+        if (fileName == null) {
+            return false;
+        }
+        final String name = fileName.toString();
         return !AiMdHeaderCodec.PACKAGE_AI_MD_FILENAME.equals(name)
-                && !AiMdHeaderCodec.PROJECT_AI_MD_FILENAME.equals(name)
+                && !(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME.equals(name) && isInOutputRoot(path))
                 && !name.startsWith(AiMdHeaderCodec.GENERATED_BY_PREFIX)
-                && name.endsWith(AiMdHeaderCodec.AI_MD_EXTENSION);
+                && name.endsWith(AiMdHeaderCodec.AI_MD_EXTENSION)
+                // a directory so named is none, nor a link to one
+                && Files.isRegularFile(path);
+    }
+
+    /**
+     * Returns whether a file lies directly in the output root.
+     *
+     * @param path the file
+     * @return {@code true} when its directory is the output root
+     */
+    private boolean isInOutputRoot(final Path path) {
+        final Path parent = path.toAbsolutePath().normalize().getParent();
+        return parent != null && parent.equals(outputRoot.toAbsolutePath().normalize());
     }
 }

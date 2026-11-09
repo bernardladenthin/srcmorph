@@ -5,6 +5,7 @@ package net.ladenthin.srcmorph.provider;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.OptionalLong;
 import net.ladenthin.llama.GgufInspector;
 import net.ladenthin.llama.value.GgufMetadata;
 
@@ -36,16 +37,15 @@ public final class GgufModelInspector {
     public GgufModelInfo inspect(final Path modelFile) {
         try {
             final GgufMetadata metadata = GgufInspector.read(modelFile);
-            return new GgufModelInfo(
-                    true,
+            final OptionalLong contextLength = metadata.getContextLength();
+            return GgufModelInfo.parsed(
                     metadata.getModelName().orElse(""),
-                    metadata.getContextLength().orElse(GgufModelInfo.UNKNOWN_CONTEXT_LENGTH),
-                    "");
+                    contextLength.isPresent() ? Long.valueOf(contextLength.getAsLong()) : null);
         } catch (final IOException | RuntimeException e) {
             // RuntimeException too: a truncated or non-GGUF file fails inside the header parse with
             // whatever unchecked exception the format check raises, and "unreadable" is the answer
             // either way. Swallowing it here is safe because the reason is carried out to the caller.
-            return new GgufModelInfo(false, "", GgufModelInfo.UNKNOWN_CONTEXT_LENGTH, String.valueOf(e.getMessage()));
+            return GgufModelInfo.unreadable(String.valueOf(e.getMessage()));
         }
     }
 }

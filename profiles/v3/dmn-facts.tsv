@@ -1,0 +1,29 @@
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# DMN counters (.dmn of DMN 1.1 to 1.5: Camunda 7 and 8, Flowable, Drools, Kogito, Trisotech): the
+# counters of xml-facts, its [ignore] line included, then a second [ignore] line that blanks the
+# diagram interchange (DMNDI: shapes, edges, waypoints), which is layout, not logic, and one counter
+# per decision element, with or without a namespace prefix. "inputs" and "outputs" are the columns of
+# the decision tables (<input>, <output>, not <inputData>, <inputEntry> or <outputEntry>), "rules" their
+# rows; "decision tables with a hit policy other than UNIQUE" counts a hitPolicy attribute that sets
+# FIRST, ANY, PRIORITY, COLLECT, RULE ORDER or OUTPUT ORDER (UNIQUE is the default and needs none).
+# "requirements" counts the information, knowledge and authority requirements of the decision
+# requirements graph. A DMNDI section that is never closed runs to the end of the file.
+# EnterpriseXmlFactPatternsTest pins every case; ProfileFactPatternsLinearityTest measures that every
+# pattern reads linearly.
+[include]	xml-facts
+[ignore] the diagram interchange	(?s)<(?:[\w.-]+:)?DMNDI\b(?:.*?</(?:[\w.-]+:)?DMNDI>|.*+)
+decisions	<(?:[\w.-]+:)?decision[ \t\r\n/>]
+decision tables	<(?:[\w.-]+:)?decisionTable[ \t\r\n/>]
+decision tables with a hit policy other than UNIQUE	<(?:[\w.-]+:)?decisionTable[ \t\r\n][^<>]*?\bhitPolicy[ \t\r\n]*=[ \t\r\n]*["'](?!UNIQUE["'])
+inputs	<(?:[\w.-]+:)?input[ \t\r\n/>]
+outputs	<(?:[\w.-]+:)?output[ \t\r\n/>]
+rules	<(?:[\w.-]+:)?rule[ \t\r\n/>]
+input data	<(?:[\w.-]+:)?inputData[ \t\r\n/>]
+business knowledge models	<(?:[\w.-]+:)?businessKnowledgeModel[ \t\r\n/>]
+knowledge sources	<(?:[\w.-]+:)?knowledgeSource[ \t\r\n/>]
+requirements	<(?:[\w.-]+:)?(?:information|knowledge|authority)Requirement[ \t\r\n/>]
+literal expressions	<(?:[\w.-]+:)?literalExpression[ \t\r\n/>]
+boxed contexts, invocations, relations and functions	<(?:[\w.-]+:)?(?:context|invocation|relation|functionDefinition)[ \t\r\n/>]

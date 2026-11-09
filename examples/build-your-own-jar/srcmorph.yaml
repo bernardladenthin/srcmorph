@@ -5,33 +5,46 @@
 # The srcmorph-selftest configuration of srcmorph-maven-plugin (srcmorph-selftest.yaml) for the CLI,
 # nearly 1:1 (BuildYourOwnJarSelfTestParityTest checks the models and rules against it). What run.sh /
 # run.bat do with it: every file under baseDirectory/subtrees with one of the fileExtensions is
-# matched to a rule in fieldGenerations; the rule names a prompt (promptKey) and a model
+# matched to a rule in rules; the rule names a prompt (promptKey) and a model
 # (aiDefinitionKey). srcmorph sends the prompt as the system message and the file's name and source as
 # the user message, and writes the model's answer to outputDirectory as <file>.ai.md.
 #
-# Three models: gpt-oss-20b for every file up to ~275 KB, every package and the project overview;
-# IBM Granite 4.0 for larger files - H-Tiny map-reducing over a 64K window up to ~1 MB, H-1B with a
-# 16K window beyond, summarizing a few sampled chunks (sampleChunks). A Java, SQL, shell, Perl or XML
-# summary starts with exact whole-file counts (factsKey: INSERT statements, VALUES rows, tables,
-# methods, ...), so a sampled summary of a multi-MB SQL dump still states what the data holds.
+# Three models: gpt-oss-20b for every package, the project overview and every file but the large
+# Java, SQL, POM and plain XML files; IBM Granite 4.0 for those from ~260 KB - H-Tiny map-reducing
+# over a 64K window up to ~1 MB, H-1B with a 16K window beyond, summarizing a few sampled chunks
+# (sampleChunks). Every other kind stays on gpt-oss at any size: a 500 KB shell script, Kotlin file
+# or MyBatis mapper is read chunk by chunk (map-reduce). Most summaries
+# start with exact whole-file counts (factsKey: INSERT statements, VALUES rows, tables, methods,
+# services, keys, ...), so a sampled summary of a multi-MB SQL dump still states what the data holds.
+#
+# What is indexed: only the files below src/main/java (subtrees; the plugin's self-test names two
+# packages of the core library there instead), so in a standard Maven layout that is the Java
+# sources, and the SQL, XML, POM, CI, Dockerfile, shell and other rules below find nothing:
+# src/main/resources, the pom.xml, .github/ and the scripts lie outside. To index the whole project, set
+#   subtrees: ["."]
+# and add to excludes what is no source, e.g. "**/target/**" (the outputDirectory below lies there),
+# "**/.git/**", "**/.idea/**", "**/node_modules/**"; then every file with one of the fileExtensions
+# or fileNames takes its rule. Run Plan first: it lists every file and its rule.
 #
 # command:
 #   Plan               prints which file gets which model and prompt; loads nothing, writes nothing
 #   GenerateFileIndex  one .ai.md per source file
-#   All                GenerateFileIndex, then one summary per package (packageFieldGenerations) and
-#                      the project index with an overview (projectFieldGenerations)
+#   All                GenerateFileIndex, then one summary per package (packageRules) and
+#                      the project index with an overview (projectRules)
 # Start with Plan, then switch to GenerateFileIndex or All. A second run only redoes changed files.
 command: Plan
 
 # The package and the project phase have rules of their own (the plugin's aggregate-packages and
 # aggregate-project goals read them from the same file).
-packageFieldGenerations:
+packageRules:
   - promptKey: package-body
+    onIncomplete: retryOnce                # an answer cut off or empty is asked for once more
     mapPromptKey: map-chunk
     reducePromptKey: reduce-parts
     aiDefinitionKey: gpt-oss-20B-mxfp4
-projectFieldGenerations:
+projectRules:
   - promptKey: project-body
+    onIncomplete: retryOnce
     mapPromptKey: map-chunk
     reducePromptKey: reduce-parts
     aiDefinitionKey: gpt-oss-20B-mxfp4
@@ -62,9 +75,62 @@ srcMorph:
     - ".xslt"
     - ".wsdl"
     - ".xhtml"
+    - ".ts"
+    - ".mts"
+    - ".cts"
+    - ".jsp"
+    - ".jspf"
+    - ".jspx"
+    - ".tag"
+    - ".tagx"
+    - ".bpmn"
+    - ".dmn"
+    - ".yml"
+    - ".yaml"
+    - ".proto"
+    - ".tf"
+    - ".hcl"
+    - ".kt"
+    - ".kts"
+    - ".groovy"
+    - ".gvy"
+    - ".gradle"
+    - ".scala"
+    - ".avsc"
+    - ".graphql"
+    - ".graphqls"
+    - ".gql"
+    - ".properties"
+    - ".ps1"
+    - ".psm1"
+    - ".bat"
+    - ".cmd"
+  fileNames:
+    - "Dockerfile"
+    - "Dockerfile.*"
+    - "*.dockerfile"
+    - "Containerfile"
+    - "Jenkinsfile"
+    - "package.json"
+    - "openapi*.json"
+    - "swagger*.json"
+    - "asyncapi*.json"
+    - "pyproject.toml"
   excludes:
     - "**/package-info.java"
     - "**/module-info.java"
+    - "**/*.dockerignore"                    # BuildKit's Dockerfile.dockerignore, which Dockerfile.* takes
+
+  # When a summary is rewritten. force: true rewrites every one. Otherwise a summary is rewritten when
+  # it is missing or empty, its aiVersion changed, or a change below whose switch is true (each one is
+  # by default); false keeps the summary and records the new value at its next rewrite.
+  force: false
+  regenerateOn:
+    source: true                             # C: the file's source, a package's files, the project's packages
+    prompt: true                             # P: the rule's prompts, its map and reduce prompts too
+    facts: true                              # N: the rule's fact counters
+    model: true                              # M: the rule's model (definition key, remoteModel, model file)
+    children: true                           # K: the summaries a package or the project is written from
 
   generationProvider: llamacpp-jni      # "mock" runs without a model, for a dry test of the setup
   modelDirectory: "/path/to/models"     # a relative modelPath below is relative to this directory
@@ -91,7 +157,7 @@ srcMorph:
       minP: 0.05
       repeatPenalty: 1.0
       reasoningEffort: low
-    # ~275 KB .. ~1 MB: Granite 4.0 H-Tiny map-reduces over a 64K window, every chunk read. One pass
+    # ~260 KB .. ~1 MB: Granite 4.0 H-Tiny map-reduces over a 64K window, every chunk read. One pass
     # over a 384K window fits 8 GB (the KV grows only linearly), but over an 870 KB catalog it copied
     # the XML with invented values instead of summarizing it.
     - key: granite-4.0-h-tiny-mapreduce
@@ -123,11 +189,90 @@ srcMorph:
       repeatPenalty: 1.0
       reasoningEffort: ""
 
-  # By priority, the most specific wins: huge (>1 MB) -> H-1B over sampled chunks, big
-  # (~275 KB .. 1 MB) -> H-Tiny map-reduce, then gpt-oss for Java, SQL and every other file.
-  fieldGenerations:
+  # By priority, the most specific wins. Java, SQL, POM and plain XML files have size tiers: huge
+  # (>1 MB) -> H-1B over sampled chunks, big (~260 KB .. 1 MB) -> H-Tiny map-reduce; below them, and
+  # every other kind at any size, gpt-oss. gpt-oss reads about 270,000 characters of source (the 96K
+  # window less the output budget and the prompt), so the tiers start at 260,000 (a size condition
+  # measures the source's bytes with \n line endings). Every gpt-oss rule map-reduces a file that
+  # still exceeds the window (one denser than the plan's 3 characters per token below a tier, or a
+  # kind without tiers: shell, Perl, Kotlin, a descriptor or mapper of an XML kind, ... the fallback)
+  # instead of failing the run.
+  rules:
+    # Files that hold credentials are never sent to a model: the files named below, Maven's
+    # settings.xml, a properties file with a secret and a Kubernetes Secret, at the highest priority, so
+    # no other rule takes them. A secret in another file (a password in an application.yml) is not
+    # recognized: the prompts name a secret and never copy it. fileNames match the name in any case.
+    - id: secrets
+      skip: true
+      priority: 1000
+      condition:
+        or:
+          conditions:
+            - fileNames:
+                - ".env"
+                - ".env.*"
+                - "*.tfvars"
+                - "*.pkrvars.hcl"                # Packer's variable values, as Terraform's .tfvars
+                - "*.tfstate"
+                - "*.tfstate.backup"
+                - "settings-security.xml"
+                - "*.pem"
+                - "*.key"
+                - "id_rsa*"
+                - "id_ed25519*"
+            - and:                               # Maven's settings.xml (server passwords) by its root
+                conditions:                      # element, not an Android res/xml/settings.xml
+                  - fileNames: ["settings.xml"]
+                  - contentMatches: '<settings[\s>]'
+            # A properties file that gives a password, secret, token, API key, private key or credentials
+            # a value, whatever its name (gradle.properties, application.properties), a secret key too
+            # (aws.secretKey, secret-access-key, jwt.secret.key), also spelled pwd, pass or passphrase,
+            # after =, : or a blank; a whole placeholder (${DB_PASSWORD}, "${X}", @db.password@,
+            # #{...}), a flag, a number or a log level is none, nor is a key that only starts so
+            # (password.label). A message bundle that labels a password field (login.password=Password)
+            # is skipped too. Not seen: a plural or a qualifier after the key (passwords=,
+            # password.prod=), credentials in a URL, an account-key, a value on a continuation line.
+            # Read in the file's head.
+            - and:
+                conditions:
+                  - extensions: [".properties"]
+                  - contentMatches: '(?im)^[ \t]*+[\w.\-]*?(?:password|passwd|pwd|passphrase|(?<![^._\s-])pass|secret|token|api[._-]?key|private[._-]?key|credentials?)(?:[._-]?(?:access[._-]?)?key)?(?:[ \t]*+[=:]|[ \t]++(?![=:]))[ \t]*+(?!["'']?\$\{[\w.\-]+\}["'']?\s*$|@[\w.\-]+@\s*$|#\{[^}\n]*\}\s*$|(?:true|false|yes|no|on|off|\d+|trace|debug|info|warn|error|fatal|all)\s*$)\S'
+            # A Kubernetes Secret, whatever its name (deploy/postgres.yaml): its data are the
+            # credentials. Not a Helm chart's template, which names the values it renders. Read in the
+            # file's head, so a Secret in a later document of a long multi-document file is not seen.
+            - and:
+                conditions:
+                  - extensions: [".yml", ".yaml"]
+                  - contentMatches: '(?m)^kind:[ \t]*["'']?Secret\b'
+                  - not:
+                      and:
+                        conditions:
+                          - pathGlob: "**/templates/**"
+                          - contentMatches: '\{\{'
+            # A file named for a vault, secrets or credentials, but not a CI workflow or action
+            # (secret-scan.yml), a Helm chart's template (it names the values it renders) or a
+            # Kubernetes manifest of another kind than Secret (vault-deployment.yaml).
+            - and:
+                conditions:
+                  - fileNames:
+                      - "vault*.{yml,yaml}"
+                      - "*{secret,secrets,credential,credentials}*.{yml,yaml,properties,json,xml,conf,env,hcl}"
+                  - not:
+                      or:
+                        conditions:
+                          - pathGlob: "**/.github/**"
+                          - and:
+                              conditions:
+                                - pathGlob: "**/templates/**"
+                                - contentMatches: '\{\{'
+                          - and:
+                              conditions:
+                                - contentMatches: '(?m)^kind:[ \t]*["'']?[A-Z]'
+                                - not:
+                                    contentMatches: '(?m)^kind:[ \t]*["'']?Secret\b'
     - id: huge-java
-      promptKey: file-body-java
+      promptKey: file-body-oop
+      onIncomplete: retryOnce
       aiDefinitionKey: granite-4.0-h-1b-fastchunk
       priority: 200
       mapPromptKey: map-chunk
@@ -143,6 +288,7 @@ srcMorph:
             - size: {min: 1000000}
     - id: huge-sql
       promptKey: file-body-sql
+      onIncomplete: retryOnce
       aiDefinitionKey: granite-4.0-h-1b-fastchunk
       priority: 200
       mapPromptKey: map-chunk
@@ -156,7 +302,8 @@ srcMorph:
             - extensions: [".sql"]
             - size: {min: 1000000}
     - id: big-java
-      promptKey: file-body-java
+      promptKey: file-body-oop
+      onIncomplete: retryOnce
       aiDefinitionKey: granite-4.0-h-tiny-mapreduce
       priority: 100
       mapPromptKey: map-chunk
@@ -167,9 +314,10 @@ srcMorph:
         and:
           conditions:
             - extensions: [".java"]
-            - size: {min: 275000}
+            - size: {min: 260000}
     - id: big-sql
       promptKey: file-body-sql
+      onIncomplete: retryOnce
       aiDefinitionKey: granite-4.0-h-tiny-mapreduce
       priority: 100
       mapPromptKey: map-chunk
@@ -180,22 +328,39 @@ srcMorph:
         and:
           conditions:
             - extensions: [".sql"]
-            - size: {min: 275000}
+            - size: {min: 260000}
     - id: java
-      promptKey: file-body-java
+      promptKey: file-body-oop
+      onIncomplete: retryOnce
       aiDefinitionKey: gpt-oss-20B-mxfp4
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
       factsKey: java-facts
       condition:
         extensions: [".java"]
     - id: sql
       promptKey: file-body-sql
+      onIncomplete: retryOnce
       aiDefinitionKey: gpt-oss-20B-mxfp4
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
       factsKey: sql-facts
       condition:
         extensions: [".sql"]
-    - id: huge-xml                      # big XML data takes the Java/SQL size tiers too, with the XML
-                                        # prompt: three runs each per tier (MODEL-CARD finding 7)
+    # Big plain XML data takes the Java/SQL size tiers too, with the XML prompt: three runs each per
+    # tier (MODEL-CARD finding 7). Only what the xml rule takes: the tiers outrank every kind rule
+    # (priority 100 and 200 against 10 and 11), so they leave out the files a kind rule takes, and a
+    # big descriptor, mapper or route file keeps its kind's counters on gpt-oss, which map-reduces it.
+    # By extension: .wsdl and .xhtml are not in the list (the wsdl and facelets rules). By name or
+    # content: the `not` holds the conditions of jee, mybatis, bpmn (its .bpmn20.xml), persistence and
+    # integration, copied from those rules in their order (ExamplesConfigBindingTest compares them); a
+    # new XML kind rule that matches by name or content adds its condition there, in both tiers. A POM
+    # takes the POM tiers, one priority higher.
+    - id: huge-xml
       promptKey: file-body-xml
+      onIncomplete: retryOnce
       aiDefinitionKey: granite-4.0-h-1b-fastchunk
       priority: 200
       mapPromptKey: map-chunk
@@ -206,10 +371,28 @@ srcMorph:
       condition:
         and:
           conditions:
-            - extensions: [".xml", ".xsd", ".xsl", ".xslt", ".wsdl", ".xhtml"]
+            - extensions: [".xml", ".xsd", ".xsl", ".xslt"]
             - size: {min: 1000000}
+            - not:                           # the XML kind rules' whole conditions, as in big-xml
+                or:
+                  conditions:
+                    - fileNames: ["web.xml", "web-fragment.xml", "ejb-jar.xml", "application.xml"]   # jee
+                    - and:                                                                           # mybatis
+                        conditions:
+                          - extensions: [".xml"]
+                          - contentMatches: 'mybatis\.org//DTD Mapper'
+                    - or:                                                                            # bpmn
+                        conditions:
+                          - extensions: [".bpmn"]
+                          - fileNames: ["*.bpmn20.xml"]
+                    - fileNames: ["persistence.xml", "orm.xml", "*.hbm.xml"]                         # persistence
+                    - and:                                                                           # integration
+                        conditions:
+                          - extensions: [".xml"]
+                          - contentMatches: 'camel\.apache\.org/schema|springframework\.org/schema/integration|mulesoft\.org/schema/mule|ws\.apache\.org/ns/synapse'
     - id: big-xml
       promptKey: file-body-xml
+      onIncomplete: retryOnce
       aiDefinitionKey: granite-4.0-h-tiny-mapreduce
       priority: 100
       mapPromptKey: map-chunk
@@ -219,10 +402,28 @@ srcMorph:
       condition:
         and:
           conditions:
-            - extensions: [".xml", ".xsd", ".xsl", ".xslt", ".wsdl", ".xhtml"]
-            - size: {min: 275000}
+            - extensions: [".xml", ".xsd", ".xsl", ".xslt"]
+            - size: {min: 260000}
+            - not:                           # the XML kind rules' whole conditions, as in huge-xml
+                or:
+                  conditions:
+                    - fileNames: ["web.xml", "web-fragment.xml", "ejb-jar.xml", "application.xml"]   # jee
+                    - and:                                                                           # mybatis
+                        conditions:
+                          - extensions: [".xml"]
+                          - contentMatches: 'mybatis\.org//DTD Mapper'
+                    - or:                                                                            # bpmn
+                        conditions:
+                          - extensions: [".bpmn"]
+                          - fileNames: ["*.bpmn20.xml"]
+                    - fileNames: ["persistence.xml", "orm.xml", "*.hbm.xml"]                         # persistence
+                    - and:                                                                           # integration
+                        conditions:
+                          - extensions: [".xml"]
+                          - contentMatches: 'camel\.apache\.org/schema|springframework\.org/schema/integration|mulesoft\.org/schema/mule|ws\.apache\.org/ns/synapse'
     - id: huge-pom                      # a big POM takes the XML tiers one step higher, with the Maven counters
       promptKey: file-body-fallback
+      onIncomplete: retryOnce
       aiDefinitionKey: granite-4.0-h-1b-fastchunk
       priority: 210
       mapPromptKey: map-chunk
@@ -235,8 +436,9 @@ srcMorph:
           conditions:
             - pathGlob: "**/*pom.xml"
             - size: {min: 1000000}
-    - id: big-pom
-      promptKey: file-body-fallback
+    - id: big-pom                       # measured 2026-11-06 on a real 590 KB POM: the XML prompt invents no names, the generic one half
+      promptKey: file-body-xml
+      onIncomplete: retryOnce
       aiDefinitionKey: granite-4.0-h-tiny-mapreduce
       priority: 110
       mapPromptKey: map-chunk
@@ -247,33 +449,435 @@ srcMorph:
         and:
           conditions:
             - pathGlob: "**/*pom.xml"
-            - size: {min: 275000}
+            - size: {min: 260000}
     - id: shell                         # shell, Perl, XML: a prompt and counts of their own
       promptKey: file-body-shell
+      onIncomplete: retryOnce
       aiDefinitionKey: gpt-oss-20B-mxfp4
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
       factsKey: shell-facts
       condition:
         extensions: [".sh", ".bash", ".ksh", ".zsh", ".bats"]
     - id: perl
       promptKey: file-body-perl
+      onIncomplete: retryOnce
       aiDefinitionKey: gpt-oss-20B-mxfp4
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
       factsKey: perl-facts
       condition:
         extensions: [".pl", ".pm", ".t", ".cgi", ".psgi"]
     - id: pom                           # matches xml too; the priority gives a POM the Maven counters
       promptKey: file-body-xml
+      onIncomplete: retryOnce
       aiDefinitionKey: gpt-oss-20B-mxfp4
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
       priority: 10
       factsKey: pom-facts
       condition:
         pathGlob: "**/*pom.xml"
     - id: xml
       promptKey: file-body-xml
+      onIncomplete: retryOnce
       aiDefinitionKey: gpt-oss-20B-mxfp4
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
       factsKey: xml-facts
       condition:
-        extensions: [".xml", ".xsd", ".xsl", ".xslt", ".wsdl", ".xhtml"]
+        extensions: [".xml", ".xsd", ".xsl", ".xslt"]          # .wsdl and .xhtml have rules of their own
+    - id: typescript                         # the oop prompt names more of a TypeScript file's API than
+      promptKey: file-body-oop               # the fallback (measured 2026-11-05); no counters of its own
+      onIncomplete: retryOnce
+      aiDefinitionKey: gpt-oss-20B-mxfp4
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".ts", ".mts", ".cts"]
+    - id: jee                                # Jakarta EE descriptors
+      promptKey: file-body-xml
+      onIncomplete: retryOnce
+      aiDefinitionKey: gpt-oss-20B-mxfp4
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      priority: 10
+      factsKey: jee-facts
+      condition:
+        fileNames: ["web.xml", "web-fragment.xml", "ejb-jar.xml", "application.xml"]
+    - id: mybatis
+      promptKey: file-body-xml
+      onIncomplete: retryOnce
+      aiDefinitionKey: gpt-oss-20B-mxfp4
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      priority: 10
+      factsKey: mybatis-facts
+      condition:
+        and:
+          conditions:
+            - extensions: [".xml"]
+            - contentMatches: 'mybatis\.org//DTD Mapper'
+    - id: bpmn
+      promptKey: file-body-xml
+      onIncomplete: retryOnce
+      aiDefinitionKey: gpt-oss-20B-mxfp4
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      priority: 10
+      factsKey: bpmn-facts
+      condition:
+        or:
+          conditions:
+            - extensions: [".bpmn"]
+            - fileNames: ["*.bpmn20.xml"]        # Flowable and Activiti, over the xml rule
+    - id: dmn
+      promptKey: file-body-xml
+      onIncomplete: retryOnce
+      aiDefinitionKey: gpt-oss-20B-mxfp4
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      priority: 10
+      factsKey: dmn-facts
+      condition:
+        extensions: [".dmn"]
+    - id: jsp
+      promptKey: file-body-view
+      onIncomplete: retryOnce
+      aiDefinitionKey: gpt-oss-20B-mxfp4
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      factsKey: jsp-facts
+      condition:
+        extensions: [".jsp", ".jspf", ".tag"]
+    - id: jspx                               # a JSP document is XML: its comments are never sent
+      promptKey: file-body-view
+      onIncomplete: retryOnce
+      aiDefinitionKey: gpt-oss-20B-mxfp4
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      factsKey: jspx-facts
+      condition:
+        extensions: [".jspx", ".tagx"]
+    - id: proto
+      promptKey: file-body-contract
+      onIncomplete: retryOnce
+      aiDefinitionKey: gpt-oss-20B-mxfp4
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      factsKey: proto-facts
+      condition:
+        extensions: [".proto"]
+    - id: actions
+      promptKey: file-body-ops
+      onIncomplete: retryOnce
+      aiDefinitionKey: gpt-oss-20B-mxfp4
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      priority: 10
+      factsKey: actions-facts
+      condition:
+        pathGlob: "**/.github/{workflows,actions}/**/*.{yml,yaml}"
+    - id: k8s                                # Kubernetes manifests and Helm templates
+      promptKey: file-body-ops
+      onIncomplete: retryOnce
+      aiDefinitionKey: gpt-oss-20B-mxfp4
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      priority: 5
+      factsKey: k8s-facts
+      condition:
+        and:
+          conditions:
+            - extensions: [".yml", ".yaml"]
+            - contentMatches: '(?m)^kind:[ \t]*["'']?[A-Z]'   # kind: Deployment, quoted too
+    - id: dockerfile
+      promptKey: file-body-ops
+      onIncomplete: retryOnce
+      aiDefinitionKey: gpt-oss-20B-mxfp4
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      factsKey: dockerfile-facts
+      condition:
+        fileNames: ["Dockerfile", "Dockerfile.*", "*.dockerfile", "Containerfile"]
+    - id: terraform
+      promptKey: file-body-ops
+      onIncomplete: retryOnce
+      aiDefinitionKey: gpt-oss-20B-mxfp4
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      factsKey: terraform-facts
+      condition:
+        extensions: [".tf", ".hcl"]
+    - id: npm                                # an npm manifest: the ops prompt has a line for it (measured
+      promptKey: file-body-ops               # 2026-11-06 on an extension's manifest)
+      onIncomplete: retryOnce
+      aiDefinitionKey: gpt-oss-20B-mxfp4
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      priority: 10
+      factsKey: npm-facts
+      condition:
+        fileNames: ["package.json"]
+    - id: ops                                # every other YAML, Jenkinsfile
+      promptKey: file-body-ops
+      onIncomplete: retryOnce
+      aiDefinitionKey: gpt-oss-20B-mxfp4
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        or:
+          conditions:
+            - extensions: [".yml", ".yaml"]
+            - fileNames: ["Jenkinsfile", ".gitlab-ci.yml"]
+    - id: kotlin                             # the prompt Java, Kotlin, Groovy, Scala share
+      promptKey: file-body-oop
+      onIncomplete: retryOnce
+      aiDefinitionKey: gpt-oss-20B-mxfp4
+      factsKey: kotlin-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".kt", ".kts"]
+    - id: groovy
+      promptKey: file-body-oop
+      onIncomplete: retryOnce
+      aiDefinitionKey: gpt-oss-20B-mxfp4
+      factsKey: groovy-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".groovy", ".gvy"]
+    - id: scala
+      promptKey: file-body-oop
+      onIncomplete: retryOnce
+      aiDefinitionKey: gpt-oss-20B-mxfp4
+      factsKey: scala-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".scala"]
+    - id: persistence
+      promptKey: file-body-xml
+      onIncomplete: retryOnce
+      aiDefinitionKey: gpt-oss-20B-mxfp4
+      priority: 10
+      factsKey: persistence-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        fileNames: ["persistence.xml", "orm.xml", "*.hbm.xml"]
+    - id: integration                        # Camel, Spring Integration, Mule, Synapse; over jee, so a
+      promptKey: file-body-xml               # Spring application.xml with Camel routes gets these counters
+      onIncomplete: retryOnce
+      aiDefinitionKey: gpt-oss-20B-mxfp4
+      priority: 11
+      factsKey: integration-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        and:
+          conditions:
+            - extensions: [".xml"]
+            - contentMatches: 'camel\.apache\.org/schema|springframework\.org/schema/integration|mulesoft\.org/schema/mule|ws\.apache\.org/ns/synapse'
+    - id: wsdl
+      promptKey: file-body-xml
+      onIncomplete: retryOnce
+      aiDefinitionKey: gpt-oss-20B-mxfp4
+      priority: 10
+      factsKey: wsdl-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".wsdl"]
+    - id: facelets
+      promptKey: file-body-view
+      onIncomplete: retryOnce
+      aiDefinitionKey: gpt-oss-20B-mxfp4
+      factsKey: facelets-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".xhtml"]
+    - id: openapi                            # by its version key (swagger: 2.0), not a Spring flag
+      promptKey: file-body-contract
+      onIncomplete: retryOnce
+      aiDefinitionKey: gpt-oss-20B-mxfp4
+      priority: 10
+      factsKey: openapi-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        or:
+          conditions:
+            - and:
+                conditions:
+                  - extensions: [".yml", ".yaml"]
+                  - contentMatches: '(?m)^["'']?(?:openapi|swagger)["'']?[ \t]*:[ \t]*["'']?\d'
+            - fileNames: ["openapi*.json", "swagger*.json"]
+    - id: asyncapi
+      promptKey: file-body-contract
+      onIncomplete: retryOnce
+      aiDefinitionKey: gpt-oss-20B-mxfp4
+      priority: 10
+      factsKey: asyncapi-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        or:
+          conditions:
+            - and:
+                conditions:
+                  - extensions: [".yml", ".yaml"]
+                  - contentMatches: '(?m)^["'']?asyncapi["'']?[ \t]*:'
+            - fileNames: ["asyncapi*.json"]
+    - id: avro
+      promptKey: file-body-contract
+      onIncomplete: retryOnce
+      aiDefinitionKey: gpt-oss-20B-mxfp4
+      factsKey: avro-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".avsc"]
+    - id: graphql
+      promptKey: file-body-contract
+      onIncomplete: retryOnce
+      aiDefinitionKey: gpt-oss-20B-mxfp4
+      factsKey: graphql-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".graphql", ".graphqls", ".gql"]
+    - id: camel-yaml                         # Camel routes in the YAML DSL; a from: names an endpoint
+      promptKey: file-body-ops
+      onIncomplete: retryOnce
+      aiDefinitionKey: gpt-oss-20B-mxfp4
+      priority: 10
+      factsKey: camel-yaml-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        and:
+          conditions:
+            - extensions: [".yml", ".yaml"]
+            - contentMatches: '(?m)^-[ \t]+(?:(?:route|routeTemplate|templatedRoute|rest)[ \t]*:|from[ \t]*:[ \t]*(?:["'']?(?!https?:)[a-z][\w+.-]*:|(?:#[^\n]*)?\r?\n(?:[ \t]*+(?:#[^\n]*+)?\r?\n|[ \t]++(?:id|description)[ \t]*+:[^\n]*+\n)*+[ \t]+(?:uri|steps|parameters)[ \t]*:))'
+    - id: compose
+      promptKey: file-body-ops
+      onIncomplete: retryOnce
+      aiDefinitionKey: gpt-oss-20B-mxfp4
+      priority: 10
+      factsKey: compose-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        fileNames: ["docker-compose*.{yml,yaml}", "compose*.{yml,yaml}"]
+    - id: gradle                             # build scripts of both DSLs; .gradle.kts over the Kotlin rule
+      promptKey: file-body-ops
+      onIncomplete: retryOnce
+      aiDefinitionKey: gpt-oss-20B-mxfp4
+      priority: 10
+      factsKey: gradle-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        or:
+          conditions:
+            - extensions: [".gradle"]
+            - fileNames: ["*.gradle.kts"]
+    - id: properties
+      promptKey: file-body-ops
+      onIncomplete: retryOnce
+      aiDefinitionKey: gpt-oss-20B-mxfp4
+      factsKey: properties-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".properties"]
+    - id: powershell                         # no prompt of its own: the fallback prompt with counters
+      promptKey: file-body-fallback
+      onIncomplete: retryOnce
+      aiDefinitionKey: gpt-oss-20B-mxfp4
+      factsKey: powershell-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".ps1", ".psm1"]
+    - id: batch
+      promptKey: file-body-fallback
+      onIncomplete: retryOnce
+      aiDefinitionKey: gpt-oss-20B-mxfp4
+      factsKey: batch-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".bat", ".cmd"]
+    - id: pyproject                          # a Python project's manifest: the ops prompt keeps more of
+      promptKey: file-body-ops               # its names than the fallback (gpt-oss-20b 98 % against 88 %, 2026-11-07)
+      onIncomplete: retryOnce
+      aiDefinitionKey: gpt-oss-20B-mxfp4
+      priority: 10
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        fileNames: ["pyproject.toml"]
+    - id: ansible                            # playbooks and the YAML of a role: gpt-oss-20b names more of
+      promptKey: file-body-fallback          # their modules with the fallback prompt than with the ops prompt
+      onIncomplete: retryOnce                # and counters (95 % against 86 %, measured 2026-11-07)
+      aiDefinitionKey: gpt-oss-20B-mxfp4
+      priority: 5
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        or:
+          conditions:
+            - pathGlob: "**/roles/*/{tasks,handlers,defaults,vars,meta}/*.{yml,yaml}"
+            - and:
+                conditions:
+                  - extensions: [".yml", ".yaml"]
+                  - contentMatches: '(?m)^-[ \t]++(?:name[ \t]*+:[^\n]*+\n[ \t]++)?hosts[ \t]*+:'
     - id: fallback                      # the rule for every file no other rule matches
       promptKey: file-body-fallback
+      onIncomplete: retryOnce
       aiDefinitionKey: gpt-oss-20B-mxfp4
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
       fallback: true

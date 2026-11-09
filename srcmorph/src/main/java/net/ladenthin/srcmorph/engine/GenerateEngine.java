@@ -5,31 +5,32 @@ package net.ladenthin.srcmorph.engine;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InterruptedIOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.ToString;
-import net.ladenthin.srcmorph.config.AiFactExtractor;
-import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
-import net.ladenthin.srcmorph.config.AiFieldGenerationSelector;
-import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
+import net.ladenthin.srcmorph.config.ModelRegistry;
+import net.ladenthin.srcmorph.config.RoutingRule;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
-import net.ladenthin.srcmorph.indexer.AiFieldGenerationSupport;
-import net.ladenthin.srcmorph.indexer.AiIndexOutcome;
-import net.ladenthin.srcmorph.indexer.AiIndexPlan;
+import net.ladenthin.srcmorph.facts.FactExtractor;
+import net.ladenthin.srcmorph.indexer.HeaderHashes;
+import net.ladenthin.srcmorph.indexer.IndexOutcome;
+import net.ladenthin.srcmorph.indexer.IndexPlan;
+import net.ladenthin.srcmorph.indexer.RecordedHashes;
 import net.ladenthin.srcmorph.indexer.SourceFileIndexer;
-import net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport;
-import net.ladenthin.srcmorph.prompt.AiPromptSupport;
-import net.ladenthin.srcmorph.provider.AiGenerationProvider;
-import net.ladenthin.srcmorph.provider.AiGenerationProviderFactory;
-import net.ladenthin.srcmorph.provider.AiGenerationUsage;
-import net.ladenthin.srcmorph.support.AiChecksumSupport;
-import net.ladenthin.srcmorph.support.AiGenerationTimeEstimator;
-import net.ladenthin.srcmorph.support.AiProgressBar;
+import net.ladenthin.srcmorph.indexer.generation.GenerationTimeEstimator;
+import net.ladenthin.srcmorph.indexer.generation.MapReduceMath;
+import net.ladenthin.srcmorph.indexer.generation.SummaryGenerator;
+import net.ladenthin.srcmorph.prompt.PromptCatalog;
+import net.ladenthin.srcmorph.prompt.PromptPreparer;
+import net.ladenthin.srcmorph.provider.GenerationProvider;
+import net.ladenthin.srcmorph.provider.GenerationProviderFactory;
+import net.ladenthin.srcmorph.provider.GenerationUsage;
+import net.ladenthin.srcmorph.routing.RuleSelector;
 import net.ladenthin.srcmorph.support.Java8CompatibilityHelper;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -62,17 +63,11 @@ public final class GenerateEngine {
     /** Nanoseconds per second, for converting the measured run elapsed time to whole seconds. */
     private static final long NANOS_PER_SECOND = 1_000_000_000L;
 
-    /** The checksums of the run record's prompt and facts hashes. */
-    private static final AiChecksumSupport CHECKSUMS = new AiChecksumSupport();
-
-    /** The tag in front of a rule's map prompt in the text its prompt hash is taken over. */
-    private static final String MAP_PROMPT_TAG = "\u0000map\u0000";
-
-    /** The tag in front of a rule's reduce prompt in the text its prompt hash is taken over. */
-    private static final String REDUCE_PROMPT_TAG = "\u0000reduce\u0000";
+    /** What a kept file of map-reduce answers appends to the source path ({@code partsDirectory}). */
+    static final String PARTS_SUFFIX = ".parts.md";
 
     private final SrcMorphConfiguration config;
-    private final AiGenerationProviderFactory providerFactory;
+    private final GenerationProviderFactory providerFactory;
     private final Java8CompatibilityHelper compatibilityHelper = new Java8CompatibilityHelper();
 
     /**
@@ -81,7 +76,7 @@ public final class GenerateEngine {
      * @param config the run configuration
      */
     public GenerateEngine(final SrcMorphConfiguration config) {
-        this(config, new AiGenerationProviderFactory());
+        this(config, new GenerationProviderFactory());
     }
 
     /**
@@ -90,7 +85,7 @@ public final class GenerateEngine {
      * @param config          the run configuration
      * @param providerFactory the factory of each model group's provider
      */
-    GenerateEngine(final SrcMorphConfiguration config, final AiGenerationProviderFactory providerFactory) {
+    GenerateEngine(final SrcMorphConfiguration config, final GenerationProviderFactory providerFactory) {
         this.config = config;
         this.providerFactory = providerFactory;
     }
@@ -99,7 +94,7 @@ public final class GenerateEngine {
      * Runs the full plan-then-execute Phase 1 pipeline.
      *
      * @return the outcome of the run (a plan-only result when {@link SrcMorphConfiguration#isPlanOnly()})
-     * @throws SrcMorphException if the run is misconfigured (no {@code fieldGenerations}, an unmatched
+     * @throws SrcMorphException if the run is misconfigured (no {@code rules}, an unmatched
      *                            file with no fallback, a hard oversize failure, or an invalid rule set)
      * @throws IOException       if the source tree cannot be walked or a target file cannot be written
      */
@@ -109,7 +104,8 @@ public final class GenerateEngine {
 
     /**
      * Checks the configuration as a run would, without loading a model or writing anything: the plan
-     * (every file routed, none over a window with {@code onOversize: fail}, no two into one summary), the
+     * (every file routed, none over a window with {@code onOversize: fail}, no two into one summary,
+     * none into the file of the package or the project phase), the
      * profile files of every rule, and every routed model (a local model's file and its GGUF header, a
      * remote model's {@code baseUrl} and {@code apiKeyEnv}). {@link SrcMorphConfiguration#isPlanOnly()}
      * does not apply.
@@ -123,63 +119,46 @@ public final class GenerateEngine {
     }
 
     private GenerateResult run(final boolean checkOnly) throws SrcMorphException, IOException {
-        final Path basePath =
-                config.getBaseDirectory().toPath().toAbsolutePath().normalize();
+        final Path basePath = EngineSupport.basePath(config);
         final Path outputPath =
                 config.getOutputDirectory().toPath().toAbsolutePath().normalize();
         final List<Path> resolvedSubtrees = EngineSupport.resolveSubtrees(basePath, config.getSubtrees());
         final List<String> resolvedExtensions = resolveFileExtensions();
 
-        LOGGER.info("Starting AI index generation");
-        LOGGER.info("Base directory  : {}", basePath);
-        LOGGER.info("Output directory: {}", outputPath);
-        LOGGER.info("Subtrees        : {}", resolvedSubtrees);
-        if (!resolvedExtensions.isEmpty()) {
-            LOGGER.info("Extensions      : {}", resolvedExtensions);
-        }
-        LOGGER.info("Force           : {}", config.isForce());
-        LOGGER.info("Provider        : {}", config.getGenerationProvider());
+        logRun(basePath, outputPath, resolvedSubtrees, resolvedExtensions);
 
-        final List<AiFieldGenerationConfig> configured = config.getFieldGenerations();
+        final List<? extends @Nullable RoutingRule> configured = config.getRules();
         if (configured == null || configured.isEmpty()) {
-            throw new SrcMorphException("No fieldGenerations configured (srcMorph.fieldGenerations of the"
-                    + " configuration file); nothing to generate.");
+            throw new SrcMorphException(
+                    "No rules configured (srcMorph.rules of the" + " configuration file); nothing to generate.");
         }
         // the run resolves the facts keys into copies: the caller's rules stay as given, so check() and a
         // second execute() of the same configuration read them as the first did
-        final List<AiFieldGenerationConfig> fieldGenerations = copies(configured);
+        final List<RoutingRule> rules = copies(configured);
 
-        final AiPromptSupport promptSupport = EngineSupport.buildPromptSupport(
-                config.getPromptDefinitions(), config.getProfileDirectory(), config.getFieldGenerations());
-        final AiModelDefinitionSupport modelDefinitionSupport =
+        final PromptCatalog promptSupport = EngineSupport.buildPromptSupport(
+                config.getPromptDefinitions(), config.getProfileDirectory(), config.getRules());
+        final ModelRegistry modelDefinitionSupport =
                 EngineSupport.buildAiModelDefinitionSupport(config.getAiDefinitions(), config.getModelDirectory());
-        final AiPromptPreparationSupport promptPreparationSupport = new AiPromptPreparationSupport(promptSupport);
+        final PromptPreparer promptPreparationSupport = new PromptPreparer(promptSupport);
         // Resolve each rule's factsKey to its shared factDefinitions group (copies the counters onto the
         // rule's facts) BEFORE validation, so the resolved fact patterns are validated too.
-        EngineSupport.resolveFactsKeys(config, fieldGenerations);
+        EngineSupport.resolveFactsKeys(config, rules);
 
-        final AiFieldGenerationSelector selector = new AiFieldGenerationSelector();
+        final RuleSelector selector = new RuleSelector();
         // Fail fast on a bad rule set (e.g. >1 fallback, a route rule missing prompt/model), as a
         // configuration error the surfaces report as such.
         try {
-            selector.validate(fieldGenerations);
+            selector.validate(rules);
         } catch (final IllegalArgumentException e) {
-            throw new SrcMorphException("Invalid fieldGenerations: " + e.getMessage(), e);
+            throw new SrcMorphException("Invalid rules: " + e.getMessage(), e);
         }
-        EngineSupport.requireDefinedModels(modelDefinitionSupport, fieldGenerations);
-        requirePrompts(promptSupport, fieldGenerations);
+        EngineSupport.requireDefinedModels(modelDefinitionSupport, rules);
+        EngineSupport.requirePrompts(promptSupport, rules);
 
-        final SourceFileIndexer fileIndexer = new SourceFileIndexer(
-                basePath,
-                outputPath,
-                resolvedExtensions,
-                config.getPluginVersion(),
-                config.getAiVersion(),
-                resolvedSubtrees,
-                config.getExcludes(),
-                config.getMinFileSizeBytes(),
-                config.getMaxFileSizeBytes(),
-                config.isForce());
+        final SourceFileIndexer fileIndexer =
+                newFileIndexer(basePath, outputPath, resolvedSubtrees, resolvedExtensions);
+        leaveOutOwnFiles(fileIndexer, outputPath);
 
         // 1. Collect candidate files across the configured subtrees.
         final List<Path> candidates = new ArrayList<>();
@@ -187,18 +166,29 @@ public final class GenerateEngine {
                 ? compatibilityHelper.listOf(basePath.resolve(DEFAULT_SOURCE_SUBTREE))
                 : resolvedSubtrees) {
             if (!subtree.toFile().exists()) {
+                // its summaries are kept: an empty plan would make every one an orphan for pruneOrphans
                 LOGGER.warn("Skipping missing subtree: {}", subtree);
+                fileIndexer.keepSummariesBelow(subtree);
                 continue;
             }
             candidates.addAll(fileIndexer.collectCandidates(subtree));
         }
+        // the whole plan in path order, not one subtree after the other
+        SourceFileIndexer.sortByPath(candidates);
 
         // 2. Plan the run: which model + prompt each file gets (or skip / unmatched), and whether
         //    each file fits its routed model's context window (computed up front, same threshold the
-        //    run uses to trim — see AiInputWindowCalculator).
-        final AiIndexPlan plan =
-                fileIndexer.classify(candidates, fieldGenerations, modelDefinitionSupport, promptPreparationSupport);
+        //    run uses to trim — see InputWindowCalculator).
+        final IndexPlan plan = fileIndexer.classify(
+                candidates, rules, modelDefinitionSupport, promptPreparationSupport, config.getGenerationProvider());
+        // 2b. The file summaries below the output directory no file of this plan is summarized into, and the
+        //     package summaries left without any: listed in the plan always, deleted only by a run that
+        //     generates with pruneOrphans (step 3d).
+        final boolean planOnly = !checkOnly && config.isPlanOnly();
+        final boolean prune = !planOnly && !checkOnly && config.isPruneOrphans();
+        addOrphans(plan, fileIndexer);
         LOGGER.info("AI index plan (Markdown):\n{}", plan.renderMarkdown(basePath));
+        warnOrphans(plan, prune);
 
         // 3. A file that matched no rule and no fallback is a fatal misconfiguration.
         if (!plan.unmatched().isEmpty()) {
@@ -220,10 +210,20 @@ public final class GenerateEngine {
                     + "large enough context window, or set onOversize=sample|mapReduce|sampleChunks|deterministic"
                     + " on the rule. The build does not pick a model for you; this is configuration only.");
         }
+        final int chunkRoomFailCount = plan.chunkRoomFailCount();
+        if (chunkRoomFailCount > 0) {
+            throw new SrcMorphException(chunkRoomFailCount
+                    + " source file(s) are chunked in a window that leaves a chunk fewer than "
+                    + MapReduceMath.MIN_CHUNK_CHARS + " characters next to the map and reduce prompts (see the"
+                    + " 'Over window' section in the plan above); the run would refuse them. Give the model a larger"
+                    + " contextSize or a smaller maxOutputTokens, or shorten the map and reduce prompts.");
+        }
 
         // 3c. Two source files summarized into the same .ai.md (src/main/java/Foo.java and
-        //     main/java/Foo.java) would overwrite each other; a prompt longer than its model's window
-        //     leaves no room for any source. Both are configuration errors, found before the run.
+        //     main/java/Foo.java) would overwrite each other, a source named package (or project at the
+        //     base root) would be summarized into the file the package (project) phase writes, and a
+        //     prompt longer than its model's window leaves no room for any source. All are configuration
+        //     errors, found before the run.
         checkTargetsAndWindows(plan, fileIndexer);
 
         // Fail fast on a typo'd modelPath before the model-group loop below, not an hour into it.
@@ -233,10 +233,8 @@ public final class GenerateEngine {
         // present and running for real elsewhere. Stat'ing the file is not loading it, but failing the
         // plan on a missing model would break that workflow all the same -- and Plan is the CLI's
         // default command. check() is the plan with this check, for the machine that runs.
-        final boolean planOnly = !checkOnly && config.isPlanOnly();
         if (!planOnly) {
-            EngineSupport.validateRoutedModelPaths(
-                    config.getGenerationProvider(), modelDefinitionSupport, fieldGenerations);
+            EngineSupport.validateRoutedModelPaths(config.getGenerationProvider(), modelDefinitionSupport, rules);
         }
         if (planOnly || checkOnly) {
             LOGGER.info(
@@ -247,15 +245,20 @@ public final class GenerateEngine {
             return GenerateResult.planned();
         }
 
+        // 3d. The orphaned summaries go before the run, so the package and project phases after it no
+        //     longer read them.
+        deleteOrphans(plan.orphans(), prune);
+
         // 4. Execute model group by model group: load each model once, index its files, close.
         //    Progress is the running sum of each finished file's PLAN estimate over the grand total
         //    (no re-estimation), logged as a bar + percent after every file, with the estimated time
         //    left and the actual wall-clock elapsed for comparison.
-        final AiGenerationTimeEstimator estimator = new AiGenerationTimeEstimator();
+        final GenerationTimeEstimator estimator = new GenerationTimeEstimator();
         final long totalEstimatedSeconds = plan.totalEstimatedSeconds();
         final int totalFiles = plan.routedCount();
         final long runStartNanos = System.nanoTime();
-        final RunRecord record = new RunRecord(config.getPluginVersion());
+        final RunRecord runRecord =
+                new RunRecord(config.getGeneratorVersion(), plan.skipped().size());
         long doneEstimatedSeconds = 0;
         int doneFiles = 0;
         int wrote = 0;
@@ -263,56 +266,59 @@ public final class GenerateEngine {
         int failed = 0;
         // the record is written however the run ends, and a failed write never hides why it ended
         try {
-            for (final Map.Entry<String, List<AiIndexPlan.Entry>> group :
+            for (final Map.Entry<String, List<IndexPlan.Route>> group :
                     plan.routesByModel().entrySet()) {
                 final String aiDefinitionKey = group.getKey();
                 LOGGER.info(
                         "Loading model '{}' for {} file(s)",
                         aiDefinitionKey,
                         group.getValue().size());
-                try (AiGenerationProvider provider = providerFactory.create(
+                try (GenerationProvider provider = providerFactory.create(
                         config.getGenerationProvider(),
-                        EngineSupport.resolveLlamaCppJniConfig(modelDefinitionSupport, aiDefinitionKey),
+                        EngineSupport.resolveProviderConfig(modelDefinitionSupport, aiDefinitionKey),
                         promptSupport)) {
-                    final AiFieldGenerationSupport support =
-                            new AiFieldGenerationSupport(provider, promptPreparationSupport, modelDefinitionSupport);
-                    for (final AiIndexPlan.Entry entry : group.getValue()) {
-                        AiIndexOutcome outcome;
+                    final SummaryGenerator support =
+                            new SummaryGenerator(provider, promptPreparationSupport, modelDefinitionSupport);
+                    for (final IndexPlan.Route entry : group.getValue()) {
+                        IndexOutcome outcome;
                         final long fileStartNanos = System.nanoTime();
                         try {
                             outcome = fileIndexer.indexFile(
                                     entry.file(),
                                     entry.rule(),
                                     support,
-                                    promptHash(promptSupport, entry.rule()),
-                                    AiFactExtractor.factsHash(entry.rule().getFacts()));
-                        } catch (final InterruptedIOException e) {
-                            // an interrupt ends the run, it is not one file's failure; a timeout is one (a
-                            // SocketTimeoutException is an InterruptedIOException as well)
+                                    HeaderHashes.prompt(promptSupport, entry.rule()),
+                                    FactExtractor.factsHash(entry.rule().getFacts()),
+                                    HeaderHashes.model(
+                                            aiDefinitionKey, modelDefinitionSupport.definition(aiDefinitionKey)));
+                        } catch (final IOException | RuntimeException e) {
+                            // an interrupt ends the run, it is not one file's failure, whatever the exception it
+                            // surfaced as (an InterruptedIOException, a ClosedByInterruptException, any other
+                            // after the flag was set); one failed request (after its retries) does not end the
+                            // run, nor does a timeout (a SocketTimeoutException is an InterruptedIOException as
+                            // well) or an unchecked error of a provider (the llama.cpp binding throws only those)
                             if (Thread.currentThread().isInterrupted()) {
                                 throw e;
                             }
                             LOGGER.error("Summarizing {} failed: {}", entry.file(), e.toString());
                             LOGGER.debug("Summarizing {} failed", entry.file(), e);
-                            outcome = AiIndexOutcome.FAILED;
-                        } catch (final IOException | RuntimeException e) {
-                            // one failed request (after its retries) does not end the run, nor does an unchecked
-                            // error of a provider (the llama.cpp binding throws only those)
-                            LOGGER.error("Summarizing {} failed: {}", entry.file(), e.toString());
-                            LOGGER.debug("Summarizing {} failed", entry.file(), e);
-                            outcome = AiIndexOutcome.FAILED;
+                            outcome = IndexOutcome.FAILED;
                         }
-                        record.add(recordEntry(
+                        // a local model loads on the first file that needs it: its own time, not the file's
+                        final long loadNanos = provider.takeLoadNanos();
+                        runRecord.addModelLoad(aiDefinitionKey, loadNanos);
+                        runRecord.add(recordEntry(
                                 basePath,
                                 entry,
                                 aiDefinitionKey,
                                 outcome,
                                 support.takeUsage(),
-                                System.nanoTime() - fileStartNanos,
+                                Math.max(0L, System.nanoTime() - fileStartNanos - loadNanos),
                                 recordedHeader(fileIndexer, entry, outcome, promptSupport)));
-                        if (outcome == AiIndexOutcome.WRITTEN) {
+                        keepParts(basePath, entry.file(), support.takeParts());
+                        if (outcome == IndexOutcome.WRITTEN) {
                             wrote++;
-                        } else if (outcome == AiIndexOutcome.UNCHANGED) {
+                        } else if (outcome == IndexOutcome.UNCHANGED) {
                             unchanged++;
                         } else {
                             failed++;
@@ -323,7 +329,7 @@ public final class GenerateEngine {
                         final long remainingSeconds = Math.max(0L, totalEstimatedSeconds - doneEstimatedSeconds);
                         LOGGER.info(
                                 "{} {}/{} files - est. {}/{} done, {} left (estimate) | {} elapsed (actual)",
-                                AiProgressBar.render(doneEstimatedSeconds, totalEstimatedSeconds),
+                                ProgressBar.render(doneEstimatedSeconds, totalEstimatedSeconds),
                                 doneFiles,
                                 totalFiles,
                                 estimator.formatDuration(doneEstimatedSeconds),
@@ -335,13 +341,13 @@ public final class GenerateEngine {
             }
         } catch (final IOException | RuntimeException | Error e) {
             // the record of the files done so far; a failed write is added to the abort, not put in its place
-            final IOException writeFailure = writeRecord(record);
+            final IOException writeFailure = writeRecord(runRecord);
             if (writeFailure != null) {
                 e.addSuppressed(writeFailure);
             }
             throw e;
         }
-        final IOException writeFailure = writeRecord(record);
+        final IOException writeFailure = writeRecord(runRecord);
         // files that were not written are the run's failure; a failed record write only when there is none
         if (writeFailure != null && failed == 0) {
             throw writeFailure;
@@ -364,18 +370,138 @@ public final class GenerateEngine {
     }
 
     /**
+     * Keeps a file's map-reduce answers when {@code partsDirectory} is set: in
+     * {@code <partsDirectory>/<path below the base directory>.parts.md}. A failed write is logged and
+     * does not fail the file, whose summary is written already.
+     *
+     * @param basePath   the base directory
+     * @param sourceFile the file
+     * @param parts      its answers ({@link SummaryGenerator#takeParts()}), {@code ""} for none
+     */
+    private void keepParts(final Path basePath, final Path sourceFile, final String parts) {
+        final File directory = config.getPartsDirectory();
+        if (directory == null || parts.isEmpty()) {
+            return;
+        }
+        final String relative = basePath.relativize(sourceFile).toString().replace('\\', '/');
+        final Path target = directory.toPath().resolve(relative + PARTS_SUFFIX);
+        try {
+            final Path parent = target.getParent();
+            if (parent != null) {
+                Files.createDirectories(parent);
+            }
+            Files.write(
+                    target, ("# Map-reduce answers of " + relative + "\n\n" + parts).getBytes(StandardCharsets.UTF_8));
+            LOGGER.info("Kept the map-reduce answers of {}: {}", relative, target);
+        } catch (final IOException e) {
+            LOGGER.warn("Keeping the map-reduce answers of {} in {} failed: {}", relative, target, e.toString());
+        }
+    }
+
+    /**
+     * Returns the routed files of a plan, the sources whose summaries the run writes or keeps.
+     *
+     * @param plan the plan
+     * @return the files
+     */
+    private static List<Path> routedFiles(final IndexPlan plan) {
+        final List<Path> files = new ArrayList<>();
+        for (final List<IndexPlan.Route> entries : plan.routesByModel().values()) {
+            for (final IndexPlan.Route entry : entries) {
+                files.add(entry.file());
+            }
+        }
+        return files;
+    }
+
+    /**
+     * Leaves the files srcmorph itself writes out of the candidates, where a subtree such as {@code .}
+     * reaches them: the calibration reports in the output directory, the run record and the parts.
+     *
+     * @param fileIndexer the run's file indexer
+     * @param outputPath  the output directory
+     */
+    private void leaveOutOwnFiles(final SourceFileIndexer fileIndexer, final Path outputPath) {
+        fileIndexer.leaveOut(outputPath.resolve(CalibrationReport.JSON_FILE_NAME));
+        fileIndexer.leaveOut(outputPath.resolve(CalibrationReport.YAML_FILE_NAME));
+        final File runRecordFile = config.getRunRecordFile();
+        if (runRecordFile != null) {
+            fileIndexer.leaveOut(runRecordFile.toPath());
+        }
+        final File partsDirectory = config.getPartsDirectory();
+        if (partsDirectory != null) {
+            // only the parts: a parts directory may mirror the source tree in place
+            fileIndexer.leaveOutBelow(partsDirectory.toPath(), PARTS_SUFFIX);
+        }
+    }
+
+    /**
+     * Adds the orphaned summaries to the plan: the file summaries below the output directory that no
+     * routed file of the plan is summarized into, and the package summaries of directories left without
+     * any ({@link SourceFileIndexer#orphanedSummaries(java.util.Collection)}).
+     *
+     * @param plan        the plan
+     * @param fileIndexer the indexer that walks the output directory
+     * @throws IOException if the output directory cannot be walked
+     */
+    private static void addOrphans(final IndexPlan plan, final SourceFileIndexer fileIndexer) throws IOException {
+        for (final Path orphan : fileIndexer.orphanedSummaries(routedFiles(plan))) {
+            plan.addOrphan(orphan);
+        }
+    }
+
+    /**
+     * Warns about the plan's orphaned summaries, if any, naming whether this run deletes them.
+     *
+     * @param plan  the plan
+     * @param prune whether this run deletes them
+     */
+    private static void warnOrphans(final IndexPlan plan, final boolean prune) {
+        if (!plan.orphans().isEmpty()) {
+            LOGGER.warn(
+                    "{} summary(ies) below the output directory belong to no file of this plan (see 'Orphaned"
+                            + " summaries' in the plan above); {}",
+                    plan.orphans().size(),
+                    prune
+                            ? "pruneOrphans deletes them before the run"
+                            : "the package and project phases still read them, and pruneOrphans: true deletes them");
+        }
+    }
+
+    /**
+     * Deletes the orphaned summaries when {@code pruneOrphans} applies, each with a log line; one that
+     * cannot be deleted is a warning, not the end of the run.
+     *
+     * @param orphans the orphaned summaries
+     * @param prune   whether this run deletes them
+     */
+    private static void deleteOrphans(final List<Path> orphans, final boolean prune) {
+        if (!prune) {
+            return;
+        }
+        for (final Path orphan : orphans) {
+            try {
+                Files.deleteIfExists(orphan);
+                LOGGER.info("Deleted the orphaned summary {}", orphan);
+            } catch (final IOException e) {
+                LOGGER.warn("Deleting the orphaned summary {} failed: {}", orphan, e.toString());
+            }
+        }
+    }
+
+    /**
      * Writes the run record when {@code runRecordFile} is set.
      *
-     * @param record the record of the files done so far
+     * @param runRecord the record of the files done so far
      * @return the write's failure, logged already, or {@code null}
      */
-    private @Nullable IOException writeRecord(final RunRecord record) {
+    private @Nullable IOException writeRecord(final RunRecord runRecord) {
         final File runRecordFile = config.getRunRecordFile();
         if (runRecordFile == null) {
             return null;
         }
         try {
-            record.write(runRecordFile.toPath());
+            runRecord.write(runRecordFile.toPath());
             LOGGER.info("Run record written: {}", runRecordFile);
             return null;
         } catch (final IOException e) {
@@ -396,26 +522,26 @@ public final class GenerateEngine {
      * @param hashes        its prompt hash (key) and facts hash (value)
      * @return the entry
      */
-    private static RunRecord.Entry recordEntry(
+    private static RunRecord.FileRecord recordEntry(
             final Path basePath,
-            final AiIndexPlan.Entry entry,
+            final IndexPlan.Route entry,
             final String model,
-            final AiIndexOutcome outcome,
-            final AiGenerationUsage usage,
+            final IndexOutcome outcome,
+            final GenerationUsage usage,
             final long nanos,
-            final Map.Entry<String, String> hashes) {
-        final AiFieldGenerationConfig rule = entry.rule();
+            final RecordedHashes hashes) {
+        final RoutingRule rule = entry.rule();
         final String id = rule.getId();
-        return new RunRecord.Entry(
+        return new RunRecord.FileRecord(
                 basePath.relativize(entry.file()).toString().replace('\\', '/'),
-                id != null ? id : rule.getPromptKey(),
-                rule.getPromptKey(),
+                id != null ? id : rule.requirePromptKey(),
+                rule.requirePromptKey(),
                 model,
                 outcome,
                 usage,
                 nanos,
-                hashes.getKey(),
-                hashes.getValue());
+                hashes.promptHash(),
+                hashes.factsHash());
     }
 
     /**
@@ -423,51 +549,19 @@ public final class GenerateEngine {
      *
      * @param rules the configured rules
      * @return the copies, in order
+     * @throws SrcMorphException if a rule is {@code null} (a list built in code; the file's loader refuses one)
      */
-    private static List<AiFieldGenerationConfig> copies(final List<AiFieldGenerationConfig> rules) {
-        final List<AiFieldGenerationConfig> copies = new ArrayList<>(rules.size());
-        for (final AiFieldGenerationConfig rule : rules) {
+    private static List<RoutingRule> copies(final List<? extends @Nullable RoutingRule> rules)
+            throws SrcMorphException {
+        final List<RoutingRule> copies = new ArrayList<>(rules.size());
+        for (int i = 0; i < rules.size(); i++) {
+            final RoutingRule rule = rules.get(i);
+            if (rule == null) {
+                throw new SrcMorphException("Invalid rules: srcMorph.rules[" + i + "] is null");
+            }
             copies.add(rule.copy());
         }
         return copies;
-    }
-
-    /**
-     * Checks that every prompt a routing rule names, its map and reduce prompts too, has a template, before
-     * a model loads: a key without one would otherwise fail every file of the rule once the model is up.
-     *
-     * @param promptSupport the prompts
-     * @param rules         the rules
-     * @throws SrcMorphException naming the key without a template
-     */
-    private static void requirePrompts(final AiPromptSupport promptSupport, final List<AiFieldGenerationConfig> rules)
-            throws SrcMorphException {
-        for (final AiFieldGenerationConfig rule : rules) {
-            if (!rule.isSkip()) {
-                try {
-                    promptHash(promptSupport, rule);
-                } catch (final IllegalArgumentException e) {
-                    throw new SrcMorphException("Invalid fieldGenerations: " + e.getMessage(), e);
-                }
-            }
-        }
-    }
-
-    /**
-     * Returns the CRC32 of the system prompt a rule's summaries are written with, and of its map and reduce
-     * prompts when it has them, so a change to either shows too.
-     *
-     * @param promptSupport the prompts
-     * @param rule          the rule
-     * @return the hash
-     */
-    static String promptHash(final AiPromptSupport promptSupport, final AiFieldGenerationConfig rule) {
-        final String mapKey = rule.getMapPromptKey();
-        final String reduceKey = rule.getReducePromptKey();
-        // tagged by role, so a prompt that moves from the map to the reduce changes the hash too
-        return CHECKSUMS.calculateCrc32Hex(promptSupport.systemPrompt(rule.getPromptKey())
-                + (mapKey != null ? MAP_PROMPT_TAG + promptSupport.systemPrompt(mapKey) : "")
-                + (reduceKey != null ? REDUCE_PROMPT_TAG + promptSupport.systemPrompt(reduceKey) : ""));
     }
 
     /**
@@ -479,36 +573,44 @@ public final class GenerateEngine {
      * @param entry         the plan entry
      * @param outcome       the file's outcome
      * @param promptSupport the prompts
-     * @return the prompt hash (key) and the facts hash (value)
+     * @return the prompt and facts hashes
      * @throws IOException if an unchanged file's summary cannot be read
      */
-    private static Map.Entry<String, String> recordedHeader(
+    private static RecordedHashes recordedHeader(
             final SourceFileIndexer fileIndexer,
-            final AiIndexPlan.Entry entry,
-            final AiIndexOutcome outcome,
-            final AiPromptSupport promptSupport)
+            final IndexPlan.Route entry,
+            final IndexOutcome outcome,
+            final PromptCatalog promptSupport)
             throws IOException {
-        if (outcome == AiIndexOutcome.UNCHANGED) {
+        if (outcome == IndexOutcome.UNCHANGED) {
             return fileIndexer.recordedHashes(entry.file());
         }
-        return new AbstractMap.SimpleImmutableEntry<>(
-                promptHash(promptSupport, entry.rule()),
-                AiFactExtractor.factsHash(entry.rule().getFacts()));
+        return new RecordedHashes(
+                HeaderHashes.prompt(promptSupport, entry.rule()),
+                FactExtractor.factsHash(entry.rule().getFacts()));
     }
 
     /**
-     * Fails the run when two routed files would be summarized into the same {@code .ai.md}, or when a
-     * rule's prompt leaves its model's window no room for the source.
+     * Fails the run when two routed files would be summarized into the same {@code .ai.md}, when a file
+     * would be summarized into the file the package or the project phase writes
+     * ({@link SourceFileIndexer#phaseFileClash(Path)}), or when a rule's prompt leaves its model's window no
+     * room for the source.
      *
      * @param plan        the routing plan
      * @param fileIndexer the indexer that names each file's summary
-     * @throws SrcMorphException naming the files, or the model and the prompt
+     * @throws SrcMorphException naming the files, the file and the reason, or the model and the prompt
      */
-    private static void checkTargetsAndWindows(final AiIndexPlan plan, final SourceFileIndexer fileIndexer)
+    private static void checkTargetsAndWindows(final IndexPlan plan, final SourceFileIndexer fileIndexer)
             throws SrcMorphException {
         final Map<Path, Path> sourceByTarget = new HashMap<>();
-        for (final List<AiIndexPlan.Entry> entries : plan.routesByModel().values()) {
-            for (final AiIndexPlan.Entry entry : entries) {
+        for (final List<IndexPlan.Route> entries : plan.routesByModel().values()) {
+            for (final IndexPlan.Route entry : entries) {
+                final String clash = fileIndexer.phaseFileClash(entry.file());
+                if (clash != null) {
+                    throw new SrcMorphException(entry.file() + " would be summarized into "
+                            + fileIndexer.targetFile(entry.file()) + ", " + clash
+                            + "; exclude it or route it to a skip rule");
+                }
                 final Path other = sourceByTarget.put(fileIndexer.targetFile(entry.file()), entry.file());
                 if (other != null) {
                     throw new SrcMorphException(entry.file() + " and " + other + " would both be summarized into "
@@ -521,6 +623,75 @@ public final class GenerateEngine {
                             + "); raise its contextSize or lower its maxOutputTokens");
                 }
             }
+        }
+    }
+
+    /**
+     * Logs what the run reads and how.
+     *
+     * @param basePath           the base directory
+     * @param outputPath         the output directory
+     * @param resolvedSubtrees   the subtrees
+     * @param resolvedExtensions the file extensions
+     */
+    private void logRun(
+            final Path basePath,
+            final Path outputPath,
+            final List<Path> resolvedSubtrees,
+            final List<String> resolvedExtensions) {
+        LOGGER.info("Starting AI index generation");
+        LOGGER.info("Base directory  : {}", basePath);
+        LOGGER.info("Output directory: {}", outputPath);
+        LOGGER.info("Subtrees        : {}", resolvedSubtrees);
+        if (!resolvedExtensions.isEmpty()) {
+            LOGGER.info("Extensions      : {}", resolvedExtensions);
+        }
+        final List<String> fileNames = config.getFileNames();
+        if (fileNames != null && !fileNames.isEmpty()) {
+            LOGGER.info("File names      : {}", fileNames);
+        }
+        LOGGER.info("Force           : {}", config.isForce());
+        LOGGER.info("Regenerate on   : {}", config.getRegenerateOn());
+        LOGGER.info("Prune orphans   : {}", config.isPruneOrphans());
+        LOGGER.info("Provider        : {}", config.getGenerationProvider());
+    }
+
+    /**
+     * Builds the file indexer of the run.
+     *
+     * @param basePath           the base directory
+     * @param outputPath         the output directory
+     * @param resolvedSubtrees   the subtrees
+     * @param resolvedExtensions the file extensions
+     * @return the indexer
+     * @throws SrcMorphException if an exclude or a file name is not a valid glob, an interpreter is blank
+     *                           or a path, or {@code contentHeadChars} is below 256
+     */
+    private SourceFileIndexer newFileIndexer(
+            final Path basePath,
+            final Path outputPath,
+            final List<Path> resolvedSubtrees,
+            final List<String> resolvedExtensions)
+            throws SrcMorphException {
+        try {
+            return new SourceFileIndexer(
+                    basePath,
+                    outputPath,
+                    resolvedExtensions,
+                    config.getFileNames(),
+                    config.getFileInterpreters(),
+                    config.getGeneratorVersion(),
+                    config.getAiVersion(),
+                    resolvedSubtrees,
+                    config.getExcludes(),
+                    config.getMinFileSizeBytes(),
+                    config.getMaxFileSizeBytes(),
+                    config.isForce(),
+                    config.getRegenerateOn(),
+                    config.getContentHeadChars());
+        } catch (final IllegalArgumentException e) {
+            throw new SrcMorphException(
+                    "Invalid excludes, fileNames, fileInterpreters or contentHeadChars: " + e.getMessage(), e);
         }
     }
 

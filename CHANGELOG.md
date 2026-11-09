@@ -11,8 +11,248 @@ The release procedure (prompt template and step-by-step instructions) lives in [
 
 ## [Unreleased]
 
+### Upgrading from 1.4.0
+
+The entries below hold the details; what a 1.4.0 user changes:
+
+- **A rule naming `promptKey: file-body-java` names `file-body-oop`:** profile v3 has no
+  `file-body-java` any more.
+- **Configuration values that read differently now:** a `{` in an `excludes`, `pathGlob` or
+  `fileNames` glob opens an alternative (`{a,b}`) and an unclosed one fails the run (a glob has no
+  escape for a literal brace; `?` matches it); `$${name}` writes a literal `${name}` (it was left as written); a key
+  defined twice in `aiDefinitions`, `promptDefinitions` or `factDefinitions` fails the run instead of
+  the last one winning.
+- **A link to a directory below a subtree or in the output directory is no longer walked** (on
+  Windows a junction, which 1.4.0 entered): name a linked directory whose files you want, and whose
+  target no subtree holds, as a subtree of its own; with `pruneOrphans` the summaries 1.4.0 wrote below
+  it are deleted otherwise.
+- **The plugin's `G` is srcmorph's version**, no longer the project's: a reader or a script that took
+  the header's `G` for the project version reads `projectName` and the build instead.
+- **The first run rewrites every summary**, one model call each: a summary of 1.4.0 records no `M`
+  and no `K`, the project's `C` is built differently, and every file prompt of profile v3 changed (the
+  secrets rule). To keep the old summaries instead, set all five `regenerateOn` switches to `false`
+  and keep them there: a field is recorded only when its summary is written, so a run with the
+  switches on later still finds it missing and rewrites then. `force: true` rewrites everything at once.
+- **Java callers of the library** (the CLI and the plugin need nothing): `AiMdHeader.withHashes`
+  takes `(prompt, facts, model, children)`; the `PackageIndexer` and both `ProjectIndexer`
+  constructors take a `RegenerateOn` after `force`; the `SourceFileIndexer` constructor takes
+  `fileNames` and `fileInterpreters` (after `fileExtensions`), a `RegenerateOn` (after `force`)
+  and `contentHeadChars` (last); `SourceFileIndexer.indexFile` takes a `modelHash` (last);
+  `AiMdHeaderSupport`, now `AiMdRewritePolicy`, takes the five switches as booleans (without
+  arguments, all on).
+  `GenerationTimeEstimator` (was `AiGenerationTimeEstimator`) is linear: `REQUEST_OVERHEAD_MS`, `PREFILL_MS_PER_TOKEN` and
+  `DECODE_MS_PER_TOKEN` replace the four CPU coefficients, and `estimateDecodeMillis` takes only the
+  output tokens. `IncompleteAnswerException.Reason` has a fourth value, `ABORTED`.
+  `AiGenerationUsage.add` is `GenerationUsage.withCall` (one call's usage). `GenerationProvider` has
+  `takeLoadNanos()`.
+- **Java callers of the library, the package restructure** (the configuration file, the CLI's
+  commands and the plugin's goals and properties stay as they are; see the entry under Changed):
+  fix the imports of the moved classes and rename `LlamaCppJniConfig` to `ProviderConfig`,
+  `LlamaCppJniConfigFactory` to `ProviderConfigFactory`, `AiFieldGenerationSupport` to
+  `SummaryGenerator`.
+  `GenerationRequest` takes three arguments (no header); `SummaryGenerator.generate` takes four
+  (no header). `AiConditionEvaluator.CONTENT_HEAD_CHARS` is
+  `SrcMorphConfiguration.DEFAULT_CONTENT_HEAD_CHARS`, `AiFactExtractor.READS_PER_CHAR` and
+  `READ_ALLOWANCE` are `ReadBudget`'s, and
+  `OpenAiCompatibleAiGenerationProvider.withoutUserInfo(text)` is `UrlUserInfo.mask(text)`. A
+  plugin subclass extends `AbstractSrcMorphMojo` instead of `AbstractAiIndexMojo`.
+- **Java callers of the library, the null-safety review** (the configuration file, the CLI and the
+  plugin stay as they are): `RoutingRule.getPromptKey()` / `getAiDefinitionKey()` (was `AiFieldGenerationConfig`) are
+  `@Nullable` (a skip rule has none); a rule that routes gives them through `requirePromptKey()` /
+  `requireAiDefinitionKey()`. `SrcMorphConfiguration.getBaseDirectory()` is `@Nullable` until set, and
+  an engine without one throws a `SrcMorphException` instead of a `NullPointerException`.
+  `ProviderConfig.builder()` takes no argument: `.modelPath(path)` sets the model file, and
+  `modelPath()` is `null` rather than `""` for a model without one (a remote model); the llama.cpp JNI
+  provider refuses such a configuration in its constructor. The `getKey()` of `ModelDefinition`,
+  `PromptDefinition` and `FactDefinition` and `FactCounter.getLabel()` / `getPattern()` are
+  `@Nullable`, and a definition without a key throws an `IllegalArgumentException` instead of a
+  `NullPointerException`. The overview constructor of `ProjectIndexer` takes one `ProjectOverview`
+  (provider, rule, prompt and model lookups) instead of the four values; the four-argument
+  `SourceFileIndexer.classify` takes both lookups non-null (the two-argument one skips the window
+  check). `GenerationProviderFactory.effectiveProvider` takes a non-null run provider and returns a
+  non-null key, and `PromptTemplateLoader.load(List)` is gone (`load(List, Collection)` remains).
+- **A `size` condition measures the source as srcmorph reads it**: the bytes the checksum is taken
+  over, `\n` line endings and no byte order mark (a UTF-16 file: the UTF-8 length of its text), not
+  the bytes on disk. On a CRLF checkout, or for a file with a byte order mark, a file near a tier's
+  bound can reach another rule than in 1.4.0. The run's `minFileSizeBytes` / `maxFileSizeBytes` band
+  stays on the bytes on disk: it filters during the walk, before a file is read. Java callers: `SourceLines.normalize(byte[])` is not public any more
+  (`SourceLines.checksumBytes` and `SourceLines.size` are).
+- **A `baseUrl` with user info (`https://user:key@host/v1`), a query or a fragment fails the check.**
+  srcmorph never sent the user info (`HttpURLConnection` does not authenticate with it), so such a
+  model ran in 1.4.0 against a server without a key; put the key in the variable `apiKeyEnv` names
+  and the path alone in `baseUrl`.
+- **The self-test's gpt-oss rules map-reduce a file over the window** (`onOversize: mapReduce` on
+  every rule, the default kinds too), so a configuration copied from it no longer fails a dense file
+  just below a size tier.
+- **Every configuration file renames three keys**: `fieldGenerations` is `rules` (under `srcMorph`),
+  `packageFieldGenerations` is `packageRules` and `projectFieldGenerations` is `projectRules` (the
+  loader refuses the old names as unknown keys). The beans' accessors follow (`getRules`,
+  `getPackageRules`, `getProjectRules`; the CLI's `CConfiguration` fields too).
+- **Java callers of the window and the parts**: `InputWindowCalculator.maxInputChars(config)` takes
+  one argument and is the budget of the whole rendered prompt (it took the template out a second time);
+  `SummaryGenerator.parts()` is `takeParts()`, which also starts the next file's answers anew.
+- **A configuration that sets `pluginVersion` names it `generatorVersion`** (it is srcmorph's own
+  version, the header's `G`, in the CLI and the plugin alike); the run record's `pluginVersion` is
+  `generatorVersion` too, and so are the bean's getter and setter.
+- **Java callers of the library, the naming review** (`docs/code-review-2026-11-05.md` section 2):
+  `AiGenerationTimings` is `TimedGeneration`; `AiPromptPreparationSupport.getBasePromptLength` is
+  `PromptPreparer.basePromptLength`; `RemoteModel.UNKNOWN_CONTEXT_LENGTH` is `-1` (it was `0`).
+  `GgufModelInfo` has no sentinels (null-safety finding S10): it is made by `parsed(name,
+  contextLength)` or `unreadable(failure)`, `modelName()` and `failure()` are `null` where they were
+  `""`, `contextLength()` is an `OptionalLong`, and `UNKNOWN_CONTEXT_LENGTH` is gone. The CLI's
+  `Main.logConfigurationTransformation`
+  is `logConfigurationEcho`, `configurationToYAML` is `configurationToYaml`, and `readString`,
+  `fromJson`, `fromYaml`, `configurationToJson` and `configurationToYaml` are package-private.
+  `AiMdHeader`'s accessors are named (the file keeps its letters): `h()` is `headerVersion()`, `c()`
+  `checksum()`, `d()` `sourceDate()`, `t()` `generatedAt()`, `g()` `generatorVersion()`, `a()`
+  `aiVersion()`, `x()` `nodeType()`, `p()` `promptHash()`, `n()` `factsHash()`, `m()` `modelHash()`
+  and `k()` `childrenHash()`.
+  `AiIndexPlan.Entry` is `IndexPlan.Route`, and
+  `SourceFileIndexer.recordedHashes` returns a `RecordedHashes` (`promptHash()`, `factsHash()`) instead
+  of a `Map.Entry`.
+  `AiGenerationConfig` is gone: `ModelRegistry.definition` (was `AiModelDefinitionSupport.getConfig`)
+  returns a copy of the `ModelDefinition` with its model path resolved, `ProviderConfigFactory` builds
+  a `ProviderConfig` from it, and the `DEFAULT_*` constants are `ModelDefinition`'s (`maxInputChars` was never
+  configurable: `DEFAULT_MAX_INPUT_CHARS` is the fallback without `charsPerToken`).
+  The `Ai` prefix is gone but on the `AiMd*` classes of the `.ai.md` format, and the `*Support`
+  names that hid a role say it: `AiChecksumSupport` `ChecksumSupport`, `AiGeneratorVersion`
+  `GeneratorVersion`, `AiGlob` `Glob`, `AiPathSupport` `SourcePaths`, `AiProfileFileSupport`
+  `ProfileFileSupport`, `AiShebang` `Shebang`, `AiSourceExcludeFilter` `SourceExcludeFilter`,
+  `AiSourceLines` `SourceLines`, `AiTimeSupport` `TimeSupport`, `AiCalibration` `Calibration`,
+  `AiCondition` `RuleCondition`, `AiConditionGroup` `ConditionGroup`, `AiFactCounter` `FactCounter`,
+  `AiFactDefinition` `FactDefinition`, `AiFieldGenerationConfig` `RoutingRule`,
+  `AiIncompleteStrategy` `IncompleteStrategy`, `AiModelDefinition` `ModelDefinition`,
+  `AiModelDefinitionSupport` `ModelRegistry`, `AiOversizeStrategy` `OversizeStrategy`,
+  `AiPromptDefinition` `PromptDefinition`, `AiRangeCondition` `RangeCondition`, `AiRegenerateOn`
+  `RegenerateOn`, `AiFactDefinitionLoader` `FactDefinitionLoader`, `AiFactDefinitionSupport`
+  `FactGroups`, `AiFactExtractor` `FactExtractor`, `AiConditionEvaluator` `ConditionEvaluator`,
+  `AiFieldGenerationSelector` `RuleSelector`, `AiFileContext` `FileContext`, `AiGenerationRequest`
+  `GenerationRequest`, `AiPreparedPrompt` `PreparedPrompt`, `AiPromptPreparationSupport`
+  `PromptPreparer`, `AiPromptSupport` `PromptCatalog`, `AiPromptTemplateLoader`
+  `PromptTemplateLoader`, `AiMdHeaderSupport` `AiMdRewritePolicy`, `AiCompletionParser`
+  `CompletionParser`, `AiContextOverflowException` `ContextOverflowException`,
+  `AiGenerationProvider` `GenerationProvider`, `AiGenerationProviderFactory`
+  `GenerationProviderFactory`, `AiGenerationUsage` `GenerationUsage`, `AiIncompleteAnswerException`
+  `IncompleteAnswerException`, `LlamaCppJniAiGenerationProvider` `LlamaCppJniGenerationProvider`,
+  `MockAiGenerationProvider` `MockGenerationProvider`, `OpenAiCompatibleAiGenerationProvider`
+  `OpenAiCompatibleGenerationProvider`, `AiCalibrationMeasurement` `CalibrationMeasurement`,
+  `AiCalibrationRunner` `CalibrationRunner`, `AiHeaderHashes` `HeaderHashes`, `AiIndexOutcome`
+  `IndexOutcome`, `AiIndexPlan` `IndexPlan`, `AiIndexTally` `IndexTally`, `AiDeterministicSummary`
+  `DeterministicSummary`, `AiGenerationResult` `SummaryResult`, `AiGenerationTimeEstimator`
+  `GenerationTimeEstimator`, `AiInputWindowCalculator` `InputWindowCalculator`, `AiMapReduceSupport`
+  `MapReduceMath`, `AiOverflowBackoff` `OverflowBackoff`, `AiRouteEstimator` `RouteEstimator`,
+  `AiSourceChunker` `SourceChunker`, `AiTokenWindow` `TokenWindow`, `AiProgressBar` `ProgressBar`.
+  `ModelRegistry.getConfig` is `definition`, `AiMdRewritePolicy.shouldWrite` is `shouldRewrite`,
+  `ProviderConfigFactory.fromGenerationConfig` is `from`.
+- **Module-path consumers of the library see `config` and `engine` only**: `module-info.java` exports
+  those two (and `support` to the CLI alone), no longer `document`, `facts`, `indexer`,
+  `indexer.generation`, `prompt`, `provider` and `routing`. The engines' results name none of their
+  types: `CalibrationReport` is read through its three renderings (its constructor, `measurements()`
+  and `ModelMeasurement` are package-private), `ModelListReport` through `render()` (its constructor,
+  `listings()` and `Listing` likewise), and `RunRecord`, which no engine returns, is package-private;
+  `CoreArchitectureTest#exportedApiNamesNoInternalType` keeps it that way. On the classpath (the CLI,
+  the plugin, a Java 8 consumer) nothing changes but these visibilities.
+- **A script that reads srcmorph's log lines**: the file phase names a file by its path below the
+  base directory (it was the absolute path), and the plan's model header and its per-file estimate
+  line have a new form (the entries under Changed).
+- **The plan, the run record and the progress list files of several subtrees in one path order**
+  (`src/extra/...` before `src/main/...`), no longer subtree by subtree in configured order.
+- **Plan times change:** lower for map-reduce files whose rounds end in a single partial, lower for
+  multi-byte (CJK) sources, and 0 s for a chunked file whose window leaves less than 1000 chars for a
+  chunk. **Such a file fails the plan and `check`** (the "Over window" section says `FAILS BUILD: N
+  chars for a chunk`), as an `onOversize=fail` file does; the run used to fail it file by file. On a
+  model whose provider counts the prompt's tokens (`llamacpp-jni`) the room is only estimated before
+  the run, which sizes the window by the count, so there the plan warns (`handled; WARNING: N chars
+  for a chunk by the estimate`) and the run decides. Java callers: `SourceFileIndexer.classify` with
+  the window check takes the run's `generationProvider` as a fifth argument. A
+  context overflow of a prompt of 1000 chars or fewer is not
+  retried; the retry warning's "(A -> B chars)" names the refused prompt's length as A.
+- **Java callers of the generation classes:** `RouteEstimator.estimateRouteSeconds(...)` has no
+  `fileSizeBytes` parameter, `MapReduceMath.sourceBudget` is gone; `SourceFileIndexer.sortByPath` and
+  `SourceLines.cutIndex` are new.
+- **`.jspx` and `.tagx` take `factsKey: jspx-facts`** (jsp-facts with XML comments blanked); a copied
+  configuration splits its jsp rule the same way. A configuration that copied the `secrets` rule
+  takes its new form (the self-test's), which keeps CI workflows, Helm templates and Android
+  settings.
+- **A `baseUrl` that holds an `@` anywhere fails the check** (user info before the host, a password
+  with a `/`, an `@` in the path), and **a 3xx answer is an error**: srcmorph follows no redirect, so
+  `baseUrl` names the final server.
+- **`reasoningEffort` defaults to empty, no longer `low`** (breaking): a model definition without
+  `reasoningEffort` sends no effort, neither a `reasoning_effort` argument to a local chat template
+  nor anything to a remote server, so the model's own default applies (gpt-oss: `medium`). A gpt-oss
+  definition that relied on the old default names `reasoningEffort: low`, as the self-test, its CLI
+  twin and the Luna example do; `models.json` sets it in `common`, so the model card's definitions
+  run as measured.
+- **An `openai-compatible` request carries `top_k` and the repetition penalty only when the
+  definition sets them** (breaking): `topK` other than `40` (`0` is sent now and switches top-k
+  off), `repeatPenalty` other than `1.0`. Neither is an OpenAI chat-completions field; llama-server
+  applies the same defaults, and OpenRouter now applies the model's own.
+- **A source named `package` or `project` fails the plan** (breaking): it was summarized into the
+  `package.ai.md` of its directory (`project.ai.md` of the output root), the file the package
+  (project) phase writes; the name is compared in any case on every file system (`Package` too),
+  since a case-insensitive one would put both into one file. Exclude it or take it with
+  a skip rule. A source named `project` below the base root is summarized into `project.ai.md` of its
+  directory, and the package phase now reads that file as its directory's content (it left out every
+  `project.ai.md`, not only the output root's).
+- **Summaries of thirteen kinds are written again:** the fact counters of Java, OpenAPI, AsyncAPI,
+  batch, SQL, GitHub Actions, Ansible, Kotlin, Scala, Groovy and JSP changed (see Fixed), and with
+  them the facts hash `N` of their summaries; Java EE (`java-ee-facts`) and JSP documents
+  (`jspx-facts`) include the Java and JSP counters, so theirs changed too.
+- **A large file of an XML kind stays with its kind's rule:** the self-test's `big-xml` and
+  `huge-xml` tiers no longer take a `persistence.xml`, MyBatis mapper, WSDL, Facelets page or the
+  other XML kinds (see Changed); a copied configuration takes the tiers' new conditions.
+- **A copied secrets rule takes the new properties pattern** of the self-test (see Changed): the
+  old one let a value that only starts with `${` through and skipped a flag or a log level.
+- **A benchmark script that runs `run.py` or `score.py` on an output tree of its own** passes
+  `--meta <dir>` (and score.py `--scores <dir>`): without them both now refuse an `--out` other
+  than the card's. run.py's `--chars-per-token` takes a whole number of at least 1.
+- **A fraction in a whole-number key fails the run** (breaking): `charsPerToken: 2.5`,
+  `contextSize: 4096.0` and the like were cut to an integer without a word; write the whole number.
+
 ### Added
 
+- **New key `srcMorph.pruneOrphans`: the plan lists the orphaned summaries, and the switch deletes
+  them.** Nothing deleted the summary of a deleted, renamed or newly excluded source (or of one a
+  skip rule now takes), and the package and project phases kept reading it. The `generate` plan now
+  lists every file summary (`X: file`, read from the header block) below the output directory that
+  no file of the plan is summarized into, and the `package.ai.md` (`X: package`) of a directory left
+  without any summary and sub-package (a deleted or renamed package, which the package phase neither
+  rewrites nor removes), in a section "Orphaned summaries (N)" with a warning. `pruneOrphans: true`
+  (default `false`) deletes them, each with a log line, before a run that generates; a `planOnly`
+  run and a check delete nothing. Kept, with a warning: a summary whose header cannot be read, what
+  the walk of the output directory cannot read, and every summary below a source file or directory
+  the source walk could not read. Leave it off while narrowing `subtrees` for one run: the summaries
+  of the subtrees left out are orphans of that run too. A summary that stays or that the run writes
+  keeps the `package.ai.md` of every directory above it; a missing default subtree (`src/main/java`)
+  and a script whose `#!` line cannot be read keep their summaries; any other plan that routes
+  fewer files than before (an exclude, a skip rule, a narrowed `fileExtensions`) makes the
+  summaries of the rest orphans. On a case-insensitive file system that compares paths by case
+  (macOS), the summary of a source renamed only in case is an orphan once and is written again.
+
+- **`partsDirectory` keeps the map-reduce answers of each file:** every map answer and every reduce
+  batch's answer of a file read in chunks, in `<partsDirectory>/<path below the base>.parts.md`, so a
+  measurement can see where a summary loses what a part said (TODO row 32). Unset, nothing is kept.
+- **A rule for `package.json`: `file-body-ops` with `npm-facts`.** The counters count the entries of
+  `scripts`, the four dependency objects and `engines`, the strings of `workspaces`, and a VS Code
+  extension's contributed commands and language model tools; `file-body-ops` has a line for an npm
+  manifest (scripts, dependencies, engines, workspaces, an extension's commands, chat participants and
+  tools), so every ops file's prompt hash changes once. `run.py` routes `package.json` there. Measured
+  on the manifest of a VS Code extension (internal, three runs each): of its 45 names gpt-oss-20b named
+  45, 28 and 34 (with the fallback prompt 45, 13, 28 and 15; with the rule but the ops prompt as it was
+  21, 21 and 28, without the extension's 17 tools), GPT-6 Luna 45 every time (43 to 45).
+- **The fact counters are measured linear on Java 8 as well:** the `linearity-jdk8` job of
+  `publish.yml` runs `FactPatternLinearity`, the measure of `ProfileFactPatternsLinearityTest` written
+  in Java 8, on a Java 8 JDK, since the counters' time limit counts the reads of a regex engine that
+  differs between JDKs. It gates both publish jobs.
+
+- **`$${name}` writes a literal `${name}`** in a configuration value, whether a property of that
+  name exists or not: an inline prompt can show a shell variable (`$${HOME}`) that `-DHOME=...` or a
+  Maven property would otherwise replace. In a path it still fails the load, as an unreplaced
+  reference does.
+- **TypeScript takes `file-body-oop`:** a rule for `.ts`, `.mts` and `.cts` in `run.py` and in the
+  Luna example (no counters of its own). Measured on 2026-11-05 on a TypeScript repository,
+  internally: with the oop prompt both models named more of the exported API than with the
+  fallback, gpt-oss-20b clearly more, also of the private helpers and the tests.
 - **`examples/copilot-api-gateway/srcmorph-luna.yaml`:** GPT-6 Luna through the GitHub Copilot API
   Gateway for every file, package and the project, with the whole profile v3: a rule per kind of
   source with its prompt and exact fact counters, and `onOversize: mapReduce` on every rule, the
@@ -20,11 +260,752 @@ The release procedure (prompt template and step-by-step instructions) lives in [
   sampled. It takes every extension of the self-test profile and leaves out `target/`, `.git/`,
   `.idea/`, `.vscode/`, `.gradle/`, `node_modules/` and `.claude/` (agent worktrees, a second copy
   of the sources). `ExamplesConfigBindingTest` pins the routing, the facts, the strategy and the
-  chunk prompts.
+  chunk prompts. It routes every kind profile v3 knows (below): Java with Jakarta EE imports
+  or annotations written with their package (`contentMatches`) to the EE counters, Kotlin, Groovy
+  and Scala to the shared OOP prompt, the EE descriptors and mappings by name (`fileNames`), MyBatis
+  mappers and integration routes by their DTD or namespace, BPMN, DMN, WSDL, JSP, Facelets, OpenAPI
+  and AsyncAPI by their first key, Protobuf, Avro and GraphQL, GitHub Actions by path, Kubernetes by
+  `kind:`, Compose files by name, Ansible playbooks and roles, Terraform, Camel's YAML DSL by its
+  `- route:` / `- from:`, Dockerfiles and Jenkinsfiles by name, Gradle build scripts of both DSLs
+  and `.properties` files to the ops prompt, PowerShell and batch files to the fallback prompt with
+  their counters, and scripts without an extension by their `#!` line (`fileInterpreters`).
+  `ExamplesConfigBindingTest` routes one file of each.
+- **Benchmark: the enterprise corpus** ([`docs/ai-index-benchmark/corpus-enterprise/`](docs/ai-index-benchmark/corpus-enterprise/README.md)),
+  seventeen files of those kinds around one shop backoffice, with `modelcard/facts-enterprise.json`.
+  `run.py` routes the kinds its corpora hold as the Luna example does (not AsyncAPI, Ansible, Camel
+  YAML, PowerShell, batch or scripts by their `#!` line, which none of them has) and takes
+  `--java-prompt`, so the Java
+  prompt and the shared OOP prompt run side by side on the card corpus; `score.py` reports
+  `secretsLeaked`, the summaries that copy a value the facts mark as a secret.
+- **`ProfileFactPatternsLinearityTest` measures that every pattern of every facts file of the
+  profile reads linearly**, the `[ignore]` lines included, over 121 adversarial lines, each also repeated
+  within one line (unclosed
+  openers and tags, heredoc markers, unbalanced parentheses, runs of one character). It counts the
+  characters the matcher reads instead of timing it: four times the input may read at most six
+  times as many (linear reads four times, quadratic sixteen), so the result is the same on any
+  machine. A facts file added to the profile is measured without a change to the test. Against the
+  facts files of 1.4.0 it reports six quadratic patterns, all fixed above.
+- **Files without an extension can be indexed and routed** (`fileNames`, under `srcMorph` and as a
+  condition leaf): globs over the file name without its directory, matched in any case
+  (`Dockerfile`, `Jenkinsfile`, `Dockerfile.*`); a name with a `/` fails the run in both places (it
+  could never match: use `pathGlob`). Up to now only `fileExtensions` selected a file, so a Dockerfile
+  or a Jenkinsfile could not be indexed at all.
+- **Routing by content** (`contentMatches`, a condition leaf): a Java regular expression found in the
+  first `contentHeadChars` characters of the file (under `srcMorph`, 16,384 by default, at least 256
+  so the `interpreters` condition sees a whole `#!` line; raise it for a marker behind a long license
+  header: the head is never read past the file's end), so a Kubernetes manifest, an OpenAPI document and a Camel
+  route, all `.yaml`, take different rules (`(?m)^apiVersion:`). Planning reads each candidate once, whole;
+  an invalid expression fails the check. The pattern is
+  compiled once and has the read budget of a fact pattern: one that backtracks past it does not match,
+  with a warning, so it cannot hang the plan.
+- **Scripts without an extension can be indexed and routed by their `#!` line**
+  (`fileInterpreters` under `srcMorph`, `interpreters` as a condition leaf): `[bash, sh, perl]`
+  selects a `bin/deploy` that starts with `#!/usr/bin/env bash`. The interpreter is the program the
+  line names, or what `env` runs (options and assignments skipped); a name matches its versions too
+  (`python` matches `python3.12`; a name ending with a digit only from a dot on: `python3.1` does not
+  match `python3.12`), and the arguments of `env`'s options (GNU `-u`, `-C`, `-a`, BSD `-P`, `-L`,
+  `-U`) and its `-S` command line are read as `env` reads them. The line is read only for a file the subtrees, excludes and size band let
+  through; one that cannot be read is skipped with a warning, the run goes on. `support.Shebang` holds the rule; an interpreter given with its directory
+  (`/bin/bash`) fails the run.
+- **Fact counters can count before the blanking and count names** (`[raw]` and `[distinct]` in a
+  facts file, `raw` and `distinct` in a configuration): a raw counter counts the source as written,
+  so a `TODO` in a comment counts next to counters that skip comments; a distinct counter counts the
+  different texts it matched, its first group where that took part (twelve `@Inject Clock` are one
+  type). A summary written before keeps its facts hash; the markers enter it only where set.
+- **Every fact pattern has a time limit**: it may read 2,000 characters per character of the source
+  plus 1,000,000, counted by the matcher's reads, so the limit is the same on every machine. A
+  pattern of a user's own that backtracks past it is stopped: its counter is left out of the facts
+  line, an ignore counter blanks nothing, and a warning names it. The profile's patterns read far
+  less (`profiles/README.md` gives the measured maximum); the linearity test asserts that none
+  reaches the limit.
+- **Fact counters for the kinds that had a prompt and none**: `scala-facts`, `proto-facts`,
+  `avro-facts`, `graphql-facts`, `asyncapi-facts`, `terraform-facts` (OpenTofu and Terragrunt too),
+  `ansible-facts`, `compose-facts` and `camel-yaml-facts`; `dmn-facts` for DMN decisions (inputs,
+  outputs, rules, hit policies other than UNIQUE, the decision requirements); `gradle-facts` and
+  `properties-facts`, and `powershell-facts` and `batch-facts` for the fallback prompt.
+  `ContractFactPatternsTest`, `OpsFactPatternsTest`, `JvmFactPatternsTest` and (DMN)
+  `EnterpriseXmlFactPatternsTest` pin each on a sample
+  of its kind with a commented-out or quoted declaration that must not count. The YAML ones blank
+  the body of a block scalar from the indentation of its first line, as YAML reads it, and keep its
+  key (`ansible.builtin.shell: |` counts).
+- **`{a,b}` alternatives in every glob** (`excludes`, `pathGlob`, `fileNames`), nested too:
+  `**/*.{yml,yaml}`, `**/{target,build}/**`. The syntax lives once in `support.Glob`; a glob that
+  opens a `{` it does not close fails the run, naming it.
+
+- **Profile v3 covers the kinds of an enterprise Java code base**, with four prompts and fifteen
+  fact files, so one generic prompt serves every language of a kind:
+  - `file-body-oop`: one prompt for the class-based languages (Java, Kotlin, Groovy, Scala); it
+    replaces `file-body-java` (below), with
+    their facts per language: `kotlin-facts` (types, companion objects, data and sealed types,
+    functions, extension and suspend functions, constructor properties, nested comments and string
+    templates blanked), `groovy-facts` (types, typed and `def` methods, Spock features and blocks,
+    closures, GStrings and slashy strings blanked) and `java-ee-facts` (`java-facts` plus the EJB,
+    JPA, CDI, JAX-RS, JAX-WS, Servlet, JTA and security annotations).
+  - `file-body-xml` defines Jakarta EE descriptors, JPA and Hibernate mappings, MyBatis mappers,
+    Camel, Spring Integration, Mule and Synapse routes, BPMN and DMN, and WSDL, each counted by its
+    own file: `jee-facts`, `persistence-facts`, `mybatis-facts` (which reads the SQL in CDATA),
+    `integration-facts`, `bpmn-facts` (the diagram blanked) and `wsdl-facts`.
+  - `file-body-view` for JSP, tag files and Facelets (`jsp-facts`, `facelets-facts`): the data a
+    page reads, the actions it sends, its template and its server code.
+  - `file-body-contract` for OpenAPI, AsyncAPI, JSON Schema, Avro, Protobuf and GraphQL
+    (`openapi-facts`, YAML or JSON, block scalars blanked) and `file-body-ops` for CI pipelines,
+    Dockerfiles, Compose, Kubernetes, Helm, Ansible and Terraform (`k8s-facts`, `actions-facts`,
+    `dockerfile-facts`).
+
+  `JvmFactPatternsTest`, `EnterpriseXmlFactPatternsTest`, `ViewFactPatternsTest` and
+  `OpsFactPatternsTest` pin every counter on a sample of its kind with its traps; the linearity
+  test measures every pattern.
+- **A facts file can include another** (`[include]<TAB><key>`): its counters, `[ignore]` lines
+  included, at the place of the line, so `jee-facts` is `xml-facts` plus the descriptor counters and
+  copies none. A cycle fails the run naming the chain; a label two of the files use fails as before.
+- **Secrets stay out of the index.** Every file prompt names a password, private key, token, API key
+  or credentials in a URL without copying it (`DB_PASSWORD=***`): the shell, XML and fallback
+  prompts asked for "every value", so a `<password>` of a data source or a token in a script went
+  into the summary, and the default output directory `src/site/ai` is published with the Maven
+  site. The self-test, `examples/build-your-own-jar/srcmorph.yaml` and the Luna example skip the
+  files that hold credentials (`id: secrets`: `.env`, `*.tfvars`, `*.tfstate`, Maven's
+  `settings.xml`, keys, `*secret*` and `*credential*` configuration files, and a `.properties` file
+  whose head gives a password, secret, token or API key a value that is not a `${...}` reference,
+  such as a `gradle.properties` with `signing.password` or an `application.properties` with
+  `spring.datasource.password`), so they never reach a model; `ExamplesConfigBindingTest` pins which
+  names it skips and that no source file is among them. Of the 20 properties files of the
+  2026-11-07 runs two are skipped that way (keystore passwords of a TomEE WS-Security example).
+
+- **The CLI runs on the module path in CI:** the `smoke-jar` job plans the demo tree with
+  `java -p ... -m net.ladenthin.srcmorph.cli/...`, the only run that reads the `module-info.java`
+  files (what the core exports, what the CLI opens to Jackson).
+- **`modelcard/correlate.py`** computes the model card's correlation of an index's size with its
+  search scores from `scores/` (Pearson and Spearman, the card's 32 runs by default).
+
+### Changed
+
+- **The configuration loader refuses a fraction in a whole-number key** (breaking), naming the key:
+  Jackson cut `charsPerToken: 2.5` to `2` and `0.5` to `0`, which switches srcmorph to the static
+  `maxInputChars`; run.py's `--chars-per-token 0.5` reached srcmorph that way. A floating-point key
+  (`temperature: 1`) still takes a whole number.
+- **The XML size tiers leave a kind's file to its rule:** `huge-xml` and `big-xml` take only what the
+  `xml` rule takes and leave out every file an XML kind rule takes by name or content (jee, mybatis,
+  bpmn, persistence, integration; their whole conditions copied in rule order, a test holds them
+  equal, so a large `.xsd` or `.xsl` that only names a kind's namespace stays with the tiers), and
+  `.wsdl` and `.xhtml` by extension. From 260 KB a `persistence.xml`, MyBatis mapper or WSDL got the
+  generic `xml-facts` on Granite; it now keeps its kind's counters on gpt-oss, which map-reduces it.
+  POMs keep their own tiers.
+- **Secrets skip a properties file with a secret key, another spelling or a blank separator:** the
+  properties branch of the secrets rule (self-test, CLI twin, Luna example, run.py) also takes
+  `aws.secretKey=`, `app.secret-key=`, `aws.secret-access-key=`, `jwt.secret.key=`, `db.pwd=`,
+  `keystore.pass=`, `signing.passphrase=`, `gpgPassphrase=`, `jwt.private-key=`, `credentials=`
+  and `mail.smtp.password hunter2` (a blank is a separator in a properties file), and a value that
+  only starts with a placeholder (`${A}hunter2`) or gives a default (`${DB_PASSWORD:hunter2}`). A
+  whole placeholder (`password = ${DB_PASSWORD}`, `"${X}"`, Maven's `@db.password@`, Spring's
+  `#{...}`), a flag, a number or a log level (`token=false`, `secret=3600`,
+  `logging.level.org.secret=DEBUG`), an empty value and a key that only starts so
+  (`password.label`, `token.expiry`, `passwordless`) stay sources; a message bundle that labels a
+  password field (`login.password=Password`) is skipped, as before. Not seen: a plural or a
+  qualifier after the key (`passwords=`, `password.prod=`), credentials in a URL, an `account-key`
+  and a value on a continuation line. run.py reads `contentMatches` in ASCII, as Java does.
+- **score.py wants `--meta` and `--scores` with an `--out` other than the card's** (breaking for a
+  script that left them out): it applied the cut-off lists of the card's runs to any output tree and
+  wrote over the card's `scores/`, which it now refuses for another `--out` too. The card's quality
+  metric moved from plot.py to `score.card_metrics`, with a test, and so did the cost per MB
+  (`score.cost_per_mb`): a run whose cost lookup failed (`costUsd` null) is left out of the cost
+  charts, where plot.py divided it and stopped. run.py likewise wants `--meta`
+  with another `--out`: it wrote that run's records over the card's `runs/`.
+- **OpenAPI, Camel YAML and Dockerfile rules take no lookalike:** the `openapi` rule wants a version
+  after `openapi:` or `swagger:` (a Spring `application.yml` with `swagger: enabled: true` goes to
+  `ops`), a Camel route's `- from:` names an endpoint (`timer:`, `kafka:`, not `http:`/`https:`,
+  which no Camel consumer is) or holds `uri:`, `steps:` or `parameters:`, after an `id:`, a
+  `description:`, a comment or a blank line too (a list of redirects `- from: /docs/old` is no
+  route), and the configs and
+  run.py exclude `**/*.dockerignore`, BuildKit's `Dockerfile.dockerignore` that `Dockerfile.*` took.
+- **Secrets skip a Kubernetes Secret by its kind:** the secrets rule of the self-test, its CLI twin,
+  the Luna example and run.py skips a YAML file whose head declares `kind: Secret`, whatever its
+  name; `deploy/postgres.yaml` went to the `k8s` rule, in the Luna example to a remote model. A Helm
+  chart's template stays out, as in the name branch.
+- **The `openai-compatible` request body is shaped for OpenRouter and llama-server:** a configured
+  penalty goes out as `repetition_penalty` and `repeat_penalty`, a configured effort as
+  `reasoning.effort` and `reasoning_effort` (OpenAI's and llama-server's name), so llama-server sees
+  both; OpenRouter answers a request with both forms (checked 2026-11-07).
+
+- **The self-test's large tiers start at ~260 KB, where gpt-oss-20b's window really ends.** They
+  started at 275,000 bytes, but the 96K window leaves about 270,000 characters next to the XML
+  prompt, so a 272 KB Java, SQL, XML or POM file failed the run's plan (`onOversize: fail`). And
+  every other kind the self-test routes (shell, Perl, TypeScript, JSP, BPMN, DMN, Protocol Buffers,
+  GitHub Actions, Kubernetes, Dockerfiles, Terraform, npm, `ops` and the fallback) map-reduces a
+  source over the window now instead of failing the run: one 400 KB OpenAPI file did. The CLI's
+  `build-your-own-jar/srcmorph.yaml` the same; its header says what its one subtree indexes and how
+  to widen it.
+- **Counters closer to the source (the facts hash of these kinds changes, so their summaries are
+  written again):** the integration counter's property placeholders no longer count Camel Simple
+  expressions (`${body}`, `${header.id}`), Facelets input fields no longer count
+  `<f:selectItem(s)>`, Dockerfiles blank BuildKit heredoc bodies, PowerShell counts a quoted
+  dot-source and no `Mandatory = $false`, Gradle reads the Kotlin DSL's bare plugins and
+  `tasks.<name> { }`, Kotlin no longer counts a `when (val x = ...)` subject as a constructor
+  property, Java counts an annotation element with a `default` as a method, GitHub Actions no
+  longer counts a reusable-workflow call as an action, and Compose no longer counts the `$${X}`
+  escape as a variable.
+- **Every fact counter reads linearly within one line too, and more of them count what their label
+  says** (the facts hash of these kinds changes, so their summaries are written again). The linearity
+  test also repeats each adversarial fragment on one long line (`\'`, `#{`, `${`, `rpc a(b`, ...),
+  which found string literals full of escaped quotes, nested placeholders and Java declarations
+  under thousands of annotations reading quadratically or overflowing the stack; a literal not closed
+  on its line is blanked to the line end now (java, kotlin, groovy, gradle, scala, proto, terraform,
+  graphql), an unclosed SQL `'` to the end of the file, a PowerShell string across lines, and the
+  rest of a shell or Perl heredoc-opener line that cannot be read to its end. Counters:
+  integration property placeholders count Mule's and Spring's `${env}`, `${file.dir}` and
+  `${type.handler}` again (only Camel's Simple forms are left out); a Dockerfile heredoc opens only
+  where `<<` starts a word on a RUN, COPY or ADD line (also a continued one); Java methods and
+  constructors count a wrapped `throws` and a brace on the next line, and `@java.lang.Override`;
+  Kotlin extension functions take a nested generic receiver; properties count a secret key that
+  starts with the keyword (`password=`); Gradle's included builds are `include` at a line start,
+  its dependencies count after `{` or `;`; GitHub Actions count every secret in an expression;
+  Compose counts `$NAME`; Ansible counts a quoted `become`; batch blanks `& rem`; proto's streaming
+  rpcs read CRLF files; MyBatis and properties placeholders count the innermost of nested ones.
+  SQL's `'\'` (T-SQL, PostgreSQL, Oracle) and `ESCAPE '\'` close their literal instead of blanking
+  the rest of the file (a backslash escapes a quote only where no delimiter follows, as MySQL's
+  `'it\'s'`); a Dockerfile `<<` inside quotes opens no heredoc, and a second heredoc on one line is
+  blanked too; Compose counts the substitutions in a block scalar (`command: >`), which it
+  interpolates, and none in a comment.
+- **The model card's scorer reads what the model answered.** `score.py` strips a leading reasoning
+  block before recall, invented names, numbers and the format checks (the leak is still counted),
+  matches a path- or colon-like name whole (`/orders` is not found in `/orders/{orderId}`; a Perl
+  arrow, `JSON::PP->new`, still ends a name), opens a code fence only where CommonMark does (at a
+  line start, or indented to its list item's content), reads the methods of a static interface and
+  annotation elements, takes no digits stuck to a letter or a date part as a stated number, splits a
+  name after an acronym (`XMLParser`), and takes `order.c` or `item.tag` for a member, not a file. A
+  complete answer after a closed reasoning block is a leak, not a leak-only failure; one whose block
+  never closes is. `run.py` maps a package call's log name to its `package.ai.md` again, so a cut
+  package counts as cut, and runs the project phase after some packages failed; `search.py` reads
+  the answer the same way and keeps a leading dot of a path (`.github/...`). The card's numbers do
+  not move (its outputs have none of these cases). Two published numbers elsewhere differ from a
+  re-score: the generic-prompt languages run 3 gives gpt-oss-20b 94.9 % instead of 95.3 % (the mean
+  95.5 % instead of 95.7 %), because `invoice-service.jar` no longer credits the name
+  `invoice-service`; and the large-corpus run 2 of 2026-11-01 gives gpt-oss-20b 49.1 % instead of
+  55.2 % (a stricter format check of an earlier round), so the gpt-oss mean over the three large runs
+  re-scores to 76.0 %, published 78.1 % (run 3 keeps its 88.3 %). The writeups keep the numbers they
+  were published with. `scores/search.json` is re-run (2026-11-07, 1.46 USD) on the text without
+  the facts and coverage lines that `search.py` reads now: BM25's hit@1 stays in every run (MRR up
+  to 0.016), the reader's hit@1 moves in 27 of 37 runs by up to 12 points (mean 93.6 % over the 35
+  runs; the two baselines, whose input is the same, keep their hit@1 and move by up to 7 points at
+  hit@3, so part of the change is the reader's variance), and the correlation of an index's size with it is +0.13 with hit@1, +0.15 with the MRR.
+  The search runs of the repeat, prompt-v2, prompt-v3, language and the two re-measurement
+  directories are re-run the same way (1.62 USD; BM25 again unchanged). The model card takes the
+  new numbers in its Search section, its recommendations and findings 5 to 7: the reader finds 84 to
+  100 % first with the 32 scored runs (it said 86 to 98 %), Qwen3.8-27B with reasoning off is no
+  longer the one exception that searches worst in every run (86 to 98 % over its three), and an
+  index's size does not go with the reader's result. The writeups of 2026-11-01 and 2026-11-02 and
+  the deck (slides 5 and 13) take them as well, the writeups naming the published values.
+- **The model card's search prose and caveats match its data:** BM25 over the summaries finds 67 to
+  91 % first (it said 67 to 86 %), 81 % on average against 84 % over the source, and nine of the 35
+  runs beat the source; the index length goes with the reader's hit@1 at
+  +0.13 over the 32 scored runs (it said −0.46, from an older set of runs). The caveats add that recall does not measure
+  faithfulness (a bare name list scores 100 %), that three runs against three reach p = 0.1 at best
+  in Fisher's test and that search was compared unpaired (McNemar per question was not run), and
+  that the prompts were tuned on the corpora they are scored on. No table or number of
+  `report.py` moved.
+- **The self-test routes the new kinds measured on real projects:** TypeScript, the Jakarta EE
+  descriptors, MyBatis mappers, BPMN, DMN, JSP, Protocol Buffers, GitHub Actions, Kubernetes
+  manifests, Dockerfiles, Terraform, npm manifests and other YAML (`ops`), with the Luna example's
+  rules on the self-test's model, and the extensions and file names they need. Measured on
+  jpetstore-6, microservices-demo and camunda-bpm-examples (218 files of 13 kinds, 1072 names
+  derived from the sources, two runs each): with the kinds' rules gpt-oss-20b names 97.3 % of the
+  names, with every file through the fallback prompt 81.2 %; GPT-6 Luna 97.7 % against 92.2 %. No
+  kind is worse with its rule for gpt-oss-20b; for Luna the Spring XML files through the `xml` rule
+  are (90 % against 100 %). The remaining kinds followed on 2026-11-07, measured the same way on 16
+  open-source projects and 12 Python projects' `pyproject.toml` (272 files of 20 kinds, 2046 names):
+  persistence and integration XML, WSDL and Facelets (which leave the `xml` rule), OpenAPI, AsyncAPI,
+  Avro, GraphQL, Camel YAML, Compose, Gradle, properties, PowerShell, batch, Kotlin, Groovy, Scala and
+  `pyproject.toml` (the ops prompt: gpt-oss-20b 98 % against 88 %, Luna 97 % against 86 %) take the
+  Luna example's rules; Ansible takes `file-body-fallback` without counters, where gpt-oss-20b names
+  95 % (86 % with the ops prompt and its counters); the Java EE classes stay on the `java` rule (`file-body-oop` either way). Over all kinds
+  gpt-oss-20b names 88.9 % with the rules against 79.7 % through the fallback, Luna 96.6 % against
+  88.6 %. The Luna example routes `package.json` and `pyproject.toml` too.
+
+- **The self-test's `big-pom` rule takes `file-body-xml`** instead of the generic prompt: on a real
+  590 KB POM Granite H-Tiny invents no names with it and about half of them with the generic one, at
+  the same low recall (6 and 4 of 99; `profiles/README.md`). `huge-pom` is unchanged.
+
+- **The core library's packages say what their classes do** (the review of 2026-11-05,
+  `docs/code-review-2026-11-05.md`, moves M1 to M10 and renames N1 to N3). `config` holds only the
+  beans and the file loader: the routing (`AiConditionEvaluator`, `AiFieldGenerationSelector`,
+  `AiFileContext`) is the new package `routing`, the fact counters (`AiFactExtractor`,
+  `AiFactDefinitionLoader`, `AiFactDefinitionSupport`) the new package `facts`, and
+  `AiPromptDefinition`, a bean like the others, moved from `prompt` into `config`. The generation of
+  one summary body is the new sub-package `indexer.generation`: `SummaryGenerator` (was
+  `AiFieldGenerationSupport`) with `AiMapReduceSupport`, `AiTokenWindow`, `AiOverflowBackoff`,
+  `AiInputWindowCalculator`, `AiRouteEstimator`, `AiGenerationResult` (from `document`) and
+  `AiSourceChunker`, `AiDeterministicSummary`, `AiGenerationTimeEstimator` (from `support`).
+  `AiGenerationRequest` moved from `document` to `prompt` and lost the header it carried and no
+  provider read; `AiProgressBar` moved from `support` to `engine`. `support` gained `ReadBudget` (the
+  read limit of a pattern, from `AiFactExtractor`) and `UrlUserInfo` (the masking of a URL's user
+  info, which the CLI reached through a provider class). `LlamaCppJniConfig` is `ProviderConfig`,
+  since it configures every provider, and the plugin's base class `AbstractSrcMorphMojo`. The ArchUnit
+  layering names every package with the exact layers that use it: `config` no longer depends on
+  `prompt`, `prompt` and `provider` no longer on `document`, and a new rule keeps
+  `indexer.generation` from depending on the walkers.
+- **The map-reduce decisions are on the PIT gate.** `SummaryGenerator` kept the chunk plan, the
+  packing and shortening of a reduce round and the decision on an incomplete answer next to its
+  provider calls, off the gate; they are the package-private `ChunkPlan`, `ReduceRound` and
+  `IncompleteAnswerAction` now, 46 mutations, all killed. The behavior is unchanged.
+- **The benchmark's runs and tools are pinned better.** `run.py`'s meta records the srcmorph commit
+  (`+dirty` with local changes), the Python version and a SHA-256 over the corpus; a test pins the
+  bytes `large.py` writes at `--scale 1.0`, so a Python whose `random` draws differently fails it.
+  `score.py` scores only the files srcmorph indexes and reads a source as srcmorph decodes it (UTF-8,
+  UTF-16 after a byte order mark, U+FFFD for an invalid byte); `report.py` takes `--card` and a
+  `--help` that does not render. A mutation pass over the tools found most of their logic untested:
+  `score.py` now has 20 of 114 mutants surviving (41 before), `report.py` 5 of 17 (15).
+- **The run record and the plan say more of where the time and the tokens go.** The record's totals
+  name the files the plan skipped (`skipped`), the run's wall time (`wallSeconds`) and each model's
+  load time (`modelLoadSeconds`): a local model loads on its first file, whose own seconds leave the
+  load out now (`GenerationProvider.takeLoadNanos`, `0` by default). The plan's model header adds
+  the tokens the model is sent (`~N source tokens (~M sent)`): none of a file `deterministic`
+  summarizes, one window of a `sample` or `fail`, `maxChunks` windows of a `sampleChunks`. Its
+  map-reduce estimate packs as many part summaries into a reduce call as fit the window, as the run
+  does, instead of always 16 (`MapReduceMath.expectedFanIn`), so a narrow window estimates more
+  reduce calls.
+- **`requestsPerMinute` keeps one window per server**: two models of one server (same `baseUrl` and
+  `apiKeyEnv`) with 20 and 10 requests a minute had two windows and sent up to 30 together. Now every
+  request waits until fewer than its own model's limit started in the server's window, whichever
+  model started them, so the model at 10 waits for the other's requests too. The window lives as
+  long as the process, so a later run of a long-lived JVM (mvnd, an IDE, an embedder) that names a
+  higher limit sends at it.
+- **`G` is srcmorph's own version, in the CLI and the plugin alike.** The plugin recorded the
+  version of the user's project as the generator and the CLI recorded none; a summary now names the
+  srcmorph release that wrote it (`support.GeneratorVersion`, which the core's build fills in), and
+  `generatorVersion` in the file still overrides it. `G` never causes a rewrite, so no summary is
+  rewritten for this.
+- **The examples, the self-test and `run.py` ask once more on an incomplete answer**
+  (`onIncomplete: retryOnce` on every rule, the package and project rules too). gpt-oss-20b ran
+  away to the output budget on one big TypeScript file in six runs and summarized the same file in
+  the next one; a larger budget only made the runaway dearer (measured on 2026-11-05: finished
+  answers took 1229 to 1618 tokens, the runaway 16384). `run.py` records it in the meta
+  (`onIncomplete`); the runs before failed such a file at once.
+- **The time estimate is based on GPT-6 Luna**, the benchmark's remote model, where it was a local
+  CPU (gpt-oss-20b on a Ryzen 7 5800H): `2.1 s + 0.105 ms` per prompt token `+ 6.45 ms` per output
+  token, fitted over 1423 calls of the 2026-11 measurements and linear up to their largest prompts
+  (98K tokens), 4.0 characters per token, 1000 tokens of prompt around the source, 950 output tokens
+  assumed. For a 24K-token prompt the CPU model said 25 min, Luna takes about 12 s, so a remote run's
+  plan was off by more than an order of magnitude. The per-file log line ends in
+  `(rough; based on GPT-6 Luna)`,
+  and the plan names the basis in every model's header; a model with a `calibration` reads `from
+  the model's calibration` in both instead. A local model is far slower than the estimate:
+  `Calibrate` measures it.
+- **`SourceFileIndexer` is final**, and its public constructor takes `fileNames`,
+  `fileInterpreters`, `regenerateOn` and `contentHeadChars` (Upgrading from 1.4.0). The file phase's log lines name a file by its path below
+  the base directory (as the model reads it), with the system's separators, where they named the
+  absolute path.
+- **Java takes `file-body-oop`; `file-body-java` is gone from profile v3.** A rule naming
+  `promptKey: file-body-java` fails the run (no such file in the profile): name `file-body-oop`.
+  Three runs each with both prompts on the model-card corpus gave the same Java recall, GPT-6 Luna
+  100 % in all three with the shared prompt
+  ([`remeasure-2026-11-04/`](docs/ai-index-benchmark/remeasure-2026-11-04/README.md)). The self-test,
+  the examples, the plugin-it fixture and `run.py` (`--java-prompt`, default `file-body-oop`) name it.
+- **What rewrites a summary is set per cause** (`regenerateOn` under `srcMorph`: `source`,
+  `prompt`, `facts`, `model`, `children`, each `true` by default), next to `force`, which rewrites
+  every summary whatever the switches say. Each switch compares one header field: `C` (the source; a
+  package's files, the project's packages), `P` (the rule's prompts, map and reduce included), `N`
+  (its fact counters), the new `M` (the model: definition key, `remoteModel`, model file name) and
+  the new `K` (the child summaries a package or the project is written from). A missing or empty
+  summary, another header format, node, title or `aiVersion` rewrite it always; `D`, `T` and `G` are
+  recorded only. Up to now only a changed source, `aiVersion` or `force` rewrote a summary (1.4.0
+  recorded `P` and `N` without acting on them), so a summary of an older prompt or model stayed; and
+  a package was never rewritten when its files were re-summarized over unchanged sources, since its
+  checksum is built from theirs, nor when its own prompt changed: packages and the project now
+  record `P`, `M` and `K` too (the project's checksum is built from its packages and their
+  checksums, as a package's from its children, no longer folded with the overview's prompt key and
+  model). `P` reads a prompt's line endings as `\n`, so a profile checked out with CRLF on one machine
+  and LF on another hashes the same. A field a summary does not record counts as changed, so the
+  first run after the upgrade rewrites every summary, one model call each (Upgrading from 1.4.0 says
+  how to keep them). `AiMdRewritePolicyTest` pins every switch on and off,
+  `PackageIndexerTest` and `ProjectIndexerTest` the children and overview hashes; the plugin README's
+  header section says what rewrites a summary, and every example configuration shows the switches.
+- **`java-facts` counts code only**: an `[ignore]` line blanks comments, Javadoc, text blocks,
+  strings and character literals, so a `public` or `class` in them no longer counts, and
+  `TODO/FIXME` is a `[raw]` counter, counted in the comments as before. The facts line of a Java file
+  with such text changes (`java-ee-facts` includes it), and so does the facts hash, which with
+  `regenerateOn.facts` rewrites the Java summaries that carry facts.
+- **DMN has its own counters**: `bpmn-facts` counts BPMN only (its "decisions" and "decision rules"
+  went to `dmn-facts`), and the Luna example and `run.py` route `.dmn` to `dmn-facts`.
+- **The model reads a file's path below the base directory**, not its name alone, at the head of the
+  user message (`billing/src/main/webapp/WEB-INF/web.xml`), so two files of one name in different
+  modules read apart; every file prompt of profile v3 says so in its last paragraph. The plan's
+  window check counts the same line. A package's message starts with the package's path (see
+  Fixed), the project's with `project.ai.md`.
+- **Profile v3's file prompts ask for more**
+  ([`remeasure-2026-11-04b/`](docs/ai-index-benchmark/remeasure-2026-11-04b/README.md): the enterprise
+  corpus 97.9 to 99.7 % with gpt-oss-20b, 97.3 to 99.9 % with GPT-6 Luna; the card corpus 99.5 % and
+  100 %, the language corpus 99.0 % over nine gpt-oss runs and 99.5 %): `file-body-oop` names the private
+  functions, constants and fields the logic uses and each call on a dependency, which the enterprise
+  runs found by chance only (`nextNumber`, `PREFIX`, a `refund` call); `file-body-ops` names a CI
+  workflow or pipeline by its name (`release-backoffice` was missing in every gpt-oss run) and
+  defines Gradle build and settings scripts (plugins, dependencies by configuration, repositories,
+  tasks, included projects, the toolchain), which take it now.
+- **`pathGlob` matches in the case written**, also on Windows, so a rule routes the same file on
+  every system; `fileNames` and `extensions` match in any case, as names of a kind are written in
+  either. Decided and documented, unchanged.
+- **A `{` in a glob opens an alternative**; it matched itself before. An exclude or a `pathGlob`
+  with a literal brace pair now means its alternatives.
+- **A source file with a byte order mark is read without it**, and one with the UTF-16 mark as
+  UTF-16. Before, a UTF-8 file saved with a mark (as some Windows editors do) began with U+FEFF, so
+  its first line did not start with its first word for the fact counters and the prompt, and a
+  UTF-16 file read as replacement characters. The checksum of a UTF-8 file is still over its bytes,
+  so such a file is not rewritten for this alone; a UTF-16 file's is over its text (see Fixed).
 
 ### Fixed
 
+- **The fact counters of ten kinds count what their label says:** Java counts a constructor whose first
+  parameter is generic (`Reg(List<String> names)`) and names with a `$` (`FormatMessageW$MH`), and
+  its header no longer says the methods hold every constructor; OpenAPI counts an operation only one
+  level below a path key, not a schema property named `options` or `head`; batch's `errorlevel` is
+  a word (`:exitWithErrorLevel` is none); SQL counts PostgreSQL's `TEMP`/`RECURSIVE` views,
+  `EVENT TRIGGER` and `DOMAIN`, Oracle's `NOFORCE`/`EDITIONING` views and `PRIVATE TEMPORARY TABLE`;
+  GitHub Actions blanks `inputs:`/`outputs:` entries (an input `runs-on` is no runner) and counts
+  `schedule: [{cron: ...}]`; Ansible counts an FQCN module only as a task key; Kotlin reads
+  `actual val`, Scala `implicit final class`, Groovy `<T extends Comparable<T>>`, JSP Spring's
+  `form:checkboxes`, `radiobutton(s)` and `hidden`.
+- **Pretty-printed JSON OpenAPI and AsyncAPI documents count as their YAML form:** the `[ignore]`
+  alternative that blanks a double-quoted string holding a `#` could start at a key's closing quote
+  and blank the rest of the line, so `"get": {`, `"/orders": {` or `"publish": {` lost their colon
+  and counted no path, operation, payload or `deprecated: true`, nor did a double-quoted YAML key. A
+  string now opens only at a line's start or after a `:`, `,`, `[`, `{` or `-`.
+- **No summary in the output directory is a source:** a subtree that holds it (`subtrees: ["."]`
+  with the default `src/site/ai`) fed srcmorph's own summaries back in: `Dockerfile.ai.md` matched
+  `Dockerfile.*` and was summarized, one level deeper with every run. The walk leaves out every
+  `.ai.md` below the output directory and still takes the sources an output directory holds (summaries
+  next to their sources, `outputDirectory: src`); nor are srcmorph's other files a source, the
+  calibration reports `srcmorph-calibration.json`/`.yaml` in the output directory, the
+  `runRecordFile` and the `.parts.md` files below `partsDirectory` (a source there stays one; a
+  `*.parts.md` written by hand below it is no source either, and `pruneOrphans` removes its summary).
+- **No walk enters a link to a directory below its root:** on Windows the file walk and the project
+  phase entered a junction (and so did the new orphan scan of `pruneOrphans`), and the package phase
+  followed a symbolic link on every system, so a link beside its target summarized every file twice and a link
+  back up looped (64 copies of one file measured; on Linux the package phase failed with `ELOOP`),
+  and a link like `docs/latest -> v2` rewrote the target's `package.ai.md` on every run. Such a link
+  is now left out with a warning (a debug line when an exclude takes it, or when it is the output
+  directory or a subtree of its own). The start of a walk (a subtree, the output directory) is entered
+  when it is a link: the file walk, the orphan scan and the project phase took a symbolic link there
+  for a file and found nothing, so a linked output directory got no `project.ai.md`. A link to a file
+  is still taken, and a directory with another reparse point (a cloud file placeholder) still counts
+  as a directory; a volume mounted into a folder carries a junction's reparse point and is taken for
+  a link. Subtrees are compared by their real paths: one behind a link inside another subtree is now
+  kept as a subtree of its own (it was dropped as part of the other), unless the link leads into a
+  subtree, whose walk collects its files once. A junction whose target is gone is such a link too (the project
+  phase failed on it, the file walk could not read it, and the orphan scan kept every package above
+  it). A link to a summary file counts as that summary in every phase, and `pruneOrphans` removes the
+  link, not its target. A walk of a linked root names the target in an error message. The summaries an
+  earlier run wrote below a link are orphans now.
+- **The file walk does not enter an excluded directory and goes on past an unreadable one:** it
+  descended everywhere and applied the excludes per file, so a directory it could not list ended the
+  run with an `UncheckedIOException`, also when an exclude covered it. A directory an exclude ending
+  in `/**` takes as a whole (`target/**`, `**/generated/**`) is no longer entered; a file or
+  directory that cannot be read is left out with a warning (a debug line when excluded), and so is a
+  source whose content, size or modification time cannot be read (no read permission, a lock,
+  deleted after the walk), which ended plan, check and generate; its summary is kept. The
+  candidates and their order are unchanged. The package and project phases fail with the
+  `IOException` of a directory they cannot list, also when the listing breaks off midway, not with
+  an `UncheckedIOException`.
+- **`All` checks the package and the project phase before the file phase** (their rule, prompts and
+  model, as `Check` does), so a missing `packageRules` or a wrong phase rule fails before any file is
+  sent and billed, not after the whole file phase; with `planOnly` only the file phase is planned.
+  The package and project checks now also fail on a rule prompt that has no template.
+- **`calibrate` leaves skip rules out and checks the rules as a run does:** a skip rule's model is no
+  longer loaded and measured, and one no `aiDefinitions` entry defines no longer ends the run with an
+  `IllegalArgumentException`. The rule set, the routed models and the prompts are validated first,
+  and a provider's unchecked failure (the JNI binding's `IllegalStateException`) fails naming the
+  model.
+- **Calibration's prompt-cache line fits the provider:** a remote model that reports no cached
+  prompt tokens gets an INFO line instead of the warning about `cachePrompt`/`cacheReuse`/`swaFull`,
+  which never reach a server. The `calibrate` goal's log and the Javadoc say that an
+  `openai-compatible` model's numbers are a wall-clock estimate with one extra billed probe request
+  (the mock reports its rates), that a chat request is not resent after a read timeout, and that
+  `ProviderConfig` has 44 fields.
+- **run.py keeps a paid run's meta when a cost lookup fails:** the meta is written before the
+  OpenRouter price and usage lookups and again with them; a timeout or `URLError` records the cost
+  as `null` with the reason under `costErrors`, and the remaining models still run. A relative
+  `--model-dir` is made absolute; it resolved against the generated configuration's directory.
+- **score.py and search.py read the skip rule:** a file the secrets rule skips no longer scores as a
+  missing summary or counts as a search file (`run.skipped`); search.py reads a source as srcmorph
+  does (`score.source_text`) instead of strict UTF-8. An unclosed fence in a list item ends with
+  the item, so a following heading is counted (no stored summary reads differently); correlate.py
+  prints `n/a` for a correlation of no runs instead of failing.
+- **Example comments say what the configurations do:** the Luna example does not index JavaScript;
+  gpt-oss takes every file but the large Java, SQL, POM and plain XML files (a 500 KB shell or
+  Kotlin file stays on it, map-reduced); the self-test names two packages instead of reading compile
+  source roots.
+
+- **A `size` condition measures the same file on every checkout.** It read the bytes on disk, so a
+  file checked out with CRLF line endings was larger than the same file with LF and could reach
+  another size tier, model and summary (a 272 KB Java file, 5000 lines). It measures the source as
+  srcmorph reads it now: the bytes the checksum is taken over, `\n` line endings and no byte order
+  mark (a UTF-16 file: the UTF-8 length of its text); the plan's time estimate of a file that fits
+  does too. The run's `minFileSizeBytes` /
+  `maxFileSizeBytes` band stays a filter on the bytes on disk.
+- **A package's lead in `project.ai.md` is its summary's lead** again for a package read in chunks
+  (packages default to `mapReduce`) or with counters: the project listed the coverage or the facts
+  line, which stands in front of the summary, as the package's lead.
+- **A UTF-16 source has one checksum on a CRLF and an LF checkout.** Its line endings were normalized
+  byte by byte, which turns the two bytes of a UTF-16 `\r\n` into two line feeds, so a checkout
+  switch rewrote its summary; its checksum is taken over its normalized text now.
+- **A leading `Src/` stays in the summary's path on every platform**: `Path.startsWith` ignores the
+  case on Windows, so the summary of `Src/main/Foo.java` lost its `Src` there and kept it on Linux.
+- **A model id with a line break cannot break out of `ListModels`' output**: control characters and
+  YAML line breaks are written as `\uXXXX` in the table and the paste-ready block.
+- **A `baseUrl` with a query or a fragment fails the check**: srcmorph appends `/chat/completions`
+  to it, which landed in the query, and the query (possibly a key) was printed with the endpoint.
+  Every URL srcmorph prints (a message, a log line, `ListModels`, the CLI's configuration echo)
+  shows its query and fragment as `?***` now, as it shows user info as `***@`.
+- **A subtree that is `src` itself** (`subtrees: ["src"]`, or a POM's `<sourceDirectory>src`) no
+  longer fails the package phase: its summaries' root is the output directory.
+- **An interrupt ends the package pass**, as it ends the file phase, instead of failing every
+  remaining package; a timeout is still one package's failure.
+- **A request that failed its retries with a timeout last** says "failed N times, the last with a
+  timeout", not "timed out N times" after three 503 answers and one timeout.
+- **A password with `'`, `?` or `#` in a `baseUrl` is masked and refused as user info.**
+- **A long password in a URL is masked too.** The mask of a URL's user info stopped at 256
+  characters, so a longer token (a JWT) stayed in the message that refuses such a `baseUrl`; an `@`
+  in the password left its tail visible. It masks up to the last `@` before the host now, of any
+  length, and `toString` of a model definition and of a provider's configuration masks the
+  `baseUrl` as well.
+- **A `lazyMode`, `cacheTypeK` or `cacheTypeV` the binding does not know fails the check**, before a
+  model is loaded, instead of the first file's load; and a local model that does not load is tried
+  once per run: every later file fails with the same error at once instead of loading the model
+  again.
+- **One unchecked provider error no longer ends the package pass**: the package is counted as failed
+  and the others are written, as in the file phase (the llama.cpp binding throws only unchecked
+  exceptions, so one context overflow left every later package unwritten).
+
+- **A package call names the package**, as `package-body` and `profiles/README.md` say: its user
+  message started with `package.ai.md` (the file name of the absolute path), now with the package's
+  path below the output root (`main/java/com/example`; the root package by the output directory's name).
+
+- **A prompt or facts file checked out with CRLF line endings reads as with LF.** Its hash ignored the
+  line endings already, but the template was sent and measured as written, so the same profile gave
+  another window and other chunk boundaries on Windows than on Linux.
+
+- **`-Dsrcmorph.planOnly=true` reaches the aggregation goals too.** Only `generate` read it, so a
+  build with the self-test profile planned the file phase and then let `aggregate-packages` and
+  `aggregate-project` load the model and rewrite every package; they do not run now, as the CLI's
+  `All` command never did.
+- **The window counted the prompt template twice.** `InputWindowCalculator.maxInputChars` took the
+  template out of the budget the whole prompt (template and source) is then compared with, so every
+  file lost one template's length of window (3 to 6 KB with profile v3's prompts) and some that fit
+  were read in chunks, or failed under `onOversize: fail`. `maxInputChars(config)` is the budget of
+  the rendered prompt now (the window less the output and the safety margin), and the source gets it
+  less the template, once; the plan and the run still agree. Java callers drop the second argument.
+- **A phase rule's counters from an inline `factDefinitions` entry are checked before a model loads**:
+  they were resolved after the rule's check, so a pattern that does not compile failed the run at the
+  first package instead.
+- **`partsDirectory` no longer writes a chunked file's answers under the next file's name** when that
+  file was unchanged (or failed before it was read): `SummaryGenerator.takeParts()` returns the
+  answers once and starts anew (`parts()` is gone).
+- **Files are planned and summarized in path order, on every machine.** The walk of a subtree came
+  in the file system's order, so the plan, the progress and the run record listed files differently on
+  Linux and Windows, and a test that relied on two files' order failed on one CI runner and not on
+  another. The candidates are sorted by their path with `/` separators now.
+
+- **A template that opens the thinking block itself leaves no reasoning in the summary.** Qwen3 and
+  DeepSeek-R1 templates put `<think>` into the prompt, so the answer starts with the reasoning and
+  holds only `</think>`; `CompletionParser` kept all of it. The first `</think>` alone on its line,
+  with no `<think>` before it, now ends the reasoning, and without one the first that ends its line
+  glued to the reasoning's last word (`I will write it.</think>`) when no line before it starts
+  like an answer (a `>` lead, a code fence); a tag inside a line, or after a
+  space, a quote or a backtick (a sentence, quotes, a list item naming it) is text, in the answer or
+  in reasoning that names it before its real end.
+- **The benchmark's scorer** (`score.py`, `report.py`; the card's published numbers stay until it is
+  re-rendered): an everyday word between two backtick spans no longer counts as marked as code, one
+  in a column listing with its type (`email VARCHAR(254)`) does; a reasoning marker in backticks is
+  no leak, and a complete summary after a reasoning block is a leak, not a leak-only failure; the
+  card's invented-name rate sums the names of every kind instead of averaging the kinds' rates
+  (`summary.json` carries `ticked` and `invented`; `report.py` refuses one without them);
+  `CHECKOUT`, `RETURN`, `Since` and `histogram` are everyday words of their files.
+- **The scorer's copy filter and invented names** (TODO row 43; the card stays until it is
+  re-rendered): a `~~~` fence, an indented code block and a copy with its whitespace changed copy the
+  source as a ``` fence does, and do not count. A name is invented unless it is an identifier of the
+  source, a run of an identifier's word parts (split at `_` and at a capital) or their plural, so a
+  piece inside a word (`ame` of `getName`) no longer passes as a substring; the names are those in
+  backticks and the code-shaped words of the prose (`orderTotal`, `OrderService`, `order_total`), and
+  the names of languages, tools and products (`JavaBean`, `PostgreSQL`) and Python's builtin types
+  are none. Over the outputs of 2026-10 no recall changes, and the invented-name rate of a model's
+  kind rises by at most 1.3 per 100 names; qwen3-coder-30b's SQL falls from 18.6 to 3.7, since its
+  few backticked names are joined by the names of its prose.
+- **The fact counters read more of what they count, and less of what they do not** (every facts
+  hash of the changed files changes, so `regenerateOn.facts` rewrites their summaries once):
+  - shell: a `<<` after up to three groups in parentheses (`$(( (a) + ((b)) << n ))`) is a shift,
+    and `MSG=${MSG:-a b}` is an assignment, not the environment prefix of a command;
+  - Perl: a `<<` after a hash element (`$h{x} <<BITS`, `$r->{k}`) is a shift, one inside `q{}`,
+    `qq//`, `qw`, `qr`, `m//`, `s///`, `y` or `tr` opens no heredoc (`print {$fh} <<EOT` still does);
+  - SQL: an apostrophe in PostgreSQL's one-line dollar quoting, Oracle's `q'[...]'`, a MySQL
+    `"..."` string or a MySQL `#` comment opens no literal that hid the next statements (quoted
+    identifiers, T-SQL `#temp` tables and multi-line `$$` function bodies stay); MariaDB's
+    `CREATE OR REPLACE TABLE`, PostgreSQL's `CREATE FOREIGN TABLE` and T-SQL's `COLUMNSTORE`
+    indexes count; MySQL's `VALUES(col)` of `ON DUPLICATE KEY UPDATE` is no row;
+  - Java: annotations on the declaration's own line, type parameters three deep and parameters
+    that start on the next line count; `yield f(x);`, a record header and an enum constant with a
+    body (`PLUS("+") {`) are no method or constructor;
+  - XML: `id` and `name` count inside a tag only, not as `name = 'a'` in element text;
+  - a blanked region keeps every line terminator Java's regex reads (NEL, U+2028, U+2029 too), so
+    `^` sees the same lines as before.
+- **The fallback prompt's example `MAX_RETRIES` is `POOL_SIZE`**: `MAX_RETRIES` is a scored name of
+  the language corpus, which a model could copy from the prompt (the prompt hash changes).
+- **An answer the provider stopped was written as a finished summary.** OpenRouter answers a
+  generation that failed half-way with a 2xx, the text so far and finish reason `error`; only
+  `length` counted as incomplete, so the summary ended mid-sentence, without a warning (measured on
+  2026-11-05: gpt-oss-20b, 694 tokens, ending in `test paging (`). Finish reason `error` or
+  `content_filter` is now an incomplete answer of the new reason `ABORTED`: not written and left for
+  the next run (`onIncomplete: retryOnce` asks once more first), never kept as a part or under
+  `onIncomplete: keep`; the calibration warns about it. Any other reason (`stop`, a server's own
+  word for it, none) is the model's, as before.
+- **An ignored region at the start of a line left a space there**, so a counter anchored at the line
+  start (`^class`, `^import`, Perl's `^my`) missed the code after it: `/* x */class A {}` counted no
+  type, the same code on two lines one. Such a region now leaves nothing; within a line it still
+  leaves a space, so the words around it stay apart. The facts hash is unchanged (it hashes the
+  counters, not the counts).
+- **A JSON configuration file with a UTF-8 byte order mark did not load**: Windows PowerShell 5.1
+  writes one (`Out-File -Encoding utf8`), and Jackson read it as a character before the `{`. The
+  loader reads a configuration file as it reads a source, without the mark (YAML too).
+- **A key defined twice in `aiDefinitions`, `promptDefinitions` or `factDefinitions` was taken
+  silently, the last one winning**, so a rule could run with another model or prompt than the one
+  read first. It now fails the run, naming the list, the index and the key.
 - **`docs/copilot-api-gateway.md`** showed `maxOutputTokens: 2048` for the example, which has 4096.
+- **The XML and POM fact counters of profile v3 were quadratic over unclosed markup.** In
+  `xml-facts.tsv` the `[ignore]` line scanned to the end of the file again from every `<!--`,
+  `<![CDATA[`, `<?` or `<!DOCTYPE` that is never closed (100 KB of unclosed `<?` took 8.4 s; a
+  `<!DOCTYPE r [ ]` without `>` repeated ran for minutes), and so did the XSD counter from every
+  unclosed `<complexType`/`<simpleType`; in `pom-facts.tsv` the comment and CDATA patterns and the
+  plugin-body pattern from every unclosed `<plugin>`. An unclosed region now runs to the end of the
+  file, as in `sql-facts.tsv`, a type tag ends at the next `<`, and a nested plugin body at the next
+  plugin tag. Well-formed files count as before (the corpus counts are unchanged); 11 new
+  `XmlFactPatternsTest` cases pin the unclosed regions and the run time of each pattern.
+- **Three more fact counters were quadratic**, found by the new linearity test: in `java-facts.tsv`
+  the type arguments of "methods (approx)" and "field declarations" and the field initializer read
+  across lines to the end of the file from every declaration without its `>` or `;`, and in
+  `shell-facts.tsv` "dash-option case arms" backtracked over a long run of blanks. Type arguments are
+  now read within one line, an initializer up to 10,000 characters (a generic type split over lines,
+  or a longer initializer, is no longer counted; `JavaStructureFactPatternsTest` pins both), and the
+  blanks possessively.
+- **search.py no longer overwrites the card's search scores with a partial run.** With the card's
+  scores/ directory, `--no-reader` (which nulled every reader result) or a non-default `--out` (which
+  replaced the card's runs) is refused with a hint to pass a `--scores` of its own, as repeat.py
+  already refuses `--runs` there.
+- **run.py hands each model only its own API key.** The CLI's environment drops every `apiKeyEnv`
+  named in models.json except the one the model's definition names; `COPILOT_GATEWAY_API_KEY`
+  reached every model's subprocess, against the script's docstring.
+- **search.py's reader no longer loses or freezes answers.** An empty answer is asked again up to
+  four times and never cached (one already in an older cache is asked again too); `"usage": null`
+  no longer raises before a paid answer is cached; a 200 whose body is no JSON or is cut off is
+  retried like a 5xx.
+- **score.py counts a heading indented by one to three spaces**, as CommonMark reads it; no published
+  summary has one, so the card's figures do not change. Three of its tests are renamed or split to
+  say what they check.
+- **SQL: an identifier's closing quote opens no "..." string.** In `INSERT INTO "cfg" ("data")
+  VALUES ('{"k": "v"}')` the `[ignore]` alternative for a MySQL string with an apostrophe ran from the
+  closing quote of `"data"` to the JSON literal's first `"`, and the literal's apostrophe, left
+  unpaired, opened a literal over the rest of the file (INSERT 1, VALUES rows 0, tables 0, indexes 0
+  of 2, 2, 1, 1).
+- **A SQL*Plus remark or pg_dump's COPY rows open no SQL string literal.** The sql-facts `[ignore]`
+  line opened a `'...'` literal at any apostrophe, also on a line that is no SQL: `REM Creates the
+  shop's schema` / `PROMPT Don't ...` before two `CREATE TABLE` and one `CREATE INDEX` counted tables 0
+  and indexes 0, now 2 and 1; a pg_dump whose `COPY ... FROM stdin` rows hold an `O'Brien` hid the
+  `ALTER TABLE` and index after them (0 and 0, now 1 and 1). A `REM[ARK]` / `PRO[MPT]` line and the
+  rows of a `COPY ... FROM stdin` up to `\.` are blanked; without the `\.` line the data runs to the
+  end of the file, as psql reads it.
+- **A Groovy method with a generic return type counts.** "methods (approx)" read the type arguments
+  possessively up to the line end, which ate their `>`: `List<Order> all() {`, `Map<String,Integer>
+  counts(int x) {`, `public static List<String> names() {` and `String plain() {` counted 1, now 4. An
+  annotation on the method's line and a brace on the next line count too.
+- **A type-use annotation after a field's modifier no longer hides the field** (java-facts, and so
+  java-ee-facts): `@Nullable private String a;`, `private @Nullable String b;` and
+  `private final @NonNull List<String> c = ...;` counted 1, now 3.
+- **A CDI, Guice or Dagger `@Singleton` is no EJB session bean.** java-ee-facts counted every bare
+  `@Singleton` (`import javax.inject.Singleton; @Singleton class Cache {}` counted 1, now 0). An EJB
+  singleton counts through its `jakarta.ejb` / `javax.ejb` import or when written with its package;
+  one imported through `javax.ejb.*` is no longer seen.
+- **Kotlin object expressions, annotated and vararg constructors count as written:** two
+  `object : Runnable {` expressions next to `object Registry` and `data object Empty` counted 4 type
+  declarations, now 2; `@Inject constructor(...)` and `@JvmOverloads internal constructor(...)` 0
+  secondary constructors, now 2; `vararg val` and `final val` 0 of 3 constructor properties, now 3.
+- **Scala package objects, infix defs and abstract type members count as written:**
+  `package object shop {` counted 0 type declarations, now 1; `infix def max(...)` and
+  `private infix def min(...)` 0 methods, now 2; `type T <: AnyRef`, `type U` and
+  `type V >: Null <: F[A => B]` next to five aliases 8 type aliases, now 5.
+- **A context overflow's retry sends a shorter prompt, not the same one again.** The next window was
+  75 % of the window budget, so a prompt far below it (a dense 12 000-char prompt in a 30 000-char
+  window, on a provider that cannot count tokens) was sent four times unchanged and the file failed:
+  a `mapReduce` rule never chunked it. The next window is 75 % of the refused prompt; a prompt of
+  1000 chars or fewer is not sent again.
+- **A trimmed prompt reads the long line behind a short one.** The trim backed up to the last line
+  break before the window, so a cut map call of a one-line (minified) chunk kept only its label
+  ("Chunk 3 of 9, half 2, half 1:"), and the sampled head of "header + one long line" read the header
+  alone. A line break that keeps less than half of what fits is no longer the cut.
+- **No cut splits a character outside the Basic Multilingual Plane:** trimmed prompts, chunks,
+  shortened part summaries, halved chunks and the counted head stop before a surrogate pair.
+  `SourceChunker`'s Javadoc no longer claims a `maxChunks` of 1 keeps the last chunk.
+- **The whole plan is in path order:** files were sorted within each subtree and the subtrees taken in
+  configured order; all candidates are sorted by path together now, as this file said they were.
+- **An interrupt ends the file run and the package pass however it surfaces.** A
+  `ClosedByInterruptException`, or any `IOException` after the interrupt flag was set, was taken as
+  one file's or one package's failure, and every remaining one then failed too.
+- **The plan's time counts what the run does:** no reduce call for a one-partial batch that is passed
+  on (17 partials: 2, not 3); characters, not bytes (a CJK source was about 3 times too long); 0 s
+  for a mapReduce or sampleChunks file whose window leaves less than 1000 chars for a chunk, which the
+  run refuses; the plan and `check` fail on such a file now, before a model loads, naming the room
+  its chunks would get.
+- **A `null` rule in a list built in code fails the run naming it** (`Invalid rules: srcMorph.rules[1]
+  is null`) instead of a `NullPointerException`; the configuration file's loader refuses one already.
+  The classes that skip a `null` rule or counter say so in their parameter types
+  (`? extends @Nullable`), null-safety finding S9.
+- **A deterministic body fences a Markdown source safely:** the fence is one backtick longer than the
+  longest backtick run in the lines it shows (at least three), so a ``` line in the source no longer
+  closes the block.
+- **A `#` in a JSON string no longer blanks the rest of an OpenAPI or AsyncAPI spec.** A
+  double-quoted string holding a `#` is blanked whole instead of opening a YAML comment: a one-line
+  JSON spec with `"Fixes issue #12"` counted 0/0/0 paths, operations and operationIds, now 2/3/3.
+- **An empty YAML block scalar no longer blanks its sibling keys** (asyncapi, compose, ansible,
+  camel-yaml and openapi facts): the body must be deeper than its key, past a list item's dash, and
+  the key line stays. After an empty `command: >` healthchecks and port lists went from 0/0 to 1/1.
+- **properties-facts reads keys as `java.util.Properties` does:** a continuation line is no key; a
+  key separated by a blank alone (`welcome message`) or with no value counts.
+- **batch-facts counts no echoed text and no exit labels:** the text an echo prints is blanked, and
+  "exits" counts the exit command, not `:exit` or `goto :exit` (6 to 2 on the pinned sample).
+- **gradle-facts counts no plugin declarations, publications or task references:** plugins went from
+  5 to 2 (`gradlePlugin { plugins { id } }`, developer ids), repositories from 2 to 1
+  (`maven(MavenPublication)`), tasks from 3 to 1 (`dependsOn tasks.named(...)`).
+- **JSP documents count their directive elements and blank their XML comments:** jsp-facts counts
+  `<jsp:directive.page|include|attribute>`, and the new jspx-facts blanks XML comments (a .jspx went
+  from 0/0/1/2 page directives, includes, scriptlets and EL to 1/1/0/1).
+- **Counters that counted the wrong items:** GitHub Actions matrix entries are no steps (5 to 2);
+  Ansible loop items are no tasks (5 to 2) and template expressions in block scalars count;
+  PowerShell Verb-Noun calls count in any case and a function definition is no call; a GraphQL
+  schema definition holds no fields and a field with nested argument parentheses counts; WSDL
+  counters accept any element prefix and count an operation once; a manifest embedded in a ConfigMap
+  counts no container; AsyncAPI message examples are no payloads (3 to 1); npm contributed commands
+  count with their keys in any order (0 to 2).
+- **file-body-oop names TypeScript, and file-body-xml indexes SQL, scripts and conditions in CDATA.**
+- **The secrets skip rule skips credential files, not CI workflows, Helm templates or Android
+  settings:** secret-scan.yml, a Helm templates/secret.yaml, vault-deployment.yaml and Android's
+  res/xml/settings.xml are routed again; secrets.hcl and *.pkrvars.hcl are skipped. run.py gets the
+  same rule and routes build.gradle.kts to gradle instead of kotlin.
+- **A password with an unencoded `/` in a `baseUrl` is shown nowhere.** The mask stopped at the first
+  `/`, so `https://user:pa/ss@host/v1` reached the CLI's configuration echo, the ListModels log line
+  and error and both `toString`s unchanged; an `@` after a URL's first `/` masks everything after the
+  scheme now (`https://***`). The check refuses every `baseUrl` that holds an `@`, including
+  `https://u:123/abc@host/v1`, which parsed as host `u`, port `123`, and passed.
+- **A redirect is not followed with the key.** The models GET followed a 30x with `Authorization` to
+  whatever server the `Location` named, and a streamed POST reported a redirect as a refused key; a
+  3xx fails the request now, naming the status and the masked `Location`.
+- **A `</think>` alone on its line inside an answer is kept:** a summary that quoted the tag in a code
+  fence lost its lead and was stored as complete from the fence on. The tag ends the reasoning only
+  outside an open fence and before any `>` lead line.
+- **A pattern that overflows the stack is stopped like one past its read budget.** A fact counter or
+  `contentMatches` such as `(?:a|b)*` over a long text threw a `StackOverflowError` that aborted the
+  plan or the run; the counter is left out now, an `[ignore]` line blanks nothing, the condition does
+  not match, and a warning names the pattern.
+- **Two ignored regions back to back at a line start** leave the line starting with what follows
+  (`/* a *//* b */class A {}` counts as a `^class` line again), and **a facts file of `[ignore]` lines
+  only can be included** (the file that includes it must still count something).
+- **An answer the provider stopped inside open reasoning is ABORTED, not TRUNCATED:** one that ended
+  with finish reason `error` or `content_filter` inside `<think>` asked to raise `maxOutputTokens`.
+- **`requestsPerMinute` waits once, to the start that frees the window**, instead of once per start
+  with a "Holding ..." line each; the server in that line and in `toString` is masked.
 
 ## [1.4.0] - 2026-11-02
 

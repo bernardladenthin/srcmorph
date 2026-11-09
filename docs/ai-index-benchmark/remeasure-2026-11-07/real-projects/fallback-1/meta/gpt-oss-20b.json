@@ -1,0 +1,103 @@
+{
+ "key": "gpt-oss-20b",
+ "name": "gpt-oss-20b",
+ "backend": "openrouter",
+ "definition": {
+  "key": "gpt-oss-20b",
+  "maxOutputTokens": 4096,
+  "temperature": 0.2,
+  "provider": "openai-compatible",
+  "baseUrl": "https://openrouter.ai/api/v1",
+  "contextSize": 131072,
+  "reasoningEffort": "low",
+  "remoteModel": "openai/gpt-oss-20b"
+ },
+ "javaCommit": null,
+ "corpus": "corpus",
+ "profile": "v3-fallback",
+ "javaPrompt": "file-body-fallback",
+ "facts": false,
+ "oversize": null,
+ "onIncomplete": "retryOnce",
+ "maxChunks": null,
+ "profileHashes": {
+  "file-body-fallback.md": "158b70e51bca1527bc64466ded12ab21617fe8cd00f29b6db189aa7559a22ed4",
+  "file-body-sql.md": "7ccbdab6eefea1156e5ed29c3f8ff84a74ea99bd4cbafd85601019e5d82d828e",
+  "map-chunk.md": "ebc4aa4592de553fb7616b66f1e727fd94da30828c8c1d76986a8ee4e885aec3",
+  "package-body.md": "e4398dd0c0e4a01648166b2db2decf78a42b63e5298c04739568a98e8b5406e4",
+  "project-body.md": "2ccf5e75f1fb1140f98cfa1033a9b88bb3c1e7eb222cbef0387a6b0136b86241",
+  "reduce-parts.md": "067474a90b6a35bc6092fccc5b9c929daccf18506fad638c0d4eee98316032b7"
+ },
+ "cli": {
+  "jar": "srcmorph-cli-1.5.0-SNAPSHOT.jar",
+  "sha256": "a3cf28cec9d627a6d5a8121b9fb8057cd984f5dea15133ef7a8a09023521537e"
+ },
+ "java": "openjdk version \"25.0.1\" 2025-10-21 LTS",
+ "python": "3.12.10",
+ "srcmorphCommit": "2dbc4d85449255315dac57b615bc58a832a1e4d3+dirty",
+ "corpusHash": "84820b9da187a9eba50c6cd5073b5dbf07a0e56f12d4a6ad8821a9659bcc2883",
+ "startedAt": "2026-11-07T12:42:40Z",
+ "phases": {
+  "GenerateFileIndex": {
+   "exit": 1,
+   "seconds": 788.9,
+   "cutOff": [
+    "other/PowerShell/tools/ci.psm1"
+   ],
+   "errorTail": [
+    "[main] INFO net.ladenthin.srcmorph.indexer.generation.SummaryGenerator - Generating field 'file-body-fallback' with temperature=0.2, maxInputChars=507400",
+    "[main] INFO net.ladenthin.srcmorph.indexer.generation.SummaryGenerator - Generated file 'other\\tomee\\examples\\webservice-ws-security\\src\\main\\resources\\META-INF\\CalculatorImplUsernameTokenPlainPasswordEncrypt-server.properties' in ~2 s (actual; estimated ~10 s)",
+    "[main] INFO net.ladenthin.srcmorph.indexer.SourceFileIndexer - Wrote AI index file: <run>\\runs\\fallback-1\\out\\gpt-oss-20b\\other\\tomee\\examples\\webservice-ws-security\\src\\main\\resources\\META-INF\\CalculatorImplUsernameTokenPlainPasswordEncrypt-server.properties.ai.md",
+    "[main] INFO net.ladenthin.srcmorph.engine.GenerateEngine - [####################] 100% 272/272 files - est. ~45 min/~45 min done, ~0 s left (estimate) | ~13 min elapsed (actual)",
+    "[main] INFO net.ladenthin.srcmorph.engine.GenerateEngine - Run record written: <run>\\logs\\gpt-oss-20b\\run-record.json",
+    "[main] INFO net.ladenthin.srcmorph.engine.GenerateEngine - Generated AI files: 271 written, 0 unchanged, 0 skipped, 1 failed",
+    "[main] ERROR net.ladenthin.srcmorph.cli.Main - Fatal error during Main.run.",
+    "net.ladenthin.srcmorph.engine.SrcMorphException: 1 file(s) were not written (an incomplete answer or a failed request); the WARN and ERROR lines name them, and the next run tries them again",
+    "\tat net.ladenthin.srcmorph.engine.GenerateEngine.run(GenerateEngine.java:348)",
+    "\tat net.ladenthin.srcmorph.engine.GenerateEngine.execute(GenerateEngine.java:102)",
+    "\tat net.ladenthin.srcmorph.cli.Main.run(Main.java:295)",
+    "\tat net.ladenthin.srcmorph.cli.Main.main(Main.java:233)",
+    "Exception in thread \"main\" java.lang.IllegalStateException: Main.run() failed on thread main",
+    "\tat net.ladenthin.srcmorph.cli.Main.run(Main.java:341)",
+    "\tat net.ladenthin.srcmorph.cli.Main.main(Main.java:233)",
+    "Caused by: net.ladenthin.srcmorph.engine.SrcMorphException: 1 file(s) were not written (an incomplete answer or a failed request); the WARN and ERROR lines name them, and the next run tries them again",
+    "\tat net.ladenthin.srcmorph.engine.GenerateEngine.run(GenerateEngine.java:348)",
+    "\tat net.ladenthin.srcmorph.engine.GenerateEngine.execute(GenerateEngine.java:102)",
+    "\tat net.ladenthin.srcmorph.cli.Main.run(Main.java:295)",
+    "\t... 1 more"
+   ]
+  },
+  "AggregatePackages": {
+   "exit": 0,
+   "seconds": 1299.6,
+   "cutOff": []
+  },
+  "AggregateProject": {
+   "exit": 0,
+   "seconds": 3.8,
+   "cutOff": []
+  }
+ },
+ "finishedAt": "2026-11-07T13:17:33Z",
+ "fileTokens": {
+  "files": 272,
+  "written": 271,
+  "unchanged": 0,
+  "failed": 1,
+  "calls": 273,
+  "promptTokens": 480171,
+  "cachedPromptTokens": 79104,
+  "completionTokens": 133284,
+  "seconds": 787.8753419,
+  "skipped": 0,
+  "wallSeconds": 787.9163194,
+  "modelLoadSeconds": {}
+ },
+ "finishReasons": {
+  "length": 1,
+  "stop": 271
+ },
+ "tokenCostUsd": 0.031732,
+ "costUsd": 1.659918,
+ "files": 805
+}

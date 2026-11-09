@@ -1,0 +1,32 @@
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# Integration route counters for XML (Apache Camel's XML DSL in Spring or Blueprint, Spring
+# Integration, Mule 3 and 4, WSO2 Synapse): the counters of xml-facts, its [ignore] line included,
+# then one per route element, with or without a namespace prefix. "producer endpoints" counts to,
+# toD, wireTap, enrich and pollEnrich; "Synapse ... (named)" only an element that has a name
+# attribute, so a reference to an endpoint does not count as one; "property placeholders" every
+# {{name}} and ${name} occurrence, with or without a default, but not a ${...} of Camel's Simple
+# language, which reads the message rather than a property: the roots no property file names
+# (${body}, ${bodyAs(...)}, ${originalBody}, ${header.id}, ${headers}, ${exchangeProperty.x},
+# ${exchangeId}, ${exception.message}, ${routeId}, ${camelContext.name}, ${sysenv.X},
+# ${variable.x}, ...) in any form, and the roots that are ordinary property names too (in, out, env,
+# date, file, bean, ref, type) only in their Simple form: ${in.body}, ${out.header.x}, ${env.HOME} or
+# ${env:HOME} (an upper-case variable), ${date:now:yyyy}, ${file:name}, ${bean:x}, ${ref:x},
+# ${type:x}. So Mule's ${env}, ${file.workingDir} and Spring Integration's ${out.dir} or
+# ${type.handler} count; Camel's ${id}, ${sys.x}, ${exchange}, ${hostname} and Spring Boot's
+# ${random.int} count as well, being property names elsewhere. EnterpriseXmlFactPatternsTest pins every case;
+# ProfileFactPatternsLinearityTest measures that every pattern reads linearly.
+[include]	xml-facts
+Camel routes and route templates	<(?:[\w.-]+:)?(?:route|routeTemplate)[ \t\r\n/>]
+Camel REST services	<(?:[\w.-]+:)?rest[ \t\r\n/>]
+Camel consumer endpoints (from)	<(?:[\w.-]+:)?from[ \t\r\n/>]
+Camel producer endpoints	<(?:[\w.-]+:)?(?:toD?|wireTap|enrich|pollEnrich)[ \t\r\n/>]
+Mule flows and sub-flows	<(?:[\w.-]+:)?(?:sub-)?flow[ \t\r\n/>]
+Mule flow references	<(?:[\w.-]+:)?flow-ref[ \t\r\n/>]
+Spring Integration channels	<(?:[\w.-]+:)?(?:publish-subscribe-)?channel[ \t\r\n/>]
+channel adapters and gateways	<(?:[\w.-]+:)?(?:(?:inbound|outbound|message-driven)-channel-adapter|(?:inbound|outbound)-gateway|gateway)[ \t\r\n/>]
+Synapse proxies, APIs, sequences and endpoints (named)	<(?:[\w.-]+:)?(?:proxy|api|sequence|endpoint|inboundEndpoint)[ \t\r\n][^<>]*?\bname[ \t\r\n]*=
+error handlers	<(?:[\w.-]+:)?(?:onException|errorHandler|doTry|on-error-continue|on-error-propagate|catch-exception-strategy|rollback-exception-strategy|faultSequence)[ \t\r\n/>]
+property placeholders	\$\{(?!(?:body|bodyAs|bodyOneLine|bodyType|originalBody|prettyBody|mandatoryBodyAs|header|headers|headerAs|exchangeProperty|exchangePropertyAs|exchangeId|exception|date-with-timezone|camelContext|camelId|routeId|routeGroup|fromRouteId|stepId|messageHistory|messageTimestamp|messageAs|sysenv|threadName|threadId|variable|variables|variableAs|null|uuid)(?![\w-])|(?:in|out)\.(?:body|headers?)(?![\w-])|env[.:][A-Z_][A-Z0-9_]*+\}|date:(?:now|exchangeCreated|header|exchangeProperty|variable|file|millis)(?![\w-])|file:(?:name|onlyname|ext|parent|path|absolute|length|size|modified)(?![\w-])|(?:bean|ref|type):)[\w.-]++(?::[^{}\n]*+)?\}|\{\{[\w.-]++(?::[^{}\n]*+)?\}\}

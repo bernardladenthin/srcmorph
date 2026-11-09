@@ -14,7 +14,6 @@ import com.fasterxml.jackson.databind.node.TextNode;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import java.io.File;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -23,6 +22,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import net.ladenthin.srcmorph.support.SourceLines;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -37,14 +37,16 @@ import org.jspecify.annotations.Nullable;
  *       subtree, where it fails the load instead of naming a directory {@code ${name}}. It is replaced
  *       after parsing, in the parsed
  *       values, so a value with backslashes or quotes (a Windows path) needs no escaping, and a number
- *       written as {@code ${name}} binds as the number it becomes.</li>
+ *       written as {@code ${name}} binds as the number it becomes. {@code $${name}} writes a literal
+ *       {@code ${name}} that no property replaces (in a path it still fails the load).</li>
  *   <li>The values bind strictly: an unknown key fails, naming it.</li>
  *   <li>Relative directories resolve against the directory of the file, so the file names the same
  *       tree whatever directory it is run from: {@code baseDirectory} (unset, the caller's default),
  *       {@code outputDirectory} (unset, {@value SrcMorphConfiguration#DEFAULT_OUTPUT_DIRECTORY} below the
  *       base directory), {@code modelDirectory} and {@code profileDirectory} (unset, the file's
  *       directory, so a model's {@code modelPath}, a prompt's {@code templateFile} and a fact
- *       definition's {@code factsFile} resolve against it too) and {@code runRecordFile}. A path with a
+ *       definition's {@code factsFile} resolve against it too), {@code runRecordFile} and
+ *       {@code partsDirectory}. A path with a
  *       root of its own (absolute, or on Windows root- or drive-relative) is used as it is.</li>
  * </ol>
  */
@@ -80,11 +82,23 @@ public final class SrcMorphConfigurationFileLoader {
     /** The key of the run record file in the run configuration. */
     private static final String RUN_RECORD_FILE_KEY = "runRecordFile";
 
+    /** The key of the directory the map-reduce answers are kept in. */
+    private static final String PARTS_DIRECTORY_KEY = "partsDirectory";
+
     /** The key of the subtrees in the run configuration. */
     private static final String SUBTREES_KEY = "subtrees";
 
     /** A property reference: {@code ${name}}. */
     private static final Pattern PROPERTY_REFERENCE = Pattern.compile("\\$\\{([^}]+)}");
+
+    /**
+     * A property reference, {@code ${name}}, or an escaped one, {@code $${name}}, which writes a literal
+     * {@code ${name}}; group 1 is the name.
+     */
+    private static final Pattern ESCAPABLE_REFERENCE = Pattern.compile("\\$?\\$\\{([^}]+)}");
+
+    /** How an escaped reference starts: a second dollar sign in front of the reference. */
+    private static final String ESCAPED_OPENER = "$${";
 
     /** Utility class; not instantiable. */
     private SrcMorphConfigurationFileLoader() {
@@ -110,8 +124,10 @@ public final class SrcMorphConfigurationFileLoader {
     }
 
     /**
-     * Makes a mapper strict: an unknown key fails, and a key set to nothing ({@code srcMorph:} with no
-     * value, {@code null}) keeps the field's default instead of putting {@code null} into it.
+     * Makes a mapper strict: an unknown key fails, a fraction in a whole-number key
+     * ({@code charsPerToken: 2.5}) fails instead of being cut to {@code 2}, and a key set to nothing
+     * ({@code srcMorph:} with no value, {@code null}) keeps the field's default instead of putting
+     * {@code null} into it.
      *
      * @param mapper the mapper
      * @param <M>    the mapper type
@@ -119,6 +135,7 @@ public final class SrcMorphConfigurationFileLoader {
      */
     private static <M extends ObjectMapper> M strict(final M mapper) {
         mapper.enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+        mapper.disable(DeserializationFeature.ACCEPT_FLOAT_AS_INT);
         // a key set to nothing keeps its default; an empty list item ("- " in YAML) is refused with the list's
         // name instead of reaching the run as a null rule or path
         mapper.setDefaultSetterInfo(JsonSetter.Value.construct(Nulls.SKIP, Nulls.FAIL));
@@ -141,7 +158,8 @@ public final class SrcMorphConfigurationFileLoader {
     public static SrcMorphConfigurationFile load(
             final Path file, final File defaultBaseDirectory, final Map<String, String> properties) throws IOException {
         final ObjectMapper mapper = mapperFor(file);
-        final JsonNode parsed = mapper.readTree(new String(Files.readAllBytes(file), StandardCharsets.UTF_8));
+        // a byte order mark (Windows PowerShell 5.1 writes one) is not part of the text
+        final JsonNode parsed = mapper.readTree(SourceLines.decode(Files.readAllBytes(file)));
         final JsonNode tree = parsed == null ? null : substituted(parsed, properties);
         // an empty file is a configuration with every default
         final SrcMorphConfigurationFile bound =
@@ -203,22 +221,23 @@ public final class SrcMorphConfigurationFileLoader {
     }
 
     /**
-     * Replaces every {@code ${name}} whose {@code name} is a known property by its value.
+     * Replaces every {@code ${name}} whose {@code name} is a known property by its value, and every
+     * escaped {@code $${name}} by the literal {@code ${name}} (an inline prompt that shows a shell
+     * variable, say), whether a property of that name exists or not.
      *
      * @param text       the text
      * @param properties the properties
-     * @return the text with the known references replaced
+     * @return the text with the known references replaced and the escaped ones unescaped
      */
     static String substitute(final String text, final Map<String, String> properties) {
-        if (properties.isEmpty()) {
-            return text;
-        }
-        final Matcher matcher = PROPERTY_REFERENCE.matcher(text);
+        final Matcher matcher = ESCAPABLE_REFERENCE.matcher(text);
         final StringBuffer result = new StringBuffer(text.length());
         while (matcher.find()) {
+            final boolean escaped = matcher.group().startsWith(ESCAPED_OPENER);
+            final String reference = escaped ? matcher.group().substring(1) : matcher.group();
             final String name = matcher.group(1);
-            final String value = name == null ? null : properties.get(name);
-            matcher.appendReplacement(result, Matcher.quoteReplacement(value != null ? value : matcher.group()));
+            final String value = escaped || name == null ? null : properties.get(name);
+            matcher.appendReplacement(result, Matcher.quoteReplacement(value != null ? value : reference));
         }
         matcher.appendTail(result);
         return result.toString();
@@ -237,6 +256,7 @@ public final class SrcMorphConfigurationFileLoader {
         requireReplaced(MODEL_DIRECTORY_KEY, srcMorph.getModelDirectory());
         requireReplaced(PROFILE_DIRECTORY_KEY, srcMorph.getProfileDirectory());
         requireReplaced(RUN_RECORD_FILE_KEY, srcMorph.getRunRecordFile());
+        requireReplaced(PARTS_DIRECTORY_KEY, srcMorph.getPartsDirectory());
         final List<String> subtrees = srcMorph.getSubtrees();
         if (subtrees != null) {
             for (final String subtree : subtrees) {
@@ -303,6 +323,10 @@ public final class SrcMorphConfigurationFileLoader {
         final File runRecordFile = srcMorph.getRunRecordFile();
         if (runRecordFile != null) {
             srcMorph.setRunRecordFile(resolved(directory, runRecordFile));
+        }
+        final File partsDirectory = srcMorph.getPartsDirectory();
+        if (partsDirectory != null) {
+            srcMorph.setPartsDirectory(resolved(directory, partsDirectory));
         }
     }
 

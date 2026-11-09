@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+
+SPDX-License-Identifier: Apache-2.0
+-->
+<ui:composition xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:h="jakarta.faces.html"
+                xmlns:f="jakarta.faces.core"
+                xmlns:ui="jakarta.faces.facelets"
+                template="/WEB-INF/templates/shop.xhtml">
+    <ui:define name="content">
+        <h:form id="checkoutForm">
+            <h:outputLabel for="street" value="Street"/>
+            <h:inputText id="street" value="#{checkoutBean.address.street}" required="true"/>
+            <h:inputText id="zip" value="#{checkoutBean.address.zip}">
+                <f:validateRegex pattern="[0-9]{5}"/>
+            </h:inputText>
+            <h:selectOneMenu id="shipping" value="#{checkoutBean.shippingMethod}">
+                <f:selectItems value="#{checkoutBean.shippingMethods}"/>
+                <f:ajax listener="#{checkoutBean.recalculate}" render="total"/>
+            </h:selectOneMenu>
+            <h:outputText id="total" value="#{checkoutBean.total}">
+                <f:convertNumber type="currency" currencyCode="EUR"/>
+            </h:outputText>
+            <h:commandButton value="Place order" action="#{checkoutBean.placeOrder}"/>
+            <!-- <h:commandButton value="Save cart" action="#{checkoutBean.saveCart}"/> -->
+        </h:form>
+        <ui:include src="/WEB-INF/includes/payment-hints.xhtml"/>
+    </ui:define>
+</ui:composition>

@@ -1,0 +1,4097 @@
+{
+ "_comment": "Kinds the self-test does not route yet: names derived per kind from open-source projects (their licenses and commits in the writeup)",
+ "other/tomee/examples/access-timeout-meta/src/main/java/org/superbiz/accesstimeout/BusyBee.java": {
+  "ids": [
+   "BusyBee",
+   "stayBusy",
+   "doItNow",
+   "doItSoon",
+   "justDoIt"
+  ],
+  "words": []
+ },
+ "other/tomee/examples/access-timeout/src/main/java/org/superbiz/accesstimeout/BusyBee.java": {
+  "ids": [
+   "BusyBee",
+   "stayBusy",
+   "doItNow",
+   "doItSoon",
+   "justDoIt"
+  ],
+  "words": []
+ },
+ "other/tomee/examples/activemq-multiple-brokers/src/main/java/org/superbiz/rest/service/Broadcaster.java": {
+  "ids": [
+   "Broadcaster",
+   "broadcastMessage"
+  ],
+  "words": []
+ },
+ "other/tomee/examples/activemq-multiple-brokers/src/main/java/org/superbiz/rest/service/JmsResource.java": {
+  "ids": [
+   "JmsResource",
+   "stats",
+   "send",
+   "setBroadcast",
+   "setSse",
+   "onMessage",
+   "jms",
+   "send/{brokerid}",
+   "broadcast"
+  ],
+  "words": [
+   "stats",
+   "send",
+   "jms",
+   "broadcast"
+  ]
+ },
+ "other/tomee/examples/activemq-multiple-brokers/src/main/java/org/superbiz/rest/service/Producer.java": {
+  "ids": [
+   "Producer",
+   "sendMessage"
+  ],
+  "words": []
+ },
+ "other/tomee/examples/activemq-multiple-brokers/src/main/java/org/superbiz/rest/service/TopicListener.java": {
+  "ids": [
+   "TopicListener",
+   "onMessage"
+  ],
+  "words": []
+ },
+ "other/tomee/examples/alternate-descriptors/src/main/java/org/superbiz/altdd/Movie.java": {
+  "ids": [
+   "Movie",
+   "getDirector",
+   "setDirector",
+   "getTitle",
+   "setTitle",
+   "getYear",
+   "setYear"
+  ],
+  "words": []
+ },
+ "other/tomee/examples/alternate-descriptors/src/main/java/org/superbiz/altdd/Movies.java": {
+  "ids": [
+   "Movies",
+   "addMovie",
+   "deleteMovie",
+   "getMovies"
+  ],
+  "words": []
+ },
+ "other/tomee/examples/alternate-descriptors/src/main/resources/META-INF/persistence.xml": {
+  "ids": [
+   "movie-unit",
+   "Movie",
+   "movieDatabase",
+   "movieDatabaseUnmanaged"
+  ],
+  "words": []
+ },
+ "other/tomee/examples/application-composer/src/main/java/org/superbiz/composed/Movie.java": {
+  "ids": [
+   "Movie",
+   "getDirector",
+   "setDirector",
+   "getTitle",
+   "setTitle",
+   "getYear",
+   "setYear"
+  ],
+  "words": []
+ },
+ "other/tomee/examples/application-composer/src/main/java/org/superbiz/composed/MoviesImpl.java": {
+  "ids": [
+   "MoviesImpl",
+   "addMovie",
+   "deleteMovie",
+   "getMovies"
+  ],
+  "words": []
+ },
+ "other/tomee/examples/applicationexception/src/main/java/org/superbiz/appexception/ThrowBusinessException.java": {
+  "ids": [
+   "ThrowBusinessException",
+   "throwValueRequiredException"
+  ],
+  "words": []
+ },
+ "other/tomee/examples/applicationexception/src/main/java/org/superbiz/appexception/ThrowBusinessExceptionImpl.java": {
+  "ids": [
+   "ThrowBusinessExceptionImpl",
+   "throwValueRequiredException"
+  ],
+  "words": []
+ },
+ "other/tomee/examples/arquillian-jpa/src/main/resources/META-INF/persistence.xml": {
+  "ids": [
+   "demoApplicationPU",
+   "User",
+   "demoDataSource"
+  ],
+  "words": []
+ },
+ "other/tomee/examples/custom-injection/src/main/resources/META-INF/env-entries.properties": {
+  "ids": [
+   "guitarStringGuages",
+   "certificateOfAuthenticity",
+   "dateCreated",
+   "pickups",
+   "style"
+  ],
+  "words": [
+   "pickups",
+   "style"
+  ]
+ },
+ "other/tomee/examples/dynamic-dao-implementation/src/main/resources/META-INF/persistence.xml": {
+  "ids": [
+   "dynamic",
+   "User",
+   "jdbc/dynamicDB"
+  ],
+  "words": [
+   "dynamic"
+  ]
+ },
+ "other/tomee/examples/dynamic-datasource-routing/src/main/resources/META-INF/persistence.xml": {
+  "ids": [
+   "router",
+   "db1",
+   "db2",
+   "db3",
+   "Person",
+   "database1",
+   "database2",
+   "database3"
+  ],
+  "words": [
+   "router"
+  ]
+ },
+ "other/tomee/examples/ear-testing/business-model/src/main/resources/META-INF/persistence.xml": {
+  "ids": [
+   "movie-unit",
+   "Movie",
+   "movieDatabase",
+   "movieDatabaseUnmanaged"
+  ],
+  "words": []
+ },
+ "other/tomee/examples/ejb-examples/src/main/resources/META-INF/persistence.xml": {
+  "ids": [
+   "jpa-example",
+   "JpaBean"
+  ],
+  "words": []
+ },
+ "other/tomee/examples/groovy-cdi/src/main/groovy/org/superbiz/Hello.groovy": {
+  "ids": [
+   "Hello",
+   "hi"
+  ],
+  "words": [
+   "hi"
+  ]
+ },
+ "other/tomee/examples/groovy-jpa/src/main/resources/META-INF/persistence.xml": {
+  "ids": [
+   "groovy",
+   "Person",
+   "jdbc/groovy"
+  ],
+  "words": [
+   "groovy"
+  ]
+ },
+ "other/tomee/examples/injection-of-entitymanager/src/main/resources/META-INF/persistence.xml": {
+  "ids": [
+   "movie-unit",
+   "Movie",
+   "movieDatabase",
+   "movieDatabaseUnmanaged"
+  ],
+  "words": []
+ },
+ "other/tomee/examples/jakarta-data-repository/src/main/resources/META-INF/persistence.xml": {
+  "ids": [
+   "movie-unit",
+   "Movie",
+   "movieDatabase",
+   "movieDatabaseUnmanaged"
+  ],
+  "words": []
+ },
+ "other/tomee/examples/jpa-and-jakarta-data/src/main/resources/META-INF/persistence.xml": {
+  "ids": [
+   "movie-unit",
+   "Movie",
+   "movieDatabase",
+   "movieDatabaseUnmanaged"
+  ],
+  "words": []
+ },
+ "other/tomee/examples/jpa-eclipselink/src/main/resources/META-INF/persistence.xml": {
+  "ids": [
+   "movie-unit",
+   "movieDatabase",
+   "movieDatabaseUnmanaged",
+   "PersistenceProvider"
+  ],
+  "words": []
+ },
+ "other/tomee/examples/jpa-enumerated/src/main/resources/META-INF/persistence.xml": {
+  "ids": [
+   "movie-unit",
+   "Movie",
+   "movieDatabase",
+   "movieDatabaseUnmanaged"
+  ],
+  "words": []
+ },
+ "other/tomee/examples/mp-config-example/src/main/resources/META-INF/microprofile-config.properties": {
+  "ids": [
+   "config_ordinal",
+   "sample.microprofile-config",
+   "sample.microrpfile.name"
+  ],
+  "words": []
+ },
+ "other/tomee/examples/mp-openapi-reader/src/main/resources/META-INF/microprofile-config.properties": {
+  "ids": [
+   "mp.openapi.model.reader",
+   "mp.openapi.scan.disable"
+  ],
+  "words": []
+ },
+ "other/tomee/examples/mp-openapi-reader/src/main/webapp/openapi/openapi.yaml": {
+  "ids": [
+   "/rest/load",
+   "/rest/movies",
+   "/rest/movies/count",
+   "/rest/movies/{id}",
+   "Movie"
+  ],
+  "words": []
+ },
+ "other/tomee/examples/mp-rest-jwt-jwk/src/main/resources/META-INF/microprofile-config.properties": {
+  "ids": [
+   "mp.jwt.verify.publickey.location",
+   "mp.jwt.verify.issuer"
+  ],
+  "words": []
+ },
+ "other/tomee/examples/mp-rest-jwt-principal/src/main/resources/META-INF/microprofile-config.properties": {
+  "ids": [
+   "mp.jwt.verify.publickey.location",
+   "mp.jwt.verify.issuer"
+  ],
+  "words": []
+ },
+ "other/tomee/examples/rest-jaas/src/main/tomee/conf/groups.properties": {
+  "ids": [
+   "admin",
+   "superUser"
+  ],
+  "words": [
+   "admin"
+  ]
+ },
+ "other/tomee/examples/rest-jaas/src/main/tomee/conf/users.properties": {
+  "ids": [
+   "tomee",
+   "adminOnly"
+  ],
+  "words": [
+   "tomee"
+  ]
+ },
+ "other/tomee/examples/scala-basic/src/main/scala/org/superbiz/GreetingService.scala": {
+  "ids": [
+   "GreetingService",
+   "hi"
+  ],
+  "words": [
+   "hi"
+  ]
+ },
+ "other/tomee/examples/security-openid/src/main/resources/META-INF/microprofile-config.properties": {
+  "ids": [
+   "openid.provider-uri",
+   "openid.client-id",
+   "openid.client-secret"
+  ],
+  "words": []
+ },
+ "other/tomee/examples/webservice-ws-security/src/main/resources/META-INF/CalculatorImplSign-server.properties": {
+  "ids": [
+   "org.apache.ws.security.crypto.provider",
+   "org.apache.ws.security.crypto.merlin.keystore.type",
+   "org.apache.ws.security.crypto.merlin.keystore.password",
+   "org.apache.ws.security.crypto.merlin.keystore.alias",
+   "org.apache.ws.security.crypto.merlin.file",
+   "org.apache.ws.security.crypto.merlin.load.cacerts"
+  ],
+  "words": []
+ },
+ "other/tomee/examples/webservice-ws-security/src/main/resources/META-INF/CalculatorImplUsernameTokenPlainPasswordEncrypt-server.properties": {
+  "ids": [
+   "org.apache.ws.security.crypto.provider",
+   "org.apache.ws.security.crypto.merlin.keystore.type",
+   "org.apache.ws.security.crypto.merlin.keystore.password",
+   "org.apache.ws.security.crypto.merlin.keystore.alias",
+   "org.apache.ws.security.crypto.merlin.file",
+   "org.apache.ws.security.crypto.merlin.load.cacerts"
+  ],
+  "words": []
+ },
+ "other/camel-examples/.mvn/wrapper/maven-wrapper.properties": {
+  "ids": [
+   "wrapperVersion",
+   "distributionType",
+   "distributionUrl",
+   "wrapperUrl"
+  ],
+  "words": []
+ },
+ "other/camel-examples/aggregate-dist/src/main/resources/log4j2.properties": {
+  "ids": [
+   "appender.out.type",
+   "appender.out.name",
+   "appender.out.layout.type",
+   "appender.out.layout.pattern",
+   "rootLogger.level",
+   "rootLogger.appenderRef.out.ref",
+   "loggers",
+   "logger.mine.name",
+   "logger.mine.level",
+   "logger.camel.name",
+   "logger.camel.level",
+   "logger.spring.name",
+   "logger.spring.level",
+   "logger.trans.name",
+   "logger.trans.level"
+  ],
+  "words": [
+   "loggers"
+  ]
+ },
+ "other/camel-examples/aggregate/src/main/resources/META-INF/spring/camel-context.xml": {
+  "ids": [
+   "myStrategy",
+   "myRepo",
+   "NumberAggregationStrategy",
+   "MemoryAggregationRepository",
+   "stream:in",
+   "stream:out"
+  ],
+  "words": []
+ },
+ "other/camel-examples/aggregate/src/main/resources/log4j2.properties": {
+  "ids": [
+   "appender.out.type",
+   "appender.out.name",
+   "appender.out.layout.type",
+   "appender.out.layout.pattern",
+   "rootLogger.level",
+   "rootLogger.appenderRef.out.ref"
+  ],
+  "words": []
+ },
+ "other/camel-examples/ai-tools-spiffe-opa/compose.yaml": {
+  "ids": [
+   "spire",
+   "assistant",
+   "camel-example-ai-tools-spiffe-opa",
+   "public-chatbot",
+   "support-console",
+   "spire-sockets"
+  ],
+  "words": [
+   "spire",
+   "assistant"
+  ]
+ },
+ "other/camel-examples/ai-tools-spiffe-opa/src/main/resources/application.properties": {
+  "ids": [
+   "camel.main.name",
+   "assistant.audience",
+   "assistant.host",
+   "assistant.port",
+   "client.message",
+   "client.period",
+   "client.delay",
+   "identity.period"
+  ],
+  "words": []
+ },
+ "other/camel-examples/ai-tools-spiffe-opa/src/main/resources/log4j2.properties": {
+  "ids": [
+   "appender.out.type",
+   "appender.out.name",
+   "appender.out.layout.type",
+   "appender.out.layout.pattern",
+   "logger.camel.name",
+   "logger.camel.level",
+   "logger.langchain4j.name",
+   "logger.langchain4j.level",
+   "logger.netty.name",
+   "logger.netty.level",
+   "logger.httpclient.name",
+   "logger.httpclient.level",
+   "rootLogger.level",
+   "rootLogger.appenderRef.out.ref"
+  ],
+  "words": []
+ },
+ "other/camel-examples/aws/main-endpointdsl-aws-kcl-kinesis/src/main/resources/application.properties": {
+  "ids": [
+   "camel.main.name",
+   "streamName"
+  ],
+  "words": []
+ },
+ "other/camel-examples/aws/main-endpointdsl-aws-kcl-kinesis/src/main/resources/log4j2.properties": {
+  "ids": [
+   "appender.out.type",
+   "appender.out.name",
+   "appender.out.layout.type",
+   "appender.out.layout.pattern",
+   "rootLogger.level",
+   "rootLogger.appenderRef.out.ref"
+  ],
+  "words": []
+ },
+ "other/camel-examples/aws/main-endpointdsl-aws2-s3-kafka/src/main/resources/application.properties": {
+  "ids": [
+   "camel.main.name",
+   "bucketName",
+   "kafkaTopic",
+   "kafkaBrokers"
+  ],
+  "words": []
+ },
+ "other/camel-examples/aws/main-endpointdsl-aws2-s3-kafka/src/main/resources/log4j2.properties": {
+  "ids": [
+   "appender.out.type",
+   "appender.out.name",
+   "appender.out.layout.type",
+   "appender.out.layout.pattern",
+   "rootLogger.level",
+   "rootLogger.appenderRef.out.ref"
+  ],
+  "words": []
+ },
+ "other/camel-examples/aws/main-endpointdsl-aws2-s3/src/main/resources/application.properties": {
+  "ids": [
+   "camel.main.name",
+   "bucketName"
+  ],
+  "words": []
+ },
+ "other/camel-examples/cafe/src/main/resources/META-INF/beans.xml": {
+  "ids": [
+   "aggregatorStrategy",
+   "orderSplitter",
+   "drinkRouter",
+   "waiter",
+   "barista",
+   "CafeAggregationStrategy",
+   "OrderSplitter",
+   "DrinkRouter",
+   "Waiter",
+   "Barista"
+  ],
+  "words": [
+   "waiter",
+   "barista"
+  ]
+ },
+ "other/camel-examples/cafe/src/main/resources/META-INF/camel-routes.xml": {
+  "ids": [
+   "direct:cafe",
+   "direct:drink",
+   "seda:coldDrinks",
+   "bean:barista",
+   "direct:deliveries",
+   "seda:hotDrinks",
+   "bean:waiter"
+  ],
+  "words": []
+ },
+ "other/camel-examples/cafe/src/main/resources/META-INF/spring/camel-context.xml": {
+  "ids": [
+   "customer",
+   "Customer"
+  ],
+  "words": [
+   "customer"
+  ]
+ },
+ "other/camel-examples/cassandra-kubernetes/src/main/resources/META-INF/spring/camel-context.xml": {
+  "ids": [
+   "cassandra-route",
+   "populate",
+   "rowProcessor",
+   "CqlPopulateBean",
+   "RowProcessor",
+   "timer:foo",
+   "cql://cassandra/test"
+  ],
+  "words": [
+   "populate"
+  ]
+ },
+ "other/camel-examples/console/src/main/resources/META-INF/spring/camel-context.xml": {
+  "ids": [
+   "stream:in",
+   "stream:out"
+  ],
+  "words": []
+ },
+ "other/camel-examples/hazelcast-kubernetes/src/main/resources/META-INF/spring/camel-context.xml": {
+  "ids": [
+   "route",
+   "HazelcastRoute"
+  ],
+  "words": [
+   "route"
+  ]
+ },
+ "other/camel-examples/jdbc/src/main/resources/META-INF/spring/camel-context.xml": {
+  "ids": [
+   "sample-generator-route",
+   "query-update-route-part1",
+   "query-update-route-part2",
+   "sampleGenerator",
+   "recordProcessor",
+   "SimpleDataSet",
+   "RecordProcessor",
+   "dataset:sampleGenerator",
+   "jdbc:dataSource",
+   "log:insertLog",
+   "timer://timer1",
+   "bean:recordProcessor",
+   "direct:updateDone",
+   "log:updateDone"
+  ],
+  "words": []
+ },
+ "other/camel-examples/jmx/src/main/resources/META-INF/spring/camel-context.xml": {
+  "ids": [
+   "myRouteBuilder",
+   "MyRouteBuilder"
+  ],
+  "words": []
+ },
+ "other/camel-examples/jooq/src/main/resources/META-INF/spring/camel-context.xml": {
+  "ids": [
+   "produce-route",
+   "consume-route",
+   "jooq",
+   "jooqConfiguration",
+   "book-store",
+   "JooqComponent",
+   "JooqConfiguration",
+   "BookStoreRecordBean",
+   "timer://insert",
+   "jooq://org.apache.camel.examples.jooq.db.tables.records.BookStoreRecord"
+  ],
+  "words": [
+   "jooq"
+  ]
+ },
+ "other/camel-examples/kamelet-main/src/main/resources/camel/my-route.camel.yaml": {
+  "ids": [
+   "earthquake",
+   "kamelet:earthquake-source"
+  ],
+  "words": [
+   "earthquake"
+  ]
+ },
+ "other/camel-examples/kamelet-sql/src/main/resources/camel/my-route.camel.yaml": {
+  "ids": [
+   "sql",
+   "kamelet:postgresql-source",
+   "kamelet:log-sink"
+  ],
+  "words": [
+   "sql"
+  ]
+ },
+ "other/camel-examples/loadbalancing/src/main/resources/META-INF/spring/camel-context-loadbalancer.xml": {
+  "ids": [
+   "generator",
+   "Generator"
+  ],
+  "words": [
+   "generator"
+  ]
+ },
+ "other/camel-examples/loadbalancing/src/main/resources/META-INF/spring/camel-context-mina1.xml": {
+  "ids": [
+   "reporting",
+   "Reporting"
+  ],
+  "words": [
+   "reporting"
+  ]
+ },
+ "other/camel-examples/main-groovy/src/main/resources/camel-groovy/OrderDTO.groovy": {
+  "ids": [
+   "OrderDTO",
+   "toString"
+  ],
+  "words": []
+ },
+ "other/camel-examples/main-yaml/src/main/resources/routes/my-route.camel.yaml": {
+  "ids": [
+   "foo",
+   "quartz:foo",
+   "bean:myBean"
+  ],
+  "words": [
+   "foo"
+  ]
+ },
+ "other/camel-examples/mvnw.cmd": {
+  "ids": [
+   "skipRcPre",
+   "OkJHome",
+   "init",
+   "findBaseDir",
+   "baseDirFound",
+   "baseDirNotFound",
+   "endDetectBaseDir",
+   "endReadAdditionalConfig",
+   "error",
+   "end",
+   "skipRcPost",
+   "ERROR_CODE",
+   "MAVEN_PROJECTBASEDIR",
+   "EXEC_DIR",
+   "WDIR",
+   "MAVEN_JAVA_EXE",
+   "WRAPPER_JAR",
+   "WRAPPER_LAUNCHER",
+   "WRAPPER_URL",
+   "WRAPPER_SHA_256_SUM",
+   "MAVEN_CMD_LINE_ARGS"
+  ],
+  "words": [
+   "init",
+   "error",
+   "end"
+  ]
+ },
+ "other/camel-examples/resume-api/resume-api-aws2-kinesis/compose.yaml": {
+  "ids": [
+   "kinesis",
+   "localstack",
+   "zookeeper",
+   "kafka",
+   "example"
+  ],
+  "words": [
+   "kinesis",
+   "localstack",
+   "zookeeper",
+   "kafka",
+   "example"
+  ]
+ },
+ "other/camel-examples/resume-api/resume-api-cassandraql/compose.yaml": {
+  "ids": [
+   "cassandra",
+   "zookeeper",
+   "kafka",
+   "example"
+  ],
+  "words": [
+   "cassandra",
+   "zookeeper",
+   "kafka",
+   "example"
+  ]
+ },
+ "other/camel-examples/resume-api/resume-api-file-offset/compose.yaml": {
+  "ids": [
+   "zookeeper",
+   "kafka",
+   "example"
+  ],
+  "words": [
+   "zookeeper",
+   "kafka",
+   "example"
+  ]
+ },
+ "other/camel-examples/resume-api/resume-api-fileset-clusterized/compose.yaml": {
+  "ids": [
+   "zookeeper",
+   "kafka",
+   "example-1",
+   "example-2"
+  ],
+  "words": [
+   "zookeeper",
+   "kafka"
+  ]
+ },
+ "other/camel-examples/resume-api/resume-api-fileset-wal/compose.yaml": {
+  "ids": [
+   "zookeeper",
+   "kafka",
+   "example"
+  ],
+  "words": [
+   "zookeeper",
+   "kafka",
+   "example"
+  ]
+ },
+ "other/camel-examples/resume-api/resume-api-fileset/compose.yaml": {
+  "ids": [
+   "zookeeper",
+   "kafka",
+   "example"
+  ],
+  "words": [
+   "zookeeper",
+   "kafka",
+   "example"
+  ]
+ },
+ "other/camel-examples/routeloader/src/main/resources/myroutes/my-yaml-route.camel.yaml": {
+  "ids": [
+   "timer:yaml",
+   "log:yaml"
+  ],
+  "words": []
+ },
+ "other/camel-examples/routes-configuration/src/main/resources/myroutes/my-yaml-route.camel.yaml": {
+  "ids": [
+   "timer:yaml",
+   "log:yaml"
+  ],
+  "words": []
+ },
+ "other/camel-examples/semantic-agent-routing/src/main/resources/routes/coordinator.yaml": {
+  "ids": [
+   "trip-http",
+   "platform-http:/trip",
+   "direct:trip",
+   "trip-coordinator",
+   "direct:prepare-trip",
+   "direct:select-specialists",
+   "direct:answer-trip",
+   "direct:build-response",
+   "prepare-trip",
+   "select-specialists",
+   "answer-trip",
+   "direct:answer-specialist",
+   "direct:review-replies",
+   "direct:use-single-reply",
+   "direct:merge-replies",
+   "review-replies",
+   "use-single-reply",
+   "answer-specialist",
+   "direct:generate-specialist-reply",
+   "direct:check-specialist-reply",
+   "generate-specialist-reply",
+   "direct:dispatch",
+   "direct:save-draft",
+   "check-specialist-reply",
+   "direct:apply-reply-policy",
+   "merge-replies",
+   "direct:generate-merged-reply",
+   "direct:check-completeness",
+   "generate-merged-reply",
+   "openai:chat-completion",
+   "check-completeness",
+   "save-draft",
+   "apply-reply-policy",
+   "direct:accept-draft",
+   "direct:retry-draft",
+   "direct:review-draft",
+   "accept-draft",
+   "retry-draft",
+   "review-draft",
+   "build-response",
+   "specialist-dispatch",
+   "direct:unsupported-specialist",
+   "unsupported-specialist"
+  ],
+  "words": []
+ },
+ "other/camel-examples/semantic-agent-routing/src/main/resources/routes/cost.yaml": {
+  "ids": [
+   "cost-agent",
+   "a2a:cost",
+   "openai:chat-completion"
+  ],
+  "words": []
+ },
+ "other/camel-examples/semantic-agent-routing/src/main/resources/routes/general.yaml": {
+  "ids": [
+   "general-agent",
+   "a2a:general",
+   "openai:chat-completion"
+  ],
+  "words": []
+ },
+ "other/camel-examples/semantic-agent-routing/src/main/resources/routes/reservation.yaml": {
+  "ids": [
+   "reservation-agent",
+   "a2a:reservation",
+   "openai:chat-completion"
+  ],
+  "words": []
+ },
+ "other/camel-examples/semantic-agent-routing/src/main/resources/routes/weather.yaml": {
+  "ids": [
+   "weather-agent",
+   "a2a:weather",
+   "openai:chat-completion"
+  ],
+  "words": []
+ },
+ "other/camel-examples/semantic-agent-routing/start.ps1": {
+  "ids": [
+   "Start-Integration",
+   "EnvFile",
+   "reference"
+  ],
+  "words": [
+   "reference"
+  ]
+ },
+ "other/camel-examples/spiffe/compose.yaml": {
+  "ids": [
+   "spire",
+   "opa",
+   "inventory",
+   "camel-example-spiffe",
+   "backend",
+   "frontend",
+   "auditor",
+   "spire-sockets"
+  ],
+  "words": [
+   "spire",
+   "opa",
+   "inventory",
+   "backend",
+   "frontend",
+   "auditor"
+  ]
+ },
+ "other/asyncapi-spec/examples/adeo-kafka-request-reply-asyncapi.yml": {
+  "ids": [
+   "costingRequestChannel",
+   "adeo-{env}-case-study-COSTING-REQUEST-{version}",
+   "costingResponseChannel",
+   "receiveACostingRequest",
+   "costingRequestV1",
+   "costingResponse",
+   "RequesterId",
+   "RequesterCode",
+   "MessageId",
+   "RequestId",
+   "CorrelationId",
+   "BuCode",
+   "ReplyTopic",
+   "ErrorStep",
+   "ErrorMessage",
+   "ErrorCode"
+  ],
+  "words": []
+ },
+ "other/asyncapi-spec/examples/anyof-asyncapi.yml": {
+  "ids": [
+   "test",
+   "testMessages",
+   "objectWithKey",
+   "objectWithKey2"
+  ],
+  "words": [
+   "test"
+  ]
+ },
+ "other/asyncapi-spec/examples/application-headers-asyncapi.yml": {
+  "ids": [
+   "lightingMeasured",
+   "smartylighting/streetlights/1/0/event/{streetlightId}/lighting/measured",
+   "receiveLightMeasurement",
+   "lightMeasured",
+   "lightMeasuredPayload",
+   "sentAt",
+   "applicationInstanceId"
+  ],
+  "words": []
+ },
+ "other/asyncapi-spec/examples/correlation-id-asyncapi.yml": {
+  "ids": [
+   "lightingMeasured",
+   "smartylighting/streetlights/1/0/event/{streetlightId}/lighting/measured",
+   "lightsDim",
+   "smartylighting/streetlights/1/0/action/{streetlightId}/dim",
+   "receiveLightMeasurement",
+   "dimLight",
+   "lightMeasured",
+   "lightMeasuredPayload",
+   "dimLightPayload",
+   "sentAt"
+  ],
+  "words": []
+ },
+ "other/asyncapi-spec/examples/gitter-streaming-asyncapi.yml": {
+  "ids": [
+   "rooms",
+   "/rooms/{roomId}/{resource}",
+   "sendRoomInfo",
+   "chatMessage",
+   "heartbeat"
+  ],
+  "words": [
+   "rooms",
+   "heartbeat"
+  ]
+ },
+ "other/asyncapi-spec/examples/kraken-websocket-request-reply-message-filter-in-reply-asyncapi.yml": {
+  "ids": [
+   "currencyExchange",
+   "receivePing",
+   "sendHeartbeat",
+   "systemStatus",
+   "receiveSubscribeRequest",
+   "receiveUnsubscribeRequest",
+   "dummyCurrencyInfo",
+   "ping",
+   "pong",
+   "subscribe",
+   "unsubscribe",
+   "subscriptionStatus",
+   "heartbeat",
+   "status",
+   "subscriptionStatusError",
+   "subscriptionStatusSuccess",
+   "subscriptionStatusCommon",
+   "interval",
+   "name",
+   "token",
+   "depth",
+   "maxratecount",
+   "ratecounter",
+   "snapshot",
+   "reqid",
+   "pair"
+  ],
+  "words": [
+   "ping",
+   "pong",
+   "subscribe",
+   "unsubscribe",
+   "heartbeat",
+   "status",
+   "interval",
+   "name",
+   "token",
+   "depth",
+   "maxratecount",
+   "ratecounter",
+   "snapshot",
+   "reqid",
+   "pair"
+  ]
+ },
+ "other/asyncapi-spec/examples/kraken-websocket-request-reply-multiple-channels-asyncapi.yml": {
+  "ids": [
+   "ping",
+   "pong",
+   "heartbeat",
+   "systemStatus",
+   "currencyInfo",
+   "subscribe",
+   "unsubscribe",
+   "receivePing",
+   "dummyCurrencyInfo",
+   "subscriptionStatus",
+   "status",
+   "subscriptionStatusError",
+   "subscriptionStatusSuccess",
+   "subscriptionStatusCommon",
+   "interval",
+   "name",
+   "token",
+   "depth",
+   "maxratecount",
+   "ratecounter",
+   "snapshot",
+   "reqid",
+   "pair"
+  ],
+  "words": [
+   "ping",
+   "pong",
+   "heartbeat",
+   "subscribe",
+   "unsubscribe",
+   "status",
+   "interval",
+   "name",
+   "token",
+   "depth",
+   "maxratecount",
+   "ratecounter",
+   "snapshot",
+   "reqid",
+   "pair"
+  ]
+ },
+ "other/asyncapi-spec/examples/mercure-asyncapi.yml": {
+  "ids": [
+   "books",
+   "https://example.com/books/{id}",
+   "ReceiveBooksInfo",
+   "SendBooksInfo",
+   "book"
+  ],
+  "words": [
+   "books",
+   "book"
+  ]
+ },
+ "other/asyncapi-spec/examples/not-asyncapi.yml": {
+  "ids": [
+   "test",
+   "onTestMsg",
+   "testMessages",
+   "testSchema"
+  ],
+  "words": [
+   "test"
+  ]
+ },
+ "other/asyncapi-spec/examples/oneof-asyncapi.yml": {
+  "ids": [
+   "test",
+   "test2",
+   "onTestMsg",
+   "sendTest",
+   "testMessages",
+   "testMessage1",
+   "testMessage2",
+   "objectWithKey",
+   "objectWithKey2"
+  ],
+  "words": [
+   "test"
+  ]
+ },
+ "other/asyncapi-spec/examples/operation-security-asyncapi.yml": {
+  "ids": [
+   "authRevoke",
+   "AUTHORIZATION_REVOCATION",
+   "sendAuthRevoke",
+   "message",
+   "MetaData",
+   "Notification",
+   "AuthorizationRevocationData"
+  ],
+  "words": [
+   "message"
+  ]
+ },
+ "other/asyncapi-spec/examples/rpc-client-asyncapi.yml": {
+  "ids": [
+   "queue",
+   "{queue}",
+   "rpc_queue",
+   "receiveSumResult",
+   "requestSum"
+  ],
+  "words": [
+   "queue"
+  ]
+ },
+ "other/learn.openapis.org/examples/v3.0/api-with-examples.yaml": {
+  "ids": [
+   "listVersionsv2",
+   "/v2",
+   "getVersionDetailsv2"
+  ],
+  "words": []
+ },
+ "other/learn.openapis.org/examples/v3.0/link-example.yaml": {
+  "ids": [
+   "/2.0/users/{username}",
+   "getUserByName",
+   "/2.0/repositories/{username}",
+   "getRepositoriesByOwner",
+   "/2.0/repositories/{username}/{slug}",
+   "getRepository",
+   "/2.0/repositories/{username}/{slug}/pullrequests",
+   "getPullRequestsByRepository",
+   "/2.0/repositories/{username}/{slug}/pullrequests/{pid}",
+   "getPullRequestsById",
+   "/2.0/repositories/{username}/{slug}/pullrequests/{pid}/merge",
+   "mergePullRequest",
+   "user",
+   "repository",
+   "pullrequest"
+  ],
+  "words": [
+   "user",
+   "repository",
+   "pullrequest"
+  ]
+ },
+ "other/learn.openapis.org/examples/v3.0/petstore-expanded.yaml": {
+  "ids": [
+   "/pets",
+   "findPets",
+   "addPet",
+   "/pets/{id}",
+   "find pet by id",
+   "deletePet",
+   "Pet",
+   "NewPet",
+   "Error"
+  ],
+  "words": []
+ },
+ "other/learn.openapis.org/examples/v3.0/petstore.yaml": {
+  "ids": [
+   "/pets",
+   "listPets",
+   "createPets",
+   "/pets/{petId}",
+   "showPetById",
+   "Pet",
+   "Pets",
+   "Error"
+  ],
+  "words": []
+ },
+ "other/learn.openapis.org/examples/v3.0/uspto.yaml": {
+  "ids": [
+   "list-data-sets",
+   "/{dataset}/{version}/fields",
+   "list-searchable-fields",
+   "/{dataset}/{version}/records",
+   "perform-search",
+   "dataSetList"
+  ],
+  "words": []
+ },
+ "other/learn.openapis.org/examples/v3.1/tictactoe.yaml": {
+  "ids": [
+   "/board",
+   "get-board",
+   "/board/{row}/{column}",
+   "get-square",
+   "put-square",
+   "errorMessage",
+   "coordinate",
+   "mark",
+   "board",
+   "winner",
+   "status"
+  ],
+  "words": [
+   "coordinate",
+   "mark",
+   "board",
+   "winner",
+   "status"
+  ]
+ },
+ "other/learn.openapis.org/examples/v3.2/3.2-tags-example.yaml": {
+  "ids": [
+   "/flights",
+   "/flights/international",
+   "/flights/domestic",
+   "/flights/delayed"
+  ],
+  "words": []
+ },
+ "other/avro/lang/java/tools/src/test/compiler/input/addextraoptionalgetterstest.avsc": {
+  "ids": [
+   "AddExtraOptionalGettersTest",
+   "name",
+   "favorite_number"
+  ],
+  "words": [
+   "name"
+  ]
+ },
+ "other/avro/lang/java/tools/src/test/compiler/input/fieldtest.avsc": {
+  "ids": [
+   "FieldTest",
+   "number",
+   "last_name",
+   "timestamp",
+   "timestampMicros",
+   "timeMillis",
+   "timeMicros"
+  ],
+  "words": [
+   "number",
+   "timestamp"
+  ]
+ },
+ "other/avro/lang/java/tools/src/test/compiler/input/jetbrainsnullsafeannotationsfieldstest.avsc": {
+  "ids": [
+   "JetBrainsNullSafeAnnotationsFieldsTest",
+   "name",
+   "nullable_name",
+   "favorite_number",
+   "nullable_favorite_number"
+  ],
+  "words": [
+   "name"
+  ]
+ },
+ "other/avro/lang/java/tools/src/test/compiler/input/jspecifynullsafeannotationsfieldstest.avsc": {
+  "ids": [
+   "JSpecifyNullSafeAnnotationsFieldsTest",
+   "name",
+   "nullable_name",
+   "favorite_number",
+   "nullable_favorite_number"
+  ],
+  "words": [
+   "name"
+  ]
+ },
+ "other/avro/lang/java/tools/src/test/compiler/input/nosetterstest.avsc": {
+  "ids": [
+   "NoSettersTest",
+   "name",
+   "favorite_number"
+  ],
+  "words": [
+   "name"
+  ]
+ },
+ "other/avro/lang/java/tools/src/test/compiler/input/optionalgettersallfieldstest.avsc": {
+  "ids": [
+   "OptionalGettersAllFieldsTest",
+   "name",
+   "nullable_name",
+   "favorite_number",
+   "nullable_favorite_number"
+  ],
+  "words": [
+   "name"
+  ]
+ },
+ "other/avro/lang/java/tools/src/test/compiler/input/optionalgettersnullablefieldstest.avsc": {
+  "ids": [
+   "OptionalGettersNullableFieldsTest",
+   "name",
+   "nullable_name",
+   "favorite_number",
+   "nullable_favorite_number",
+   "nullable_array"
+  ],
+  "words": [
+   "name"
+  ]
+ },
+ "other/avro/lang/java/tools/src/test/compiler/input/player.avsc": {
+  "ids": [
+   "Player",
+   "number",
+   "first_name",
+   "last_name",
+   "position"
+  ],
+  "words": [
+   "number",
+   "position"
+  ]
+ },
+ "other/avro/share/schemas/org/apache/avro/data/Json.avsc": {
+  "ids": [
+   "Json",
+   "value"
+  ],
+  "words": [
+   "value"
+  ]
+ },
+ "other/avro/share/schemas/org/apache/avro/ipc/HandshakeRequest.avsc": {
+  "ids": [
+   "HandshakeRequest",
+   "clientHash",
+   "MD5",
+   "clientProtocol",
+   "serverHash",
+   "meta"
+  ],
+  "words": [
+   "meta"
+  ]
+ },
+ "other/avro/share/schemas/org/apache/avro/ipc/HandshakeResponse.avsc": {
+  "ids": [
+   "HandshakeResponse",
+   "match",
+   "HandshakeMatch",
+   "serverProtocol",
+   "serverHash",
+   "MD5",
+   "meta"
+  ],
+  "words": [
+   "match",
+   "meta"
+  ]
+ },
+ "other/avro/share/test/schemas/FooBarSpecificRecord.avsc": {
+  "ids": [
+   "FooBarSpecificRecord",
+   "id",
+   "name",
+   "nicknames",
+   "relatedids",
+   "typeEnum",
+   "TypeEnum"
+  ],
+  "words": [
+   "id",
+   "name",
+   "nicknames",
+   "relatedids"
+  ]
+ },
+ "other/jakartaee-examples/applications/kickoff/src/main/java/org/example/kickoff/business/BackgroundJobs.java": {
+  "ids": [
+   "BackgroundJobs",
+   "hourly"
+  ],
+  "words": [
+   "hourly"
+  ]
+ },
+ "other/jakartaee-examples/applications/kickoff/src/main/java/org/example/kickoff/business/email/EmailLoader.java": {
+  "ids": [
+   "EmailLoader",
+   "init",
+   "getEmails"
+  ],
+  "words": [
+   "init"
+  ]
+ },
+ "other/jakartaee-examples/applications/kickoff/src/main/java/org/example/kickoff/business/email/EmailService.java": {
+  "ids": [
+   "EmailService",
+   "init",
+   "sendTemplate",
+   "sendTemplateMessage",
+   "sendPlainText",
+   "sendPlainTextMessage"
+  ],
+  "words": [
+   "init"
+  ]
+ },
+ "other/jakartaee-examples/applications/kickoff/src/main/java/org/example/kickoff/business/email/EmailTemplateService.java": {
+  "ids": [
+   "EmailTemplateService",
+   "build",
+   "addUserParameters"
+  ],
+  "words": [
+   "build"
+  ]
+ },
+ "other/jakartaee-examples/applications/kickoff/src/main/java/org/example/kickoff/business/email/KickoffEmailService.java": {
+  "ids": [
+   "KickoffEmailService",
+   "sendTemplateMessage",
+   "sendPlainTextMessage"
+  ],
+  "words": []
+ },
+ "other/jakartaee-examples/applications/kickoff/src/main/java/org/example/kickoff/business/service/LoginTokenService.java": {
+  "ids": [
+   "LoginTokenService",
+   "generate",
+   "remove",
+   "removeExpired"
+  ],
+  "words": [
+   "generate",
+   "remove"
+  ]
+ },
+ "other/jakartaee-examples/applications/kickoff/src/main/java/org/example/kickoff/business/service/PersonService.java": {
+  "ids": [
+   "PersonService",
+   "register",
+   "update",
+   "updatePassword",
+   "requestResetPassword",
+   "findByEmail",
+   "findByLoginToken",
+   "getByEmail",
+   "getByEmailAndPassword",
+   "getByLoginToken",
+   "getActivePerson",
+   "setPassword"
+  ],
+  "words": [
+   "register",
+   "update"
+  ]
+ },
+ "other/jakartaee-examples/applications/kickoff/src/main/java/org/example/kickoff/config/InstantConverter.java": {
+  "ids": [
+   "InstantConverter",
+   "convertToDatabaseColumn",
+   "convertToEntityAttribute"
+  ],
+  "words": []
+ },
+ "other/jakartaee-examples/applications/kickoff/src/main/java/org/example/kickoff/config/StartupBean.java": {
+  "ids": [
+   "StartupBean",
+   "init",
+   "getMessage"
+  ],
+  "words": [
+   "init"
+  ]
+ },
+ "other/jakartaee-examples/applications/kickoff/src/main/java/org/example/kickoff/config/auth/KickoffFormAuthenticationMechanism.java": {
+  "ids": [
+   "KickoffFormAuthenticationMechanism",
+   "validateRequest"
+  ],
+  "words": []
+ },
+ "other/jakartaee-examples/applications/kickoff/src/main/java/org/example/kickoff/config/auth/KickoffIdentityStore.java": {
+  "ids": [
+   "KickoffIdentityStore",
+   "validate"
+  ],
+  "words": [
+   "validate"
+  ]
+ },
+ "other/jakartaee-examples/applications/kickoff/src/main/java/org/example/kickoff/config/auth/KickoffRememberMeIdentityStore.java": {
+  "ids": [
+   "KickoffRememberMeIdentityStore",
+   "validate",
+   "generateLoginToken",
+   "removeLoginToken"
+  ],
+  "words": [
+   "validate"
+  ]
+ },
+ "other/jakartaee-examples/applications/kickoff/src/main/resources/META-INF/persistence.xml": {
+  "ids": [
+   "kickoff",
+   "java:app/kickoff/DataSource"
+  ],
+  "words": [
+   "kickoff"
+  ]
+ },
+ "other/jakartaee-examples/applications/kickoff/src/main/webapp/WEB-INF/errorpages/500.xhtml": {
+  "ids": [
+   "errorpage.xhtml",
+   "dev",
+   "fromURL"
+  ],
+  "words": [
+   "dev"
+  ]
+ },
+ "other/jakartaee-examples/applications/kickoff/src/main/webapp/WEB-INF/includes/layout/nav-user.xhtml": {
+  "ids": [
+   "activeUser",
+   "i18n",
+   "logoutBacking",
+   "activeLocale",
+   "otherLocale"
+  ],
+  "words": []
+ },
+ "other/jakartaee-examples/applications/kickoff/src/main/webapp/WEB-INF/tags/button.xhtml": {
+  "ids": [
+   "i18n",
+   "action",
+   "id",
+   "value",
+   "actionParam",
+   "ajax",
+   "path"
+  ],
+  "words": [
+   "action",
+   "id",
+   "value",
+   "ajax",
+   "path"
+  ]
+ },
+ "other/jakartaee-examples/applications/kickoff/src/main/webapp/WEB-INF/tags/column.xhtml": {
+  "ids": [
+   "column.xhtml",
+   "item",
+   "type",
+   "styleClass",
+   "value",
+   "_item"
+  ],
+  "words": [
+   "item",
+   "type",
+   "value"
+  ]
+ },
+ "other/jakartaee-examples/applications/kickoff/src/main/webapp/WEB-INF/tags/form.xhtml": {
+  "ids": [
+   "stateless",
+   "id",
+   "fieldset"
+  ],
+  "words": [
+   "stateless",
+   "id",
+   "fieldset"
+  ]
+ },
+ "other/jakartaee-examples/applications/kickoff/src/main/webapp/WEB-INF/tags/input.xhtml": {
+  "ids": [
+   "i18n",
+   "completeMethod",
+   "id",
+   "type",
+   "styleClass",
+   "rendered",
+   "label",
+   "labelStyleClass",
+   "tooltip",
+   "autocomplete",
+   "inputStyleClass",
+   "value",
+   "required",
+   "disabled",
+   "var",
+   "min",
+   "max",
+   "maxlength",
+   "minlength",
+   "completeMethodParam",
+   "itemLabel",
+   "list",
+   "escapeMessages",
+   "messagesStyleClass"
+  ],
+  "words": [
+   "id",
+   "type",
+   "rendered",
+   "label",
+   "tooltip",
+   "autocomplete",
+   "value",
+   "required",
+   "disabled",
+   "var",
+   "min",
+   "max",
+   "maxlength",
+   "minlength",
+   "list"
+  ]
+ },
+ "other/jakartaee-examples/applications/kickoff/src/main/webapp/WEB-INF/tags/link.xhtml": {
+  "ids": [
+   "path",
+   "value",
+   "page"
+  ],
+  "words": [
+   "path",
+   "value",
+   "page"
+  ]
+ },
+ "other/jakartaee-examples/applications/kickoff/src/main/webapp/WEB-INF/templates/errorpage.xhtml": {
+  "ids": [
+   "layout.xhtml",
+   "i18n"
+  ],
+  "words": []
+ },
+ "other/jakartaee-examples/applications/kickoff/src/main/webapp/WEB-INF/templates/layout.xhtml": {
+  "ids": [
+   "resources-head.xhtml",
+   "resources-body.xhtml",
+   "nav-header.xhtml",
+   "nav-footer.xhtml",
+   "activeLocale",
+   "faces",
+   "page",
+   "i18n",
+   "otherLocale"
+  ],
+  "words": [
+   "faces",
+   "page"
+  ]
+ },
+ "other/jakartaee-examples/applications/kickoff/src/main/webapp/admin/users.xhtml": {
+  "ids": [
+   "layout.xhtml",
+   "usersBacking",
+   "i18n",
+   "item",
+   "changePasswordBacking"
+  ],
+  "words": [
+   "item"
+  ]
+ },
+ "other/jakartaee-examples/applications/kickoff/src/main/webapp/admin/users/edit.xhtml": {
+  "ids": [
+   "layout.xhtml",
+   "editUserBacking",
+   "Group"
+  ],
+  "words": []
+ },
+ "other/jakartaee-examples/applications/kickoff/src/main/webapp/login.xhtml": {
+  "ids": [
+   "layout.xhtml",
+   "loginBacking",
+   "i18n"
+  ],
+  "words": []
+ },
+ "other/jakartaee-examples/focused/persistence/column/src/main/resources/META-INF/persistence.xml": {
+  "ids": [
+   "columnPU",
+   "java:comp/DefaultDataSource"
+  ],
+  "words": []
+ },
+ "other/jakartaee-examples/focused/persistence/converter/src/main/resources/META-INF/persistence.xml": {
+  "ids": [
+   "columnPU",
+   "java:comp/DefaultDataSource"
+  ],
+  "words": []
+ },
+ "other/jakartaee-examples/focused/persistence/createQuery/src/main/resources/META-INF/persistence.xml": {
+  "ids": [
+   "columnPU",
+   "java:comp/DefaultDataSource"
+  ],
+  "words": []
+ },
+ "other/jakartaee-examples/focused/persistence/entity/src/main/resources/META-INF/persistence.xml": {
+  "ids": [
+   "entityPU",
+   "java:comp/DefaultDataSource"
+  ],
+  "words": []
+ },
+ "other/jakartaee-examples/focused/persistence/id/src/main/resources/META-INF/persistence.xml": {
+  "ids": [
+   "idPU",
+   "java:comp/DefaultDataSource"
+  ],
+  "words": []
+ },
+ "other/jakartaee-examples/focused/persistence/joinedInheritance/src/main/resources/META-INF/persistence.xml": {
+  "ids": [
+   "inheritancePU",
+   "java:comp/DefaultDataSource"
+  ],
+  "words": []
+ },
+ "other/jakartaee-examples/focused/persistence/oneToOne/src/main/resources/META-INF/persistence.xml": {
+  "ids": [
+   "persistenceContextPU",
+   "java:comp/DefaultDataSource"
+  ],
+  "words": []
+ },
+ "other/cxf/distribution/src/main/release/samples/antbuild/src/demo/hw_http/server/GreeterImpl.java": {
+  "ids": [
+   "GreeterImpl",
+   "greetMe"
+  ],
+  "words": []
+ },
+ "other/cxf/distribution/src/main/release/samples/antbuild/src/demo/hw_http/server/Server.java": {
+  "ids": [
+   "Server",
+   "main"
+  ],
+  "words": [
+   "main"
+  ]
+ },
+ "other/cxf/distribution/src/main/release/samples/antbuild/wsdl/hello_world.wsdl": {
+  "ids": [
+   "SOAPService",
+   "Greeter",
+   "Greeter_SOAPBinding",
+   "greetMe"
+  ],
+  "words": []
+ },
+ "other/cxf/distribution/src/main/release/samples/callback/src/main/java/demo/callback/client/CallbackImpl.java": {
+  "ids": [
+   "CallbackImpl",
+   "serverSayHi"
+  ],
+  "words": []
+ },
+ "other/cxf/distribution/src/main/release/samples/callback/src/main/java/demo/callback/client/Client.java": {
+  "ids": [
+   "Client",
+   "main"
+  ],
+  "words": [
+   "main"
+  ]
+ },
+ "other/cxf/distribution/src/main/release/samples/callback/src/main/java/demo/callback/server/Server.java": {
+  "ids": [
+   "Server",
+   "main"
+  ],
+  "words": [
+   "main"
+  ]
+ },
+ "other/cxf/distribution/src/main/release/samples/callback/src/main/java/demo/callback/server/ServerImpl.java": {
+  "ids": [
+   "ServerImpl",
+   "registerCallback"
+  ],
+  "words": []
+ },
+ "other/cxf/distribution/src/main/release/samples/callback/src/main/resources/basic_callback.wsdl": {
+  "ids": [
+   "CallbackService",
+   "SOAPService",
+   "CallbackPortType",
+   "ServerPortType",
+   "CallbackPortType_SOAPBinding",
+   "ServerPortType_SOAPBinding",
+   "ServerSayHi",
+   "RegisterCallback"
+  ],
+  "words": []
+ },
+ "other/cxf/distribution/src/main/release/samples/configuration_interceptor/src/main/resources/wsdl/hello_world.wsdl": {
+  "ids": [
+   "SOAPService",
+   "Greeter",
+   "Greeter_SOAPBinding",
+   "sayHi",
+   "greetMe",
+   "greetMeOneWay",
+   "pingMe"
+  ],
+  "words": []
+ },
+ "other/cxf/distribution/src/main/release/samples/corba/bank/src/main/resources/wsdl/bank.wsdl": {
+  "ids": [
+   "BankSOAPService",
+   "BankCORBAService",
+   "Bank",
+   "BankSOAPBinding",
+   "BankCORBABinding",
+   "getAccount",
+   "createAccount"
+  ],
+  "words": []
+ },
+ "other/cxf/distribution/src/main/release/samples/corba/bank_ws_addressing/src/main/resources/wsdl/BankWS-corba.wsdl": {
+  "ids": [
+   "AccountCORBAService",
+   "BankCORBAService",
+   "Bank",
+   "Account",
+   "BankCORBABinding",
+   "AccountCORBABinding",
+   "create_account",
+   "create_epr_account",
+   "get_account",
+   "get_epr_account",
+   "get_account_epr_with_no_use_attribute",
+   "find_account",
+   "remove_account",
+   "get_balance",
+   "deposit"
+  ],
+  "words": [
+   "deposit"
+  ]
+ },
+ "other/cxf/distribution/src/main/release/samples/corba/hello_world/src/main/resources/wsdl/HelloWorld.wsdl": {
+  "ids": [
+   "HelloWorld",
+   "greetMe"
+  ],
+  "words": []
+ },
+ "other/cxf/distribution/src/main/release/samples/groovy_spring_support/src/main/resources/HelloWorld.groovy": {
+  "ids": [
+   "HelloWorld",
+   "sayHi"
+  ],
+  "words": []
+ },
+ "other/cxf/distribution/src/main/release/samples/groovy_spring_support/src/main/resources/HelloWorldImpl.groovy": {
+  "ids": [
+   "HelloWorldImpl",
+   "sayHi"
+  ],
+  "words": []
+ },
+ "other/cxf/distribution/src/main/release/samples/in_jvm_transport/wsdl/hello_world.wsdl": {
+  "ids": [
+   "SOAPService",
+   "Greeter",
+   "Greeter_SOAPBinding",
+   "sayHi",
+   "greetMe",
+   "greetMeOneWay",
+   "pingMe"
+  ],
+  "words": []
+ },
+ "other/cxf/distribution/src/main/release/samples/jax_rs/spring_boot_scan/docker-compose.yml": {
+  "ids": [
+   "eureka",
+   "jaxrs"
+  ],
+  "words": [
+   "eureka",
+   "jaxrs"
+  ]
+ },
+ "other/cxf/distribution/src/main/release/samples/jaxws_async/wsdl/hello_world_async.wsdl": {
+  "ids": [
+   "SOAPService",
+   "GreeterAsync",
+   "GreeterAsync_SOAPBinding",
+   "greetMeSometime"
+  ],
+  "words": []
+ },
+ "other/cxf/distribution/src/main/release/samples/jaxws_dispatch_provider/src/main/resources/hello_world.wsdl": {
+  "ids": [
+   "SOAPService1",
+   "SOAPService2",
+   "SOAPService3",
+   "Greeter",
+   "Greeter_SOAPBinding",
+   "sayHi",
+   "greetMe",
+   "greetMeOneWay"
+  ],
+  "words": []
+ },
+ "other/cxf/distribution/src/main/release/samples/jaxws_graalvm/src/main/resources/addNumbers.wsdl": {
+  "ids": [
+   "AddNumbersService",
+   "AddNumbers",
+   "AddNumbersBinding",
+   "addNumbers"
+  ],
+  "words": []
+ },
+ "other/cxf/distribution/src/main/release/samples/jaxws_graalvm_dynamic/client/src/main/resources/addNumbers.wsdl": {
+  "ids": [
+   "AddNumbersService",
+   "AddNumbers",
+   "AddNumbersBinding",
+   "addNumbers"
+  ],
+  "words": []
+ },
+ "other/cxf/distribution/src/main/release/samples/jaxws_graalvm_dynamic/server/src/main/resources/addNumbers.wsdl": {
+  "ids": [
+   "AddNumbersService",
+   "AddNumbers",
+   "AddNumbersBinding",
+   "addNumbers"
+  ],
+  "words": []
+ },
+ "other/cxf/distribution/src/main/release/samples/performance/basic_type/bin/run_client.bat": {
+  "ids": [
+   "Loop",
+   "Continue",
+   "BASEDON",
+   "AMOUNT",
+   "OPERATION",
+   "PACKETSIZE",
+   "THREADS",
+   "HOST",
+   "PORT"
+  ],
+  "words": []
+ },
+ "other/cxf/distribution/src/main/release/samples/performance/complex_type/bin/run_client.bat": {
+  "ids": [
+   "Loop",
+   "Continue",
+   "BASEDON",
+   "AMOUNT",
+   "OPERATION",
+   "PACKETSIZE",
+   "THREADS",
+   "PORT",
+   "HOST"
+  ],
+  "words": []
+ },
+ "other/spring-graphql/build.gradle": {
+  "ids": [
+   "io.spring.nullability",
+   "io.spring.compatibility-test",
+   "org.springframework.graphql.conventions",
+   "org.springframework.graphql.architecture",
+   "org.springframework.graphql.repositories",
+   "java-library",
+   "java-test-fixtures"
+  ],
+  "words": []
+ },
+ "other/spring-graphql/buildSrc/build.gradle": {
+  "ids": [
+   "java-gradle-plugin",
+   "checkstyle",
+   "spring-javaformat-checkstyle",
+   "kotlin-gradle-plugin",
+   "spring-javaformat-gradle-plugin",
+   "net.ltgt.errorprone.gradle.plugin",
+   "archunit",
+   "assertj-core",
+   "junit-bom",
+   "junit-jupiter",
+   "junit-platform-launcher"
+  ],
+  "words": [
+   "checkstyle",
+   "archunit"
+  ]
+ },
+ "other/spring-graphql/gradle/publishing.gradle": {
+  "ids": [
+   "maven-publish",
+   "none",
+   "git",
+   "sourcesJar"
+  ],
+  "words": [
+   "none",
+   "git"
+  ]
+ },
+ "other/spring-graphql/platform/build.gradle": {
+  "ids": [
+   "java-platform",
+   "spring-framework-bom",
+   "jackson-bom",
+   "reactor-bom",
+   "micrometer-bom",
+   "micrometer-tracing-bom",
+   "spring-data-bom",
+   "spring-security-bom",
+   "querydsl-bom",
+   "rsocket-bom",
+   "kotlin-bom",
+   "kotlinx-coroutines-bom",
+   "junit-bom",
+   "mockito-bom",
+   "testcontainers-bom",
+   "log4j-bom",
+   "assertj-bom",
+   "selenium-dependencies-bom",
+   "graphql-java",
+   "jakarta.annotation-api",
+   "jakarta.servlet-api",
+   "jakarta.websocket-api",
+   "jakarta.websocket-client-api",
+   "jakarta.validation-api",
+   "jakarta.persistence-api",
+   "federation-graphql-java-support",
+   "graphql-dgs-codegen-shared-core",
+   "tomcat-embed-el",
+   "jsr305",
+   "json-path",
+   "jsonassert",
+   "awaitility",
+   "mockwebserver3",
+   "hamcrest",
+   "mockk",
+   "h2",
+   "hibernate-core",
+   "hibernate-validator",
+   "bson",
+   "mongodb-driver-core",
+   "mongodb-driver-reactivestreams",
+   "mongodb-driver-sync"
+  ],
+  "words": [
+   "jsonassert",
+   "awaitility",
+   "hamcrest",
+   "mockk",
+   "bson"
+  ]
+ },
+ "other/spring-graphql/settings.gradle": {
+  "ids": [
+   "org.gradle.toolchains.foojay-resolver-convention",
+   "io.spring.develocity.conventions",
+   "spring-boot-gradle-plugin"
+  ],
+  "words": []
+ },
+ "other/spring-graphql/spring-graphql-docs/build.gradle": {
+  "ids": [
+   "java-library",
+   "org.antora",
+   "io.spring.antora.generate-antora-yml",
+   "jakarta.servlet-api",
+   "spring-webflux",
+   "spring-webmvc",
+   "spring-websocket",
+   "spring-messaging",
+   "spring-data-commons",
+   "querydsl-core",
+   "jackson-databind",
+   "rsocket-core",
+   "rsocket-transport-netty",
+   "graphql-dgs-codegen-shared-core",
+   "reactor-test",
+   "assertj-core",
+   "none",
+   "api",
+   "generateAntoraYml",
+   "antora",
+   "docsZip"
+  ],
+  "words": [
+   "none",
+   "api",
+   "antora"
+  ]
+ },
+ "other/spring-graphql/spring-graphql-docs/src/main/resources/controllers/namespaces.graphqls": {
+  "ids": [
+   "Query",
+   "MusicQueries",
+   "Album",
+   "Artist",
+   "UserQueries",
+   "User",
+   "music",
+   "users"
+  ],
+  "words": [
+   "music",
+   "users"
+  ]
+ },
+ "other/spring-graphql/spring-graphql-docs/src/main/resources/execution/batching/recipes/friendsAndBeverages.graphqls": {
+  "ids": [
+   "Query",
+   "FriendsFilter",
+   "Person",
+   "me",
+   "people"
+  ],
+  "words": [
+   "me",
+   "people"
+  ]
+ },
+ "other/spring-graphql/spring-graphql-test/build.gradle": {
+  "ids": [
+   "kotlin",
+   "graphql-java",
+   "reactor-core",
+   "spring-context",
+   "spring-test",
+   "json-path",
+   "jakarta.annotation-api",
+   "spring-webflux",
+   "spring-webmvc",
+   "spring-websocket",
+   "spring-messaging",
+   "jakarta.servlet-api",
+   "jackson-databind",
+   "rsocket-core",
+   "rsocket-transport-netty",
+   "jsonassert",
+   "jsr305",
+   "kotlinx-coroutines-core",
+   "hamcrest",
+   "junit-jupiter",
+   "assertj-core",
+   "mockito-core",
+   "mockk",
+   "reactor-test",
+   "reactor-netty",
+   "rsocket-transport-local",
+   "context-propagation",
+   "log4j-core",
+   "log4j-slf4j-impl",
+   "junit-platform-launcher"
+  ],
+  "words": [
+   "kotlin",
+   "jsonassert",
+   "hamcrest",
+   "mockk"
+  ]
+ },
+ "other/spring-graphql/spring-graphql/build.gradle": {
+  "ids": [
+   "org.springframework.graphql.multiReleaseJar",
+   "io.spring.compatibility-test",
+   "kotlin",
+   "graphql-java",
+   "reactor-core",
+   "spring-context",
+   "context-propagation",
+   "micrometer-observation",
+   "micrometer-tracing",
+   "jakarta.annotation-api",
+   "spring-webflux",
+   "spring-webmvc",
+   "spring-websocket",
+   "spring-messaging",
+   "jakarta.servlet-api",
+   "jakarta.validation-api",
+   "spring-security-core",
+   "spring-security-oauth2-resource-server",
+   "querydsl-core",
+   "spring-data-commons",
+   "rsocket-core",
+   "rsocket-transport-netty",
+   "jsr305",
+   "kotlin-stdlib",
+   "kotlin-reflect",
+   "kotlinx-coroutines-core",
+   "jackson-databind",
+   "federation-graphql-java-support",
+   "graphql-dgs-codegen-shared-core",
+   "junit-jupiter",
+   "assertj-core",
+   "mockito-core",
+   "mockk",
+   "awaitility",
+   "reactor-test",
+   "kotlinx-coroutines-reactor",
+   "spring-core-test",
+   "spring-test",
+   "spring-data-keyvalue",
+   "spring-data-jpa",
+   "micrometer-observation-test",
+   "micrometer-tracing-test",
+   "h2",
+   "hibernate-core",
+   "hibernate-validator",
+   "spring-data-mongodb",
+   "spring-data-neo4j",
+   "mongodb-driver-sync",
+   "mongodb-driver-reactivestreams",
+   "testcontainers-mongodb",
+   "testcontainers-neo4j",
+   "testcontainers-junit-jupiter",
+   "querydsl-collections",
+   "jakarta.websocket-api",
+   "jakarta.websocket-client-api",
+   "mockwebserver3",
+   "rsocket-transport-local",
+   "jakarta.persistence-api",
+   "json-path",
+   "jackson-datatype-jsr310",
+   "tomcat-embed-el",
+   "testcontainers-selenium",
+   "selenium-java",
+   "reactor-netty",
+   "log4j-core",
+   "log4j-slf4j-impl",
+   "junit-platform-launcher",
+   "junit-jupiter-engine"
+  ],
+  "words": [
+   "kotlin",
+   "mockk",
+   "awaitility"
+  ]
+ },
+ "other/spring-graphql/spring-graphql/src/test/resources/books/federation-schema.graphqls": {
+  "ids": [
+   "Media",
+   "PrintedMedia",
+   "Book",
+   "Author",
+   "Publisher"
+  ],
+  "words": []
+ },
+ "other/spring-graphql/spring-graphql/src/test/resources/books/pagination-schema.graphqls": {
+  "ids": [
+   "Query",
+   "Book",
+   "books"
+  ],
+  "words": [
+   "books"
+  ]
+ },
+ "other/spring-graphql/spring-graphql/src/test/resources/books/schema.graphqls": {
+  "ids": [
+   "Query",
+   "Mutation",
+   "Subscription",
+   "BookCriteria",
+   "AuthorCriteria",
+   "Book",
+   "Author",
+   "bookById",
+   "booksById",
+   "books",
+   "booksByNestedCriteria",
+   "booksByCriteria",
+   "booksByProjectedArguments",
+   "booksByProjectedCriteria",
+   "authorById",
+   "addAuthor",
+   "bookSearch"
+  ],
+  "words": [
+   "books"
+  ]
+ },
+ "other/dgs-examples-kotlin/build.gradle.kts": {
+  "ids": [
+   "org.springframework.boot",
+   "io.spring.dependency-management",
+   "nebula.dependency-recommender",
+   "nebula.netflixoss",
+   "graphql-dgs-platform-dependencies",
+   "graphql-dgs-spring-graphql-starter",
+   "graphql-dgs-client",
+   "graphql-dgs-extended-scalars",
+   "multipart-spring-graphql",
+   "spring-boot-starter-web",
+   "jackson-module-kotlin",
+   "jakarta.annotation-api",
+   "datafaker",
+   "kotlinx-coroutines-core",
+   "kotlinx-coroutines-jdk8",
+   "graphql-java",
+   "graphql-dgs-spring-graphql-starter-test",
+   "spring-boot-starter-test",
+   "kotlinx-coroutines-test"
+  ],
+  "words": [
+   "datafaker"
+  ]
+ },
+ "other/dgs-examples-kotlin/gradlew.bat": {
+  "ids": [
+   "findJavaFromJavaHome",
+   "execute",
+   "end",
+   "fail",
+   "mainEnd",
+   "omega",
+   "DIRNAME",
+   "APP_BASE_NAME",
+   "APP_HOME",
+   "DEFAULT_JVM_OPTS",
+   "JAVA_EXE",
+   "JAVA_HOME",
+   "CLASSPATH",
+   "EXIT_CODE"
+  ],
+  "words": [
+   "execute",
+   "end",
+   "fail",
+   "omega"
+  ]
+ },
+ "other/dgs-examples-kotlin/src/main/kotlin/com/example/demo/DemoApplication.kt": {
+  "ids": [
+   "DemoApplication",
+   "main"
+  ],
+  "words": [
+   "main"
+  ]
+ },
+ "other/dgs-examples-kotlin/src/main/kotlin/com/example/demo/datafetchers/ArtworkUploadDataFetcher.kt": {
+  "ids": [
+   "ArtworkUploadDataFetcher",
+   "addArtwork"
+  ],
+  "words": []
+ },
+ "other/dgs-examples-kotlin/src/main/kotlin/com/example/demo/datafetchers/ReviewsDataFetcher.kt": {
+  "ids": [
+   "ReviewsDataFetcher",
+   "reviews",
+   "addReview",
+   "reviewAdded"
+  ],
+  "words": [
+   "reviews"
+  ]
+ },
+ "other/dgs-examples-kotlin/src/main/kotlin/com/example/demo/datafetchers/ShowsDataFetcher.kt": {
+  "ids": [
+   "ShowsDataFetcher",
+   "shows"
+  ],
+  "words": [
+   "shows"
+  ]
+ },
+ "other/dgs-examples-kotlin/src/main/kotlin/com/example/demo/dataloaders/ReviewsDataLoader.kt": {
+  "ids": [
+   "ReviewsDataLoader",
+   "load"
+  ],
+  "words": [
+   "load"
+  ]
+ },
+ "other/dgs-examples-kotlin/src/main/kotlin/com/example/demo/generated/DgsConstants.kt": {
+  "ids": [
+   "DgsConstants",
+   "QUERY",
+   "SHOWS_INPUT_ARGUMENT",
+   "MUTATION",
+   "ADDREVIEW_INPUT_ARGUMENT",
+   "ADDARTWORK_INPUT_ARGUMENT",
+   "SUBSCRIPTION",
+   "REVIEWADDED_INPUT_ARGUMENT",
+   "SHOW",
+   "TITLE_INPUT_ARGUMENT",
+   "REVIEW",
+   "IMAGE",
+   "TITLEFORMAT",
+   "SUBMITTEDREVIEW"
+  ],
+  "words": []
+ },
+ "other/dgs-examples-kotlin/src/main/kotlin/com/example/demo/instrumentation/ExampleTracingInstrumentation.kt": {
+  "ids": [
+   "ExampleTracingInstrumentation",
+   "TraceState",
+   "createState",
+   "beginExecution",
+   "instrumentDataFetcher",
+   "instrumentExecutionResult",
+   "findDatafetcherTag"
+  ],
+  "words": []
+ },
+ "other/dgs-examples-kotlin/src/main/kotlin/com/example/demo/scalars/DateTimeScalarRegistration.kt": {
+  "ids": [
+   "DateTimeScalarRegistration",
+   "addScalar"
+  ],
+  "words": []
+ },
+ "other/dgs-examples-kotlin/src/main/kotlin/com/example/demo/services/ReviewsService.kt": {
+  "ids": [
+   "ReviewsService",
+   "DefaultReviewsService",
+   "reviewsForShow",
+   "reviewsForShows",
+   "saveReview",
+   "getReviewsPublisher",
+   "afterPropertiesSet"
+  ],
+  "words": []
+ },
+ "other/dgs-examples-kotlin/src/main/kotlin/com/example/demo/services/ShowsService.kt": {
+  "ids": [
+   "ShowsService",
+   "BasicShowsService",
+   "shows"
+  ],
+  "words": [
+   "shows"
+  ]
+ },
+ "other/dgs-examples-kotlin/src/main/resources/schema/schema.graphqls": {
+  "ids": [
+   "Query",
+   "Mutation",
+   "Subscription",
+   "Show",
+   "TitleFormat",
+   "Review",
+   "SubmittedReview",
+   "Image",
+   "DateTime",
+   "Upload",
+   "shows",
+   "addReview",
+   "addArtwork",
+   "reviewAdded"
+  ],
+  "words": [
+   "shows"
+  ]
+ },
+ "other/awesome-compose/aspnet-mssql/compose.yaml": {
+  "ids": [
+   "web",
+   "db",
+   "azure-sql-edge"
+  ],
+  "words": [
+   "web",
+   "db"
+  ]
+ },
+ "other/awesome-compose/elasticsearch-logstash-kibana/compose.yaml": {
+  "ids": [
+   "elasticsearch",
+   "logstash",
+   "kibana",
+   "elastic"
+  ],
+  "words": [
+   "elasticsearch",
+   "logstash",
+   "kibana",
+   "elastic"
+  ]
+ },
+ "other/awesome-compose/flask-redis/compose.yaml": {
+  "ids": [
+   "redis",
+   "redismod",
+   "web"
+  ],
+  "words": [
+   "redis",
+   "redismod",
+   "web"
+  ]
+ },
+ "other/awesome-compose/gitea-postgres/compose.yaml": {
+  "ids": [
+   "gitea",
+   "db",
+   "postgres",
+   "db_data",
+   "git_data"
+  ],
+  "words": [
+   "gitea",
+   "db",
+   "postgres"
+  ]
+ },
+ "other/awesome-compose/minecraft/compose.yaml": {
+  "ids": [
+   "minecraft",
+   "minecraft-server"
+  ],
+  "words": [
+   "minecraft"
+  ]
+ },
+ "other/awesome-compose/nextcloud-postgres/compose.yaml": {
+  "ids": [
+   "nc",
+   "nextcloud",
+   "db",
+   "postgres",
+   "db_data",
+   "nc_data"
+  ],
+  "words": [
+   "nc",
+   "nextcloud",
+   "db",
+   "postgres"
+  ]
+ },
+ "other/awesome-compose/nextcloud-redis-mariadb/compose.yaml": {
+  "ids": [
+   "nc",
+   "nextcloud",
+   "redis",
+   "db",
+   "mariadb",
+   "db_data",
+   "nc_data",
+   "dbnet",
+   "redisnet"
+  ],
+  "words": [
+   "nc",
+   "nextcloud",
+   "redis",
+   "db",
+   "mariadb",
+   "dbnet",
+   "redisnet"
+  ]
+ },
+ "other/awesome-compose/nginx-aspnet-mysql/compose.yaml": {
+  "ids": [
+   "backend",
+   "db",
+   "mariadb",
+   "proxy",
+   "db-data"
+  ],
+  "words": [
+   "backend",
+   "db",
+   "mariadb",
+   "proxy"
+  ]
+ },
+ "other/awesome-compose/nginx-flask-mongo/compose.yaml": {
+  "ids": [
+   "web",
+   "nginx",
+   "backend",
+   "mongo"
+  ],
+  "words": [
+   "web",
+   "nginx",
+   "backend",
+   "mongo"
+  ]
+ },
+ "other/awesome-compose/nginx-flask-mysql/compose.yaml": {
+  "ids": [
+   "db",
+   "mariadb",
+   "backend",
+   "proxy",
+   "db-data",
+   "backnet",
+   "frontnet"
+  ],
+  "words": [
+   "db",
+   "mariadb",
+   "backend",
+   "proxy",
+   "backnet",
+   "frontnet"
+  ]
+ },
+ "other/awesome-compose/nginx-golang-mysql/compose.yaml": {
+  "ids": [
+   "backend",
+   "db",
+   "mariadb",
+   "proxy",
+   "nginx",
+   "db-data"
+  ],
+  "words": [
+   "backend",
+   "db",
+   "mariadb",
+   "proxy",
+   "nginx"
+  ]
+ },
+ "other/ansible-for-devops/collection/main.yml": {
+  "ids": [
+   "all",
+   "my_color_choice",
+   "assert"
+  ],
+  "words": [
+   "all",
+   "assert"
+  ]
+ },
+ "other/ansible-for-devops/deployments-balancer/playbooks/deploy.yml": {
+  "ids": [
+   "app",
+   "haproxy",
+   "pause",
+   "wait_for"
+  ],
+  "words": [
+   "app",
+   "haproxy",
+   "pause"
+  ]
+ },
+ "other/ansible-for-devops/deployments-balancer/playbooks/provision.yml": {
+  "ids": [
+   "all",
+   "geerlingguy.firewall",
+   "firewall_allowed_tcp_ports",
+   "apt",
+   "balancer",
+   "geerlingguy.haproxy",
+   "haproxy_backend_servers",
+   "app",
+   "geerlingguy.apache"
+  ],
+  "words": [
+   "all",
+   "apt",
+   "balancer",
+   "app"
+  ]
+ },
+ "other/ansible-for-devops/deployments-rolling/playbooks/deploy.yml": {
+  "ids": [
+   "nodejs-api",
+   "git",
+   "command",
+   "npm",
+   "cron"
+  ],
+  "words": [
+   "git",
+   "command",
+   "npm",
+   "cron"
+  ]
+ },
+ "other/ansible-for-devops/deployments-rolling/playbooks/provision.yml": {
+  "ids": [
+   "nodejs-api",
+   "geerlingguy.firewall",
+   "geerlingguy.nodejs",
+   "geerlingguy.git",
+   "nodejs_install_npm_user",
+   "npm_config_prefix",
+   "nodejs_npm_global_packages",
+   "firewall_allowed_tcp_ports",
+   "apt"
+  ],
+  "words": [
+   "apt"
+  ]
+ },
+ "other/ansible-for-devops/deployments/playbooks/deploy.yml": {
+  "ids": [
+   "all",
+   "geerlingguy.passenger",
+   "git",
+   "template",
+   "command",
+   "stat",
+   "file"
+  ],
+  "words": [
+   "all",
+   "git",
+   "template",
+   "command",
+   "stat",
+   "file"
+  ]
+ },
+ "other/ansible-for-devops/deployments/playbooks/provision.yml": {
+  "ids": [
+   "all",
+   "geerlingguy.git",
+   "geerlingguy.nodejs",
+   "geerlingguy.ruby",
+   "geerlingguy.passenger",
+   "apt",
+   "file"
+  ],
+  "words": [
+   "all",
+   "apt",
+   "file"
+  ]
+ },
+ "other/ansible-for-devops/docker-flask/provisioning/main.yml": {
+  "ids": [
+   "all",
+   "geerlingguy.docker",
+   "build_root",
+   "apt",
+   "setup.yml",
+   "docker.yml"
+  ],
+  "words": [
+   "all",
+   "apt"
+  ]
+ },
+ "other/ansible-for-devops/docker-flask/provisioning/www/playbook.yml": {
+  "ids": [
+   "localhost",
+   "shell",
+   "set_fact",
+   "template",
+   "copy"
+  ],
+  "words": [
+   "localhost",
+   "shell",
+   "template",
+   "copy"
+  ]
+ },
+ "other/ansible-for-devops/docker-hubot/main.yml": {
+  "ids": [
+   "localhost",
+   "base_image",
+   "container_name",
+   "image_namespace",
+   "image_name",
+   "docker_image",
+   "docker_container",
+   "add_host",
+   "shell",
+   "command"
+  ],
+  "words": [
+   "localhost",
+   "shell",
+   "command"
+  ]
+ },
+ "other/ansible-for-devops/docker-hubot/roles/hubot-slack/tasks/main.yml": {
+  "ids": [
+   "package",
+   "npm",
+   "user",
+   "command",
+   "lineinfile",
+   "file"
+  ],
+  "words": [
+   "package",
+   "npm",
+   "user",
+   "command",
+   "lineinfile",
+   "file"
+  ]
+ },
+ "other/ansible-for-devops/docker/main.yml": {
+  "ids": [
+   "localhost",
+   "docker_image",
+   "docker_container"
+  ],
+  "words": [
+   "localhost"
+  ]
+ },
+ "other/spock-example/build.gradle": {
+  "ids": [
+   "groovy",
+   "groovy-bom",
+   "spock-bom",
+   "spock-core",
+   "spock-junit4",
+   "junit-bom",
+   "junit-platform-launcher",
+   "hamcrest-core",
+   "byte-buddy",
+   "objenesis",
+   "h2",
+   "groovy-sql"
+  ],
+  "words": [
+   "groovy",
+   "objenesis"
+  ]
+ },
+ "other/spock-example/gradlew.bat": {
+  "ids": [
+   "findJavaFromJavaHome",
+   "execute",
+   "end",
+   "fail",
+   "mainEnd",
+   "omega",
+   "DIRNAME",
+   "APP_BASE_NAME",
+   "APP_HOME",
+   "DEFAULT_JVM_OPTS",
+   "JAVA_EXE",
+   "JAVA_HOME",
+   "EXIT_CODE"
+  ],
+  "words": [
+   "execute",
+   "end",
+   "fail",
+   "omega"
+  ]
+ },
+ "other/spock-example/mvnw.cmd": {
+  "ids": [
+   "__MVNW_CMD__",
+   "__MVNW_ERROR__",
+   "__MVNW_PSMODULEP_SAVE",
+   "PSModulePath",
+   "__MVNW_ARG0_NAME__",
+   "MVNW_USERNAME",
+   "MVNW_PASSWORD"
+  ],
+  "words": []
+ },
+ "other/spock-example/src/test/groovy/DataDrivenSpec.groovy": {
+  "ids": [
+   "DataDrivenSpec",
+   "Person",
+   "getSex"
+  ],
+  "words": []
+ },
+ "other/spock-example/src/test/groovy/DatabaseDrivenSpec.groovy": {
+  "ids": [
+   "DatabaseDrivenSpec",
+   "setupSpec"
+  ],
+  "words": []
+ },
+ "other/spock-example/src/test/groovy/IncludeExcludeExtensionSpec.groovy": {
+  "ids": [
+   "IncludeExcludeExtensionSpec",
+   "Fast",
+   "Slow"
+  ],
+  "words": []
+ },
+ "other/spock-example/src/test/groovy/OrderedInteractionsSpec.groovy": {
+  "ids": [
+   "OrderedInteractionsSpec",
+   "Collaborator",
+   "collaborate"
+  ],
+  "words": [
+   "collaborate"
+  ]
+ },
+ "other/spock-example/src/test/groovy/PublisherSubscriberSpec.groovy": {
+  "ids": [
+   "Publisher",
+   "Subscriber",
+   "PublisherSpec",
+   "send",
+   "receive",
+   "setup"
+  ],
+  "words": [
+   "send",
+   "receive",
+   "setup"
+  ]
+ },
+ "other/spock-example/src/test/groovy/SpecInheritanceSpec.groovy": {
+  "ids": [
+   "BaseSpec",
+   "DerivedSpec",
+   "setupSpec",
+   "cleanupSpec",
+   "setup",
+   "cleanup",
+   "baseSpecMethod",
+   "derivedSpecMethod"
+  ],
+  "words": [
+   "setup",
+   "cleanup"
+  ]
+ },
+ "other/spock-example/src/test/groovy/StackSpec.groovy": {
+  "ids": [
+   "EmptyStackSpec",
+   "StackWithOneElementSpec",
+   "StackWithThreeElementsSpec",
+   "setup"
+  ],
+  "words": [
+   "setup"
+  ]
+ },
+ "other/scala3-example-project/src/main/scala/ContextFunctions.scala": {
+  "ids": [
+   "ContextFunctions",
+   "context",
+   "parse",
+   "asyncSum",
+   "asyncMult",
+   "sumStrings",
+   "test"
+  ],
+  "words": [
+   "context",
+   "parse",
+   "test"
+  ]
+ },
+ "other/scala3-example-project/src/main/scala/Conversion.scala": {
+  "ids": [
+   "Conversion",
+   "IntWrapper",
+   "DoubleWrapper",
+   "convert",
+   "apply",
+   "useConversion",
+   "test"
+  ],
+  "words": [
+   "convert",
+   "apply",
+   "test"
+  ]
+ },
+ "other/scala3-example-project/src/main/scala/EnumTypes.scala": {
+  "ids": [
+   "EnumTypes",
+   "ListEnum",
+   "Planet",
+   "surfaceGravity",
+   "surfaceWeight",
+   "test",
+   "calculateEarthWeightOnPlanets"
+  ],
+  "words": [
+   "test"
+  ]
+ },
+ "other/scala3-example-project/src/main/scala/GivenInstances.scala": {
+  "ids": [
+   "GivenInstances",
+   "StringParser",
+   "parse",
+   "apply",
+   "baseParser",
+   "test"
+  ],
+  "words": [
+   "parse",
+   "apply",
+   "test"
+  ]
+ },
+ "other/scala3-example-project/src/main/scala/IntersectionTypes.scala": {
+  "ids": [
+   "IntersectionTypes",
+   "Point",
+   "tpe",
+   "test",
+   "euclideanDistance"
+  ],
+  "words": [
+   "tpe",
+   "test"
+  ]
+ },
+ "other/scala3-example-project/src/main/scala/Main.scala": {
+  "ids": [
+   "Main",
+   "runExample"
+  ],
+  "words": []
+ },
+ "other/scala3-example-project/src/main/scala/MultiversalEquality.scala": {
+  "ids": [
+   "MultiversalEquality",
+   "test"
+  ],
+  "words": [
+   "test"
+  ]
+ },
+ "other/scala3-example-project/src/main/scala/ParameterUntupling.scala": {
+  "ids": [
+   "ParameterUntupling",
+   "test"
+  ],
+  "words": [
+   "test"
+  ]
+ },
+ "other/scala3-example-project/src/main/scala/PatternMatching.scala": {
+  "ids": [
+   "PatternMatching",
+   "booleanPattern",
+   "Even",
+   "productPattern",
+   "Person",
+   "seqPattern",
+   "Names",
+   "namePattern",
+   "Name",
+   "unapply",
+   "_1",
+   "_2",
+   "canEqual",
+   "productArity",
+   "productElement",
+   "unapplySeq",
+   "get",
+   "isEmpty",
+   "test",
+   "containsConsecutive",
+   "greet"
+  ],
+  "words": [
+   "unapply",
+   "get",
+   "test",
+   "greet"
+  ]
+ },
+ "other/scala3-example-project/src/main/scala/StructuralTypes.scala": {
+  "ids": [
+   "StructuralTypes",
+   "Record",
+   "selectDynamic",
+   "test"
+  ],
+  "words": [
+   "test"
+  ]
+ },
+ "other/scala3-example-project/src/main/scala/TraitParams.scala": {
+  "ids": [
+   "TraitParams",
+   "Base",
+   "printMessages",
+   "test"
+  ],
+  "words": [
+   "test"
+  ]
+ },
+ "other/scala3-example-project/src/main/scala/TypeLambdas.scala": {
+  "ids": [
+   "TypeLambdas",
+   "test"
+  ],
+  "words": [
+   "test"
+  ]
+ },
+ "other/spring-petclinic/build.gradle": {
+  "ids": [
+   "java",
+   "checkstyle",
+   "org.springframework.boot",
+   "io.spring.dependency-management",
+   "org.graalvm.buildtools.native",
+   "org.cyclonedx.bom",
+   "io.spring.javaformat",
+   "io.spring.nohttp",
+   "spring-boot-starter-cache",
+   "spring-boot-starter-data-jpa",
+   "spring-boot-starter-thymeleaf",
+   "spring-boot-starter-webmvc",
+   "spring-boot-starter-validation",
+   "cache-api",
+   "jakarta.xml.bind-api",
+   "spring-boot-starter-actuator",
+   "webjars-locator-lite",
+   "bootstrap",
+   "font-awesome",
+   "caffeine",
+   "h2",
+   "mysql-connector-j",
+   "postgresql",
+   "spring-boot-devtools",
+   "spring-boot-starter-data-jpa-test",
+   "spring-boot-starter-restclient-test",
+   "spring-boot-starter-webmvc-test",
+   "spring-boot-testcontainers",
+   "spring-boot-docker-compose",
+   "testcontainers-junit-jupiter",
+   "testcontainers-mysql",
+   "spring-javaformat-checkstyle",
+   "test",
+   "cyclonedxDirectBom",
+   "formatMain",
+   "formatTest"
+  ],
+  "words": [
+   "java",
+   "checkstyle",
+   "bootstrap",
+   "caffeine",
+   "postgresql",
+   "test"
+  ]
+ },
+ "other/tomcat/bin/catalina.bat": {
+  "ids": [
+   "mainEntry",
+   "gotHome",
+   "okHome",
+   "gotBase",
+   "homeNoSemicolon",
+   "baseNoSemicolon",
+   "checkSetenvHome",
+   "setenvDone",
+   "okSetclasspath",
+   "emptyClasspath",
+   "gotTmpdir",
+   "juliClasspathHome",
+   "juliClasspathDone",
+   "gotJsseOpts",
+   "noJuliConfig",
+   "noJuliManager",
+   "use_jdk",
+   "java_dir_displayed",
+   "gotJpdaTransport",
+   "gotJpdaAddress",
+   "gotJpdaSuspend",
+   "gotJpdaOpts",
+   "noJpda",
+   "doDebug",
+   "doRun",
+   "doStart",
+   "doStop",
+   "doConfigTest",
+   "doVersion",
+   "execCmd",
+   "setArgs",
+   "doneSetArgs",
+   "doJpda",
+   "end",
+   "RETVAL",
+   "CURRENT_DIR",
+   "CATALINA_HOME",
+   "CATALINA_BASE",
+   "CLASSPATH",
+   "CATALINA_TMPDIR",
+   "JSSE_OPTS",
+   "JAVA_OPTS",
+   "CATALINA_LOGGING_CONFIG",
+   "LOGGING_MANAGER",
+   "_EXECJAVA",
+   "MAINCLASS",
+   "ACTION",
+   "DEBUG_OPTS",
+   "JPDA",
+   "JPDA_TRANSPORT",
+   "JPDA_ADDRESS",
+   "JPDA_SUSPEND",
+   "JPDA_OPTS",
+   "CATALINA_OPTS",
+   "CMD_LINE_ARGS",
+   "catalina.bat"
+  ],
+  "words": [
+   "end"
+  ]
+ },
+ "other/tomcat/bin/ciphers.bat": {
+  "ids": [
+   "gotHome",
+   "okHome",
+   "okExec",
+   "setArgs",
+   "doneSetArgs",
+   "end",
+   "CURRENT_DIR",
+   "CATALINA_HOME",
+   "EXECUTABLE",
+   "CMD_LINE_ARGS"
+  ],
+  "words": [
+   "end"
+  ]
+ },
+ "other/tomcat/bin/configtest.bat": {
+  "ids": [
+   "gotHome",
+   "okHome",
+   "okExec",
+   "setArgs",
+   "doneSetArgs",
+   "end",
+   "CURRENT_DIR",
+   "CATALINA_HOME",
+   "EXECUTABLE",
+   "CMD_LINE_ARGS"
+  ],
+  "words": [
+   "end"
+  ]
+ },
+ "other/tomcat/bin/digest.bat": {
+  "ids": [
+   "gotHome",
+   "okHome",
+   "okExec",
+   "setArgs",
+   "doneSetArgs",
+   "end",
+   "CURRENT_DIR",
+   "CATALINA_HOME",
+   "EXECUTABLE",
+   "CMD_LINE_ARGS"
+  ],
+  "words": [
+   "end"
+  ]
+ },
+ "other/tomcat/bin/makebase.bat": {
+  "ids": [
+   "gotHome",
+   "okHome",
+   "CURRENT_DIR",
+   "CATALINA_HOME",
+   "BASE_TGT",
+   "COPY_WEBAPPS"
+  ],
+  "words": []
+ },
+ "other/tomcat/bin/migrate.bat": {
+  "ids": [
+   "gotHome",
+   "okHome",
+   "okExec",
+   "setArgs",
+   "doneSetArgs",
+   "end",
+   "CURRENT_DIR",
+   "CATALINA_HOME",
+   "EXECUTABLE",
+   "CMD_LINE_ARGS"
+  ],
+  "words": [
+   "end"
+  ]
+ },
+ "other/tomcat/bin/service.bat": {
+  "ids": [
+   "checkUser",
+   "runAsUser",
+   "checkEnv",
+   "gotHome",
+   "okHome",
+   "gotJavaHome",
+   "noJavaHomeAsJre",
+   "gotJreHome",
+   "noJreHome",
+   "okJava",
+   "gotBase",
+   "displayUsage",
+   "doRemove",
+   "removed",
+   "doInstall",
+   "foundJvm",
+   "installed",
+   "SELF",
+   "DEFAULT_SERVICE_NAME",
+   "SERVICE_NAME",
+   "RENAMED_SERVICE_EXE",
+   "CURRENT_DIR",
+   "SERVICE_CMD",
+   "RENAME",
+   "SERVICE_USER",
+   "CATALINA_HOME",
+   "EXECUTABLE",
+   "JRE_HOME",
+   "CATALINA_BASE",
+   "JVM",
+   "CLASSPATH",
+   "JVM9_OPTIONS"
+  ],
+  "words": [
+   "removed",
+   "installed"
+  ]
+ },
+ "other/tomcat/bin/setclasspath.bat": {
+  "ids": [
+   "needJavaHome",
+   "noJavaHome",
+   "gotJavaHome",
+   "noJavaHomeAsJre",
+   "gotJreHome",
+   "noJreHome",
+   "okJava",
+   "gotRunJava",
+   "gotRunJdb",
+   "exit",
+   "end",
+   "JRE_HOME",
+   "_RUNJAVA",
+   "_RUNJDB"
+  ],
+  "words": [
+   "exit",
+   "end"
+  ]
+ },
+ "other/tomcat/bin/shutdown.bat": {
+  "ids": [
+   "gotHome",
+   "okHome",
+   "okExec",
+   "setArgs",
+   "doneSetArgs",
+   "end",
+   "CURRENT_DIR",
+   "CATALINA_HOME",
+   "EXECUTABLE",
+   "CMD_LINE_ARGS"
+  ],
+  "words": [
+   "end"
+  ]
+ },
+ "other/tomcat/bin/startup.bat": {
+  "ids": [
+   "gotHome",
+   "okHome",
+   "okExec",
+   "setArgs",
+   "doneSetArgs",
+   "end",
+   "CURRENT_DIR",
+   "CATALINA_HOME",
+   "EXECUTABLE",
+   "CMD_LINE_ARGS"
+  ],
+  "words": [
+   "end"
+  ]
+ },
+ "other/PowerShell/tools/AttackSurfaceAnalyzer/Run-AttackSurfaceAnalyzer.ps1": {
+  "ids": [
+   "Write-Log",
+   "Test-MsiSignature",
+   "Test-DockerAvailable",
+   "Test-DockerDesktopInstalled",
+   "Test-DockerDesktopRunning",
+   "Start-DockerDesktopApp",
+   "Test-WingetAvailable",
+   "Install-DockerDesktop",
+   "MsiPath",
+   "OutputPath",
+   "ContainerImage",
+   "KeepWorkDirectory",
+   "Message",
+   "Level"
+  ],
+  "words": []
+ },
+ "other/PowerShell/tools/AttackSurfaceAnalyzer/Summarize-AsaResults.ps1": {
+  "ids": [
+   "Get-AsaSummary",
+   "Write-ConsoleSummary",
+   "Path",
+   "ShowDetails",
+   "IncludeInformationalEvent",
+   "IncludeDebugEvent",
+   "AsaData",
+   "Summary"
+  ],
+  "words": []
+ },
+ "other/PowerShell/tools/ComponentGovernance/ComponentGovernance.psm1": {
+  "ids": [
+   "Get-CgData",
+   "Get-Uri",
+   "Get-CgRepositories",
+   "Get-CgPsRepository",
+   "Get-CgSnapshotType",
+   "Get-CgNotice",
+   "Set-CgCredentials",
+   "PathPortion",
+   "CgRepository",
+   "SnapshotTypeId",
+   "Pat",
+   "Organization",
+   "Project"
+  ],
+  "words": []
+ },
+ "other/PowerShell/tools/ResxGen/ResxGen.ps1": {
+  "ids": [
+   "Manifest",
+   "Name",
+   "Namespace",
+   "ResxPath",
+   "CodePath"
+  ],
+  "words": []
+ },
+ "other/PowerShell/tools/ResxGen/ResxGen.psm1": {
+  "ids": [
+   "New-ResourceCode",
+   "New-Resx",
+   "ConvertTo-Resx",
+   "manifest",
+   "namespaceName",
+   "className",
+   "Manifest",
+   "Name",
+   "Namespace",
+   "ResxPath",
+   "CodePath"
+  ],
+  "words": [
+   "manifest"
+  ]
+ },
+ "other/PowerShell/tools/Sign-Package.ps1": {
+  "ids": [
+   "New-SelfSignedCertificate",
+   "ConvertTo-Pfx",
+   "Sign-Package",
+   "PackageFilePath",
+   "CertificateFilePath",
+   "PvkFilePath",
+   "PfxFilePath"
+  ],
+  "words": []
+ },
+ "other/PowerShell/tools/UpdateDotnetRuntime.ps1": {
+  "ids": [
+   "Update-GlobalJson",
+   "Update-PackageVersion",
+   "Update-CsprojFile",
+   "Get-DotnetUpdate",
+   "Update-DevContainer",
+   "Update-DotnetRuntimeMetadata",
+   "SDKVersionOverride",
+   "UseNuGetOrg",
+   "RuntimeSourceFeed",
+   "RuntimeSourceFeedKey",
+   "InteractiveAuth",
+   "UseInternalFeed",
+   "channel",
+   "quality",
+   "qualityFallback",
+   "feedUrl",
+   "sdkImageVersion",
+   "newSdk"
+  ],
+  "words": [
+   "channel",
+   "quality"
+  ]
+ },
+ "other/PowerShell/tools/WindowsCI.psm1": {
+  "ids": [
+   "New-LocalUser",
+   "ConvertTo-NtAccount",
+   "Add-UserToGroup",
+   "username",
+   "password",
+   "sid",
+   "groupSid",
+   "group"
+  ],
+  "words": [
+   "username",
+   "password",
+   "sid",
+   "group"
+  ]
+ },
+ "other/PowerShell/tools/Xml/Xml.psm1": {
+  "ids": [
+   "New-XmlAttribute",
+   "New-XmlElement",
+   "Remove-XmlElement",
+   "Get-XmlNodeByXPath",
+   "Name",
+   "Value",
+   "Element",
+   "XmlDoc",
+   "LocalName",
+   "Node",
+   "PassThru",
+   "NamespaceUri",
+   "RemoveEmptyParents",
+   "XmlNsManager",
+   "XPath"
+  ],
+  "words": []
+ },
+ "other/PowerShell/tools/buildCommon/startNativeExecution.ps1": {
+  "ids": [
+   "script",
+   "ScriptBlock",
+   "IgnoreExitcode",
+   "VerboseOutputOnError"
+  ],
+  "words": [
+   "script"
+  ]
+ },
+ "other/PowerShell/tools/ci.psm1": {
+  "ids": [
+   "Test-DailyBuild",
+   "Set-BuildVariable",
+   "Invoke-CIFull",
+   "Invoke-CIBuild",
+   "Invoke-CIInstall",
+   "Invoke-CIxUnit",
+   "Install-CIPester",
+   "Invoke-CITest",
+   "New-CodeCoverageAndTestPackage",
+   "Push-Artifact",
+   "Compress-CoverageArtifacts",
+   "Get-ReleaseTag",
+   "Invoke-CIFinish",
+   "Set-Path",
+   "Show-Environment",
+   "Invoke-BootstrapStage",
+   "Invoke-LinuxTestsCore",
+   "New-LinuxPackage",
+   "Invoke-InitializeContainerStage",
+   "Test-MergeConflictMarker",
+   "Write-NoFilesOutput",
+   "Name",
+   "Value",
+   "IsOutput",
+   "CleanRepo",
+   "Configuration",
+   "SkipUser",
+   "SkipFailing",
+   "MinimumVersion",
+   "MaximumVersion",
+   "Force",
+   "Purpose",
+   "TagSet",
+   "TitlePrefix",
+   "OutputFormat",
+   "Path",
+   "CodeCoverageOutput",
+   "Runtime",
+   "Channel",
+   "Stage",
+   "Append",
+   "ExcludeTag",
+   "ContainerPattern",
+   "File",
+   "WorkspacePath",
+   "PWD",
+   "OutputPath",
+   "SummaryPath",
+   "Message"
+  ],
+  "words": []
+ },
+ "other/PowerShell/tools/clearlyDefined/ClearlyDefined.ps1": {
+  "ids": [
+   "Harvest",
+   "Test",
+   "TestAndHarvest",
+   "ForceModuleReload"
+  ],
+  "words": []
+ },
+ "other/pyprojects/django-django/pyproject.toml": {
+  "ids": [
+   "Django",
+   "setuptools.build_meta",
+   "asgiref",
+   "sqlparse",
+   "tzdata",
+   "django",
+   "django-admin",
+   "argon2",
+   "bcrypt",
+   "black",
+   "isort",
+   "setuptools"
+  ],
+  "words": [
+   "asgiref",
+   "sqlparse",
+   "tzdata",
+   "django",
+   "bcrypt",
+   "black",
+   "isort",
+   "setuptools"
+  ]
+ },
+ "other/pyprojects/encode-httpx/pyproject.toml": {
+  "ids": [
+   "httpx",
+   "hatchling.build",
+   "certifi",
+   "httpcore",
+   "anyio",
+   "idna",
+   "brotli",
+   "cli",
+   "http2",
+   "socks",
+   "zstd",
+   "hatch",
+   "ruff",
+   "mypy",
+   "pytest",
+   "coverage"
+  ],
+  "words": [
+   "httpx",
+   "certifi",
+   "httpcore",
+   "anyio",
+   "idna",
+   "brotli",
+   "cli",
+   "socks",
+   "zstd",
+   "hatch",
+   "ruff",
+   "mypy",
+   "pytest",
+   "coverage"
+  ]
+ },
+ "other/pyprojects/fastapi-fastapi/pyproject.toml": {
+  "ids": [
+   "fastapi",
+   "pdm.backend",
+   "starlette",
+   "pydantic",
+   "typing-extensions",
+   "typing-inspection",
+   "annotated-doc",
+   "opentelemetry-api",
+   "opentelemetry",
+   "standard",
+   "standard-no-fastapi-cloud-cli",
+   "all",
+   "pdm",
+   "mypy",
+   "pytest",
+   "coverage",
+   "ruff",
+   "inline-snapshot",
+   "typos",
+   "ty"
+  ],
+  "words": [
+   "fastapi",
+   "starlette",
+   "pydantic",
+   "opentelemetry",
+   "standard",
+   "all",
+   "pdm",
+   "mypy",
+   "pytest",
+   "coverage",
+   "ruff",
+   "typos",
+   "ty"
+  ]
+ },
+ "other/pyprojects/pallets-click/pyproject.toml": {
+  "ids": [
+   "click",
+   "flit_core.buildapi",
+   "flit",
+   "uv",
+   "pytest",
+   "coverage",
+   "mypy",
+   "pyright",
+   "ruff",
+   "tox"
+  ],
+  "words": [
+   "click",
+   "flit",
+   "uv",
+   "pytest",
+   "coverage",
+   "mypy",
+   "pyright",
+   "ruff",
+   "tox"
+  ]
+ },
+ "other/pyprojects/pallets-flask/pyproject.toml": {
+  "ids": [
+   "Flask",
+   "flit_core.buildapi",
+   "blinker",
+   "click",
+   "itsdangerous",
+   "jinja2",
+   "markupsafe",
+   "werkzeug",
+   "flask",
+   "async",
+   "dotenv",
+   "flit",
+   "uv",
+   "pytest",
+   "coverage",
+   "mypy",
+   "ruff",
+   "codespell",
+   "tox"
+  ],
+  "words": [
+   "blinker",
+   "click",
+   "itsdangerous",
+   "markupsafe",
+   "werkzeug",
+   "flask",
+   "async",
+   "dotenv",
+   "flit",
+   "uv",
+   "pytest",
+   "coverage",
+   "mypy",
+   "ruff",
+   "codespell",
+   "tox"
+  ]
+ },
+ "other/pyprojects/pandas-dev-pandas/pyproject.toml": {
+  "ids": [
+   "pandas",
+   "mesonpy",
+   "numpy",
+   "python-dateutil",
+   "tzdata",
+   "test",
+   "pyarrow",
+   "performance",
+   "computation",
+   "fss",
+   "aws",
+   "gcp",
+   "excel",
+   "parquet",
+   "feather",
+   "iceberg",
+   "hdf5",
+   "spss",
+   "postgresql",
+   "mysql",
+   "sql-other",
+   "html",
+   "xml",
+   "plot",
+   "output-formatting",
+   "clipboard",
+   "compression",
+   "timezone",
+   "all",
+   "versioneer",
+   "meson-python",
+   "cibuildwheel",
+   "ruff",
+   "pytest",
+   "mypy",
+   "isort",
+   "pyright",
+   "coverage",
+   "codespell"
+  ],
+  "words": [
+   "pandas",
+   "mesonpy",
+   "numpy",
+   "tzdata",
+   "test",
+   "pyarrow",
+   "performance",
+   "computation",
+   "fss",
+   "aws",
+   "gcp",
+   "excel",
+   "parquet",
+   "feather",
+   "iceberg",
+   "spss",
+   "postgresql",
+   "mysql",
+   "html",
+   "xml",
+   "plot",
+   "clipboard",
+   "compression",
+   "timezone",
+   "all",
+   "versioneer",
+   "cibuildwheel",
+   "ruff",
+   "pytest",
+   "mypy",
+   "isort",
+   "pyright",
+   "coverage",
+   "codespell"
+  ]
+ },
+ "other/pyprojects/psf-black/pyproject.toml": {
+  "ids": [
+   "black",
+   "hatchling.build",
+   "click",
+   "mypy-extensions",
+   "packaging",
+   "pathspec",
+   "platformdirs",
+   "pytokens",
+   "blackd",
+   "colorama",
+   "uvloop",
+   "jupyter",
+   "uv",
+   "hatch",
+   "cibuildwheel",
+   "isort",
+   "pytest",
+   "coverage",
+   "mypy"
+  ],
+  "words": [
+   "black",
+   "click",
+   "packaging",
+   "pathspec",
+   "platformdirs",
+   "pytokens",
+   "blackd",
+   "colorama",
+   "uvloop",
+   "jupyter",
+   "uv",
+   "hatch",
+   "cibuildwheel",
+   "isort",
+   "pytest",
+   "coverage",
+   "mypy"
+  ]
+ },
+ "other/pyprojects/psf-requests/pyproject.toml": {
+  "ids": [
+   "requests",
+   "setuptools.build_meta",
+   "charset_normalizer",
+   "idna",
+   "urllib3",
+   "certifi",
+   "security",
+   "socks",
+   "use_chardet_on_py3",
+   "setuptools",
+   "ruff",
+   "pytest",
+   "pyright"
+  ],
+  "words": [
+   "requests",
+   "idna",
+   "certifi",
+   "security",
+   "socks",
+   "setuptools",
+   "ruff",
+   "pytest",
+   "pyright"
+  ]
+ },
+ "other/pyprojects/pydantic-pydantic/pyproject.toml": {
+  "ids": [
+   "pydantic",
+   "hatchling.build",
+   "typing-extensions",
+   "annotated-types",
+   "pydantic-core",
+   "typing-inspection",
+   "email",
+   "timezone",
+   "hatch",
+   "pytest",
+   "uv",
+   "hooky",
+   "ruff",
+   "coverage",
+   "pyright",
+   "codespell"
+  ],
+  "words": [
+   "pydantic",
+   "email",
+   "timezone",
+   "hatch",
+   "pytest",
+   "uv",
+   "hooky",
+   "ruff",
+   "coverage",
+   "pyright",
+   "codespell"
+  ]
+ },
+ "other/pyprojects/pypa-pip/pyproject.toml": {
+  "ids": [
+   "pip",
+   "flit_core.buildapi",
+   "pip3",
+   "flit",
+   "towncrier",
+   "vendoring",
+   "ruff",
+   "mypy",
+   "pytest",
+   "coverage",
+   "check-sdist"
+  ],
+  "words": [
+   "pip",
+   "flit",
+   "towncrier",
+   "vendoring",
+   "ruff",
+   "mypy",
+   "pytest",
+   "coverage"
+  ]
+ },
+ "other/pyprojects/pytest-dev-pytest/pyproject.toml": {
+  "ids": [
+   "pytest",
+   "setuptools.build_meta",
+   "colorama",
+   "exceptiongroup",
+   "iniconfig",
+   "packaging",
+   "pluggy",
+   "pygments",
+   "tomli",
+   "py.test",
+   "dev",
+   "setuptools",
+   "setuptools_scm",
+   "black",
+   "ruff",
+   "pylint",
+   "codespell",
+   "check-wheel-contents",
+   "pyproject-fmt",
+   "coverage",
+   "towncrier",
+   "mypy",
+   "pyright"
+  ],
+  "words": [
+   "pytest",
+   "colorama",
+   "exceptiongroup",
+   "iniconfig",
+   "packaging",
+   "pluggy",
+   "pygments",
+   "tomli",
+   "dev",
+   "setuptools",
+   "black",
+   "ruff",
+   "pylint",
+   "codespell",
+   "coverage",
+   "towncrier",
+   "mypy",
+   "pyright"
+  ]
+ },
+ "other/pyprojects/python-poetry-poetry/pyproject.toml": {
+  "ids": [
+   "poetry",
+   "poetry.core.masonry.api",
+   "poetry-core",
+   "build",
+   "cachecontrol",
+   "cleo",
+   "dulwich",
+   "fastjsonschema",
+   "installer",
+   "keyring",
+   "packaging",
+   "pkginfo",
+   "platformdirs",
+   "pyproject-hooks",
+   "requests",
+   "requests-toolbelt",
+   "shellingham",
+   "tomlrt",
+   "trove-classifiers",
+   "virtualenv",
+   "xattr",
+   "findpython",
+   "pbs-installer",
+   "ruff",
+   "mypy",
+   "pytest",
+   "coverage",
+   "repo-review"
+  ],
+  "words": [
+   "poetry",
+   "build",
+   "cachecontrol",
+   "cleo",
+   "dulwich",
+   "fastjsonschema",
+   "installer",
+   "keyring",
+   "packaging",
+   "pkginfo",
+   "platformdirs",
+   "requests",
+   "shellingham",
+   "tomlrt",
+   "virtualenv",
+   "xattr",
+   "findpython",
+   "ruff",
+   "mypy",
+   "pytest",
+   "coverage"
+  ]
+ }
+}

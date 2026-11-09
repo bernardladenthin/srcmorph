@@ -14,8 +14,8 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
 import net.ladenthin.srcmorph.CommonTestFixtures;
-import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
-import net.ladenthin.srcmorph.config.AiModelDefinition;
+import net.ladenthin.srcmorph.config.ModelDefinition;
+import net.ladenthin.srcmorph.config.RoutingRule;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
 import net.ladenthin.srcmorph.document.AiMdDocument;
 import net.ladenthin.srcmorph.document.AiMdDocumentCodec;
@@ -34,11 +34,11 @@ public class AggregateProjectEngineTest {
     /**
      * A model definition with a (dummy, never loaded) {@code modelPath} set: even with the mock
      * provider, the engine always builds a
-     * {@link net.ladenthin.srcmorph.provider.LlamaCppJniConfig} value object, which requires a
+     * {@link net.ladenthin.srcmorph.provider.ProviderConfig} value object, which requires a
      * non-null model path.
      */
-    private static AiModelDefinition mockModelDefinition() {
-        final AiModelDefinition definition = new AiModelDefinition();
+    private static ModelDefinition mockModelDefinition() {
+        final ModelDefinition definition = new ModelDefinition();
         definition.setKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
         definition.setModelPath("mock.gguf");
         definition.setCharsPerToken(0);
@@ -59,28 +59,34 @@ public class AggregateProjectEngineTest {
         documentCodec.write(packageFile, new AiMdDocument(header, body));
     }
 
+    // <editor-fold defaultstate="collapsed" desc="execute">
     @Test
-    public void execute_missingOutputDirectoryReturnsZero() throws Exception {
+    public void execute_missingOutputDirectory_returnsZero() throws Exception {
+        // arrange
         final SrcMorphConfiguration config = new SrcMorphConfiguration();
         config.setOutputDirectory(tempDir.resolve("out-does-not-exist").toFile());
 
+        // act, assert
         assertThat(new AggregateProjectEngine(config).execute(), is(0));
     }
 
     @Test
     public void execute_deterministicNoOverview_writesProjectIndex() throws Exception {
+        // arrange
         final Path outputRoot = tempDir.resolve("ai");
         writePackageFile(
                 outputRoot.resolve("com/example/package.ai.md"), "com/example", "> Handles the example domain.\n");
 
         final SrcMorphConfiguration config = new SrcMorphConfiguration();
         config.setOutputDirectory(outputRoot.toFile());
-        config.setPluginVersion("1.0.0");
+        config.setGeneratorVersion("1.0.0");
         config.setAiVersion("0.0.0");
         config.setProjectName("my-project");
 
+        // act
         final int written = new AggregateProjectEngine(config).execute();
 
+        // assert
         assertThat(written, is(equalTo(1)));
         final Path projectFile = outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME);
         assertThat(Files.exists(projectFile), is(true));
@@ -90,48 +96,55 @@ public class AggregateProjectEngineTest {
     }
 
     @Test
-    public void execute_blankProjectNameFallsBackToDefaultTitle() throws Exception {
+    public void execute_blankProjectName_fallsBackToDefaultTitle() throws Exception {
+        // arrange
         final Path outputRoot = tempDir.resolve("ai");
         writePackageFile(outputRoot.resolve("com/example/package.ai.md"), "com/example", "> Lead.\n");
 
         final SrcMorphConfiguration config = new SrcMorphConfiguration();
         config.setOutputDirectory(outputRoot.toFile());
-        config.setPluginVersion("1.0.0");
+        config.setGeneratorVersion("1.0.0");
         config.setAiVersion("0.0.0");
         config.setProjectName("   ");
 
+        // act
         new AggregateProjectEngine(config).execute();
 
+        // assert
         final AiMdDocument document = documentCodec.read(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME));
         assertThat(document.header().title(), is(equalTo("project")));
     }
 
     @Test
     public void execute_withOverviewFieldGeneration_generatesOverviewSection() throws Exception {
+        // arrange
         final Path outputRoot = tempDir.resolve("ai");
         writePackageFile(outputRoot.resolve("com/example/package.ai.md"), "com/example", "> Handles billing.\n");
 
         final SrcMorphConfiguration config = new SrcMorphConfiguration();
         config.setOutputDirectory(outputRoot.toFile());
-        config.setPluginVersion("1.0.0");
+        config.setGeneratorVersion("1.0.0");
         config.setAiVersion("0.0.0");
         config.setProjectName("my-project");
         config.setGenerationProvider("mock");
         config.setPromptDefinitions(CommonTestFixtures.createPackagePromptDefinitions());
         config.setAiDefinitions(Collections.singletonList(mockModelDefinition()));
-        final AiFieldGenerationConfig overview = new AiFieldGenerationConfig();
+        final RoutingRule overview = new RoutingRule();
         overview.setPromptKey(CommonTestFixtures.PROMPT_KEY_PACKAGE_BODY);
         overview.setAiDefinitionKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
-        config.setFieldGenerations(Collections.singletonList(overview));
+        config.setRules(Collections.singletonList(overview));
 
+        // act
         new AggregateProjectEngine(config).execute();
 
+        // assert
         final AiMdDocument document = documentCodec.read(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME));
         assertThat(document.body(), containsString("#### Overview"));
     }
 
     @Test
     public void execute_twoRules_areRefused() throws Exception {
+        // arrange
         final Path outputRoot = tempDir.resolve("ai");
         writePackageFile(outputRoot.resolve("com/example/package.ai.md"), "com/example", "> Handles billing.\n");
         final SrcMorphConfiguration config = new SrcMorphConfiguration();
@@ -139,15 +152,45 @@ public class AggregateProjectEngineTest {
         config.setGenerationProvider("mock");
         config.setPromptDefinitions(CommonTestFixtures.createPackagePromptDefinitions());
         config.setAiDefinitions(Collections.singletonList(mockModelDefinition()));
-        final AiFieldGenerationConfig overview = new AiFieldGenerationConfig();
+        final RoutingRule overview = new RoutingRule();
         overview.setPromptKey(CommonTestFixtures.PROMPT_KEY_PACKAGE_BODY);
         overview.setAiDefinitionKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
-        config.setFieldGenerations(Arrays.asList(overview, overview));
+        config.setRules(Arrays.asList(overview, overview));
+        final AggregateProjectEngine engine = new AggregateProjectEngine(config);
 
-        final SrcMorphException thrown =
-                assertThrows(SrcMorphException.class, () -> new AggregateProjectEngine(config).execute());
+        // act
+        final SrcMorphException thrown = assertThrows(SrcMorphException.class, engine::execute);
 
+        // assert
         assertThat(thrown.getMessage(), containsString("aggregate-project takes at most one rule"));
         assertThat(Files.exists(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME)), is(false));
     }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="check">
+    /**
+     * An overview prompt no definition and no profile file has fails the check, naming the key, not
+     * only the run once the model is up.
+     */
+    @Test
+    public void check_anOverviewPromptWithoutATemplate_fails() {
+        // arrange
+        final SrcMorphConfiguration config = new SrcMorphConfiguration();
+        config.setOutputDirectory(tempDir.resolve("out").toFile());
+        config.setGenerationProvider("mock");
+        config.setPromptDefinitions(CommonTestFixtures.createPackagePromptDefinitions());
+        config.setAiDefinitions(Collections.singletonList(mockModelDefinition()));
+        final RoutingRule overview = new RoutingRule();
+        overview.setPromptKey("no-such-prompt");
+        overview.setAiDefinitionKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
+        config.setRules(Collections.singletonList(overview));
+        final AggregateProjectEngine engine = new AggregateProjectEngine(config);
+
+        // act
+        final SrcMorphException thrown = assertThrows(SrcMorphException.class, engine::check);
+
+        // assert
+        assertThat(thrown.getMessage(), containsString("no-such-prompt"));
+    }
+    // </editor-fold>
 }

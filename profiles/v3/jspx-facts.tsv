@@ -1,0 +1,14 @@
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# JSP document counters (.jspx, tag files in XML syntax .tagx), for a rule with the prompt
+# file-body-view: the counters of jsp-facts, its [ignore] line included, which count the directive
+# elements (<jsp:directive.page>, <jsp:directive.include>, <jsp:directive.attribute>) as the <%@ %>
+# directives of a page. A JSP document is XML: the container never sends its XML comments, so the
+# [ignore] line here blanks them too (one never closed runs to the end of the file), and a
+# <jsp:scriptlet> or an EL expression in one does not count. A page (.jsp) keeps its HTML comments,
+# whose server code still runs: it takes jsp-facts. ViewFactPatternsTest pins every case;
+# ProfileFactPatternsLinearityTest measures that every pattern reads linearly.
+[include]	jsp-facts
+[ignore] XML comments	(?s)<!--(?:.*?-->|.*+)

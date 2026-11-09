@@ -8,10 +8,10 @@
 > This repo is Java 8, so only the `-8.md` baseline applies.
 > This file contains only **plugin-specific applications** of those rules:
 > the `AI_MD_EXTENSION` / header-field-key / node-type / provider-name
-> constants, the Mojo + `@VisibleForTesting` constructor pair, the Maven
+> constants, the Mojo + test constructor pair, why `@VisibleForTesting` is not used, the Maven
 > `@Parameter` reflection-injected exception to the records rule, prompt
-> target string constants, and the `AiPromptDefinition` /
-> `AiModelDefinition` key-indexed examples.
+> target string constants, and the `PromptDefinition` /
+> `ModelDefinition` key-indexed examples.
 
 ---
 
@@ -66,7 +66,7 @@ All YAML-like header field keys (e.g. `"h"`, `"title"`, `"c"`, `"s"`, `"k"`) mus
 
 ### Provider Name Constants
 
-Provider name strings (`"mock"`, `"llamacpp-jni"`) must be defined as constants in `AiGenerationProviderFactory` and referenced from both production code and tests.
+Provider name strings (`"mock"`, `"llamacpp-jni"`) must be defined as constants in `GenerationProviderFactory` and referenced from both production code and tests.
 
 ---
 
@@ -79,7 +79,7 @@ When a class accepts `org.apache.maven.plugin.logging.Log` and tests need to inj
 Provide two constructors:
 
 1. **Mojo constructor** — Mojo subclasses obtain the logger via `AbstractMojo.getLog()` and pass it in. This is the constructor used by Maven at runtime.
-2. **`@VisibleForTesting` constructor** — accepts a `Log` parameter directly. This is the constructor used by tests.
+2. **Test constructor** — accepts a `Log` parameter directly. This is the constructor used by tests (not annotated, see section 8).
 
 ```java
 public class SourceFileIndexer {
@@ -128,23 +128,23 @@ Java `record` types are the preferred representation for immutable data carriers
 - There is no mutable state.
 - The class has value semantics (equality based on field values).
 
-Examples already using records: `AiMdDocument`, `AiMdHeader`, `AiPreparedPrompt`, `AiGenerationRequest`.
+Examples already using records: `AiMdDocument`, `AiMdHeader`, `PreparedPrompt`, `GenerationRequest`.
 
 ```java
 // GOOD — immutable value object as a record
-public record AiPreparedPrompt(String sourceText, boolean trimmed,
+public record PreparedPrompt(String sourceText, boolean trimmed,
                                int originalSourceLength, int trimmedSourceLength,
                                int availableSourceChars) {}
 
 // BAD — mutable class with getters/setters for a simple data carrier
-public class AiPreparedPrompt {
+public class PreparedPrompt {
     private String sourceText;
     public String getSourceText() { return sourceText; }
     public void setSourceText(String sourceText) { this.sourceText = sourceText; }
 }
 ```
 
-**Exception:** Classes that are instantiated by Maven's plugin framework via reflection (e.g., `@Parameter`-bearing configuration classes like `AiPromptDefinition`, `AiGenerationConfig`, `AiFieldGenerationConfig`) must remain regular classes with setters, because Maven cannot inject values into record components.
+**Exception:** Classes that are instantiated by Maven's plugin framework via reflection (e.g., `@Parameter`-bearing configuration classes like `PromptDefinition`, `ModelDefinition`, `RoutingRule`) must remain regular classes with setters, because Maven cannot inject values into record components.
 
 ---
 
@@ -157,7 +157,7 @@ The field target strings used by `SourceFileIndexer` and `PackageIndexer` (`"hea
 if ("header.s".equals(target)) { ... }
 
 // GOOD
-if (AiFieldGenerationConfig.TARGET_HEADER_SUMMARY.equals(target)) { ... }
+if (RoutingRule.TARGET_HEADER_SUMMARY.equals(target)) { ... }
 ```
 
 ---
@@ -222,18 +222,18 @@ public class Java8CompatibilityHelper {
 }
 
 // In the class that uses it:
-public class AiGenerationProviderFactory {
+public class GenerationProviderFactory {
     private final Java8CompatibilityHelper compatibilityHelper =
         new Java8CompatibilityHelper();
 
-    public AiGenerationProvider create(final String providerName, ...) {
+    public GenerationProvider create(final String providerName, ...) {
         // Easy to test — can inject a mock
         if (providerName == null || compatibilityHelper.isBlank(providerName)) { }
     }
 }
 
 // In tests — inject a mock
-AiGenerationProviderFactory factory = new AiGenerationProviderFactory(
+GenerationProviderFactory factory = new GenerationProviderFactory(
     mockLog,
     mockLlamaCppConfig,
     mockPromptSupport,
@@ -262,7 +262,7 @@ Static methods are acceptable **only** for:
 When the configuration file contains a list of named definitions (e.g. prompt templates, AI model configs) that other parts of the configuration reference by a string key, apply the **key-indexed definition pattern**:
 
 1. **Definition POJO** — a regular JavaBean class (not a record, because Jackson binds it through its setters) that holds the key and all configuration fields. Fields default to the corresponding `*Config.DEFAULT_*` constants.
-2. **Support class** — converts the list of definition POJOs into a `Map<String, ConfigType>` at construction time, then exposes `getConfig(String key)` which throws `IllegalArgumentException` (with the missing key in the message) for unknown keys.
+2. **Support class** — converts the list of definition POJOs into a `Map<String, ConfigType>` at construction time, then exposes `definition(String key)` which throws `IllegalArgumentException` (with the missing key in the message) for unknown keys.
 3. **Reference by key** — any configuration class that previously held an inline nested config object is refactored to hold only a `String aiDefinitionKey` (or similar) that is resolved at runtime via the support class.
 
 ### Why this pattern?
@@ -275,25 +275,25 @@ When the configuration file contains a list of named definitions (e.g. prompt te
 
 **Definition POJO (bound by Jackson):**
 ```java
-public class AiModelDefinition {
+public class ModelDefinition {
     private String key;
-    private int contextSize = AiGenerationConfig.DEFAULT_CONTEXT_SIZE;
-    private float temperature = AiGenerationConfig.DEFAULT_TEMPERATURE;
+    private int contextSize = ModelDefinition.DEFAULT_CONTEXT_SIZE;
+    private float temperature = ModelDefinition.DEFAULT_TEMPERATURE;
     // ... other fields with defaults, plus getters/setters
 }
 ```
 
 **Support class:**
 ```java
-public class AiModelDefinitionSupport {
+public class ModelRegistry {
     private static final String MISSING_DEFINITION_MESSAGE_PREFIX =
             "Missing AI model definition for key: ";
 
-    private final Map<String, AiGenerationConfig> configs = new HashMap<>();
+    private final Map<String, ModelDefinition> configs = new HashMap<>();
 
-    public AiModelDefinitionSupport(final List<AiModelDefinition> definitions) {
+    public ModelRegistry(final List<ModelDefinition> definitions) {
         if (definitions != null) {
-            for (final AiModelDefinition definition : definitions) {
+            for (final ModelDefinition definition : definitions) {
                 if (definition.getKey() != null) {
                     configs.put(definition.getKey(), toConfig(definition));
                 }
@@ -301,8 +301,8 @@ public class AiModelDefinitionSupport {
         }
     }
 
-    public AiGenerationConfig getConfig(final String key) {
-        final AiGenerationConfig config = configs.get(key);
+    public ModelDefinition definition(final String key) {
+        final ModelDefinition config = configs.get(key);
         if (config == null) {
             throw new IllegalArgumentException(MISSING_DEFINITION_MESSAGE_PREFIX + key);
         }
@@ -318,7 +318,7 @@ srcMorph:
     - key: my-model
       modelPath: /path/to/model.gguf
       contextSize: 16384
-  fieldGenerations:
+  rules:
     - promptKey: file-body
       aiDefinitionKey: my-model      # reference by key
 ```
@@ -327,7 +327,27 @@ srcMorph:
 
 | Definition POJO | Support class | Referenced by |
 |---|---|---|
-| `AiPromptDefinition` | `AiPromptSupport` | `AiFieldGenerationConfig.promptKey` |
-| `AiModelDefinition` | `AiModelDefinitionSupport` | `AiFieldGenerationConfig.aiDefinitionKey` |
+| `PromptDefinition` | `PromptCatalog` | `RoutingRule.promptKey` |
+| `ModelDefinition` | `ModelRegistry` | `RoutingRule.aiDefinitionKey` |
 
 ---
+
+## 8. `@VisibleForTesting` Is Not Used
+
+The workspace guide's `@VisibleForTesting` is **not adopted** in this repository (decided
+2026-11-05): Guava is no dependency, and a project-local marker would mark members whose visibility
+serves production as often as tests. Two kinds of package-private members exist, and they are not
+to be confused:
+
+- **Production API at package level.** `provider.LlamaCppJniProviderSupport`'s
+  `buildChatTemplateKwargs`, `buildInferenceParameters`, `truncationWarning`,
+  `logPromptCacheReuse`, `stoppedByProvider`, `requireCompleteAnswer`, `completeAnswer` and the
+  static `lazyMode` / `cacheType` are
+  package-private because `LlamaCppJniGenerationProvider` and `OpenAiCompatibleGenerationProvider`
+  call them (they live in the support class so the PIT gate reaches them). Their tests ride along.
+- **Test seams.** `document.AiMdDocumentCodec.read(List)`, its `String write(AiMdDocument)` overload
+  and `prompt.PromptPreparer.trimSourceAtLineBreak` exist for their tests; production
+  goes through the `Path` overloads and the public preparation methods.
+
+A test seam says so in its Javadoc ("a test seam", naming the production path it stands in for).
+Make a member package-private for a test only when no public behaviour can show the same thing.

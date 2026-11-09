@@ -436,6 +436,16 @@ SPDX-License-Identifier: Apache-2.0
                                 <arg>-XDcompilePolicy=simple</arg>
                                 <arg>--should-stop=ifError=FLOW</arg>
                                 <arg>-Xplugin:ErrorProne -Xep:NullAway:OFF -Xep:GuardedBy:OFF -Xep:IdentityBinaryExpression:OFF</arg>
+                                <!-- The tests read a summary's header (document) and route the examples
+                                     (prompt, routing). The core's module-info.java does not export them; the
+                                     tests compile in module mode (main has a module-info) and run on the
+                                     classpath (useModulePath=false), so only the compiler needs this. -->
+                                <arg>--add-exports</arg>
+                                <arg>net.ladenthin.srcmorph/net.ladenthin.srcmorph.document=net.ladenthin.srcmorph.cli</arg>
+                                <arg>--add-exports</arg>
+                                <arg>net.ladenthin.srcmorph/net.ladenthin.srcmorph.prompt=net.ladenthin.srcmorph.cli</arg>
+                                <arg>--add-exports</arg>
+                                <arg>net.ladenthin.srcmorph/net.ladenthin.srcmorph.routing=net.ladenthin.srcmorph.cli</arg>
                             </compilerArgs>
                         </configuration>
                     </execution>
@@ -610,7 +620,7 @@ SPDX-License-Identifier: Apache-2.0
                       examples/build-your-own-jar built against this reactor, `java -jar srcmorph.jar
                       config_Plan.json` - and asserts exit 0 plus "Main#run end." in the output. That line is logged by
                       run(), which only main() calls, so both of the mutants excluded here
-                      (dropping the logConfigurationTransformation() call, dropping the run() call)
+                      (dropping the logConfigurationEcho() call, dropping the run() call)
                       are covered end to end by an artifact-level test that a unit mutant cannot
                       reach. Everything main() delegates to IS gated below.
                     -->

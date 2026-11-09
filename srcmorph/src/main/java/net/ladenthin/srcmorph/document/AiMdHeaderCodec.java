@@ -62,6 +62,12 @@ public class AiMdHeaderCodec {
     /** Header field key for the CRC32 of the fact counters a summary was written with; only when set. */
     public static final String FIELD_KEY_N = "N";
 
+    /** Header field key for the CRC32 of the model a summary was written with; only when set. */
+    public static final String FIELD_KEY_M = "M";
+
+    /** Header field key for the CRC32 of the child summaries a package or the project read; only when set. */
+    public static final String FIELD_KEY_K = "K";
+
     /**
      * Field key for a child-link line ({@code F}). Unlike the scalar keys this one may appear
      * multiple times — once per child — and the values are collected into {@link AiMdHeader#children()}.
@@ -79,21 +85,21 @@ public class AiMdHeaderCodec {
     /**
      * Current metadata header format version written into every AI document.
      *
-     * @see AiMdHeader#h()
+     * @see AiMdHeader#headerVersion()
      */
     public static final String HEADER_VERSION_1_0 = "1.0";
 
     /**
      * Node type value for source-file-level AI index documents.
      *
-     * @see AiMdHeader#x()
+     * @see AiMdHeader#nodeType()
      */
     public static final String NODE_TYPE_FILE = "file";
 
     /**
      * Node type value for package-level AI index documents.
      *
-     * @see AiMdHeader#x()
+     * @see AiMdHeader#nodeType()
      */
     public static final String NODE_TYPE_PACKAGE = "package";
 
@@ -102,7 +108,7 @@ public class AiMdHeaderCodec {
      * three-level index. The {@link #PROJECT_AI_MD_FILENAME} file lists every package with a
      * one-line lead and a relative link, so an agent can read one compact file and navigate down.
      *
-     * @see AiMdHeader#x()
+     * @see AiMdHeader#nodeType()
      */
     public static final String NODE_TYPE_PROJECT = "project";
 
@@ -143,7 +149,8 @@ public class AiMdHeaderCodec {
     /**
      * Parses an {@link AiMdHeader} from the given header lines.
      *
-     * <p>The single-letter scalar keys ({@code H}/{@code C}/{@code D}/{@code T}/{@code G}/{@code A}/{@code X})
+     * <p>The single-letter scalar keys ({@code H}/{@code C}/{@code D}/{@code T}/{@code G}/{@code A}/{@code X}
+     * and the hashes {@code P}/{@code N}/{@code M}/{@code K})
      * map to one value each; the repeatable {@link #FIELD_KEY_F} key is collected, in encounter order, into
      * {@link AiMdHeader#children()}. Callers must pass header lines only (see {@link AiMdDocumentCodec}),
      * so a {@code - F:} line in the document body is never mistaken for a child link.</p>
@@ -191,11 +198,16 @@ public class AiMdHeaderCodec {
                         valueOrEmpty(values, FIELD_KEY_A),
                         valueOrEmpty(values, FIELD_KEY_X),
                         children)
-                .withHashes(valueOrEmpty(values, FIELD_KEY_P), valueOrEmpty(values, FIELD_KEY_N));
+                .withHashes(
+                        valueOrEmpty(values, FIELD_KEY_P),
+                        valueOrEmpty(values, FIELD_KEY_N),
+                        valueOrEmpty(values, FIELD_KEY_M),
+                        valueOrEmpty(values, FIELD_KEY_K));
     }
 
     /**
-     * Renders the given header to its serialised string form: the scalar fields followed by one
+     * Renders the given header to its serialised string form: the scalar fields (the hashes
+     * {@code P}, {@code N}, {@code M} and {@code K} only when set) followed by one
      * {@link #FIELD_KEY_F} line per {@link AiMdHeader#children() child link}.
      *
      * @param header header to serialise
@@ -210,10 +222,19 @@ public class AiMdHeaderCodec {
                         + "- G: %s\n"
                         + "- A: %s\n"
                         + "- X: %s\n",
-                header.title(), header.h(), header.c(), header.d(), header.t(), header.g(), header.a(), header.x()));
-        // the hashes only when recorded, so a package or project header (and an older file) stays as it was
-        appendWhenSet(builder, FIELD_KEY_P, header.p());
-        appendWhenSet(builder, FIELD_KEY_N, header.n());
+                header.title(),
+                header.headerVersion(),
+                header.checksum(),
+                header.sourceDate(),
+                header.generatedAt(),
+                header.generatorVersion(),
+                header.aiVersion(),
+                header.nodeType()));
+        // the hashes only when recorded: a file has no K, a rule without counters no N
+        appendWhenSet(builder, FIELD_KEY_P, header.promptHash());
+        appendWhenSet(builder, FIELD_KEY_N, header.factsHash());
+        appendWhenSet(builder, FIELD_KEY_M, header.modelHash());
+        appendWhenSet(builder, FIELD_KEY_K, header.childrenHash());
         for (final String child : header.children()) {
             builder.append(CHILD_FIELD_LINE_PREFIX).append(child).append('\n');
         }

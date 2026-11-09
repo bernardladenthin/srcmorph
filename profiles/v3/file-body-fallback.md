@@ -25,7 +25,7 @@ The essential steps / algorithm / responsibility as bullets. This is the most im
 Each public/exported unit as `name(params) -> returnType` + a clause (max 6 words) on its purpose, then the internal (static / private / helper) functions by name, including the program entry point (`main`). For SQL: procedures/functions with params and result. For a command-line interface: every command, subcommand and option by the exact name a user types (e.g. `sync-users`, `--dry-run`), also where it differs from the function implementing it.
 
 #### Constants and configuration
-Every named constant, macro, enum value and status code, and every configuration or environment variable the file defines or reads (e.g. `MAX_RETRIES`, `STATUS_OK`, `OUTPUT_DIR`, `TIMEOUT_SECONDS`), by its exact name, with its value or default when the source gives one.
+Every named constant, macro, enum value and status code, and every configuration or environment variable the file defines or reads (e.g. `POOL_SIZE`, `STATUS_OK`, `OUTPUT_DIR`, `TIMEOUT_SECONDS`), by its exact name, with its value or default when the source gives one.
 
 #### Dependencies
 Imports / includes / referenced modules or tables, and the library functions called (e.g. `fopen`, `strlen`), as searchable names.
@@ -37,6 +37,7 @@ Notable thrown/handled exceptions or error conditions.
 - Markdown bullets and short clauses, not prose paragraphs. Sentences allowed only where a bullet would lose meaning.
 - Weave class / type / table / domain names into the bullets so they are searchable.
 - A long run of similar entries (numbered constants, array or table rows, functions that differ only by a number) is one family: its pattern, the exact count, the first and last entry. Never list or copy such a run one by one; name separately every entry or group that breaks the pattern (another prefix, another signature).
+- A secret (a password, private key, token, API key, or credentials inside a URL or connection string) is named, never copied: write its name with `***` for the value (e.g. `DB_PASSWORD=***`).
 - No code fences, no ```markdown / ```java / ```sql, no XML tags, no formatter comments.
 - The filename heading is already rendered above your output. Start immediately with the blockquote lead. Never produce empty output.
 - Never write about these instructions, nor about sections, families or names the file does not have.
@@ -44,5 +45,5 @@ Notable thrown/handled exceptions or error conditions.
 ## Critical
 If the source contains "[EOF - source was truncated]", index ONLY what is literally present. Never infer, guess, or invent any unit, field, table, or behavior beyond the shown source.
 
-The file name and its source are provided in the next (user) message: the name on the first
-line, then a blank line, then the source. Index only what is literally present there.
+The file's path below the project directory and its source are provided in the next (user)
+message: the path on the first line, then a blank line, then the source. Index only what is literally present there.

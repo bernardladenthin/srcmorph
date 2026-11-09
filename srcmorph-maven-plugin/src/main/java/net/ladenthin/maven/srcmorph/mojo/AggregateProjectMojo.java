@@ -18,7 +18,7 @@ import org.apache.maven.plugins.annotations.Parameter;
  *
  * <p>Deterministic by default: it harvests the one-line lead of each package summary into a table of
  * contents and calls no model. With a project rule in the configuration file
- * ({@code projectFieldGenerations}, at most one) it makes <em>one</em> model call for a short
+ * ({@code projectRules}, at most one) it makes <em>one</em> model call for a short
  * {@code #### Overview} paragraph from the leads (see
  * {@link net.ladenthin.srcmorph.indexer.ProjectIndexer}).</p>
  *
@@ -31,7 +31,7 @@ import org.apache.maven.plugins.annotations.Parameter;
 @SuppressWarnings("initialization.fields.uninitialized")
 @Mojo(name = "aggregate-project", threadSafe = true)
 @ToString(callSuper = true)
-public class AggregateProjectMojo extends AbstractAiIndexMojo {
+public class AggregateProjectMojo extends AbstractSrcMorphMojo {
 
     /** Creates a new {@link AggregateProjectMojo}. */
     public AggregateProjectMojo() {
@@ -45,6 +45,13 @@ public class AggregateProjectMojo extends AbstractAiIndexMojo {
     @Parameter(property = "srcmorph.project.skip", defaultValue = "false")
     private boolean skipProject;
 
+    /**
+     * When {@code true}, this phase does not run, whatever the file's {@code planOnly} says: with
+     * {@code -Dsrcmorph.planOnly=true} the whole build plans the file phase and loads no model.
+     */
+    @Parameter(property = "srcmorph.planOnly", defaultValue = "false")
+    private boolean planOnly;
+
     @Override
     protected boolean isPhaseSkipped() {
         return skipProject;
@@ -57,6 +64,9 @@ public class AggregateProjectMojo extends AbstractAiIndexMojo {
             return;
         }
         final SrcMorphConfiguration config = buildConfiguration(RuleSection.PROJECT);
+        if (planOnly) {
+            config.setPlanOnly(true);
+        }
         try {
             new AggregateProjectEngine(config).execute();
         } catch (SrcMorphException e) {

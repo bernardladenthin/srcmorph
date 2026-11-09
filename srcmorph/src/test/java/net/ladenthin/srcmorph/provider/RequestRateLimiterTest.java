@@ -35,9 +35,9 @@ public class RequestRateLimiterTest {
     private final List<Long> waits = new ArrayList<>();
 
     /** A limiter on the fake clock whose waits pass the asked time, or the next of {@code advances} when one is left. */
-    private RequestRateLimiter limiter(final int perMinute, final long... advances) {
+    private RequestRateLimiter limiter(final long... advances) {
         final int[] next = {0};
-        return new RequestRateLimiter("http://gateway K", perMinute, WINDOW, () -> now, nanos -> {
+        return new RequestRateLimiter("http://gateway K", WINDOW, () -> now, nanos -> {
             waits.add(nanos);
             now += next[0] < advances.length ? advances[next[0]++] : nanos;
         });
@@ -46,26 +46,32 @@ public class RequestRateLimiterTest {
     // <editor-fold defaultstate="collapsed" desc="acquire">
     @Test
     public void acquire_belowTheLimit_doesNotWait() throws Exception {
-        final RequestRateLimiter limiter = limiter(2);
+        // arrange
+        final RequestRateLimiter limiter = limiter();
 
-        limiter.acquire();
+        // act
+        limiter.acquire(2);
         now = 10;
-        limiter.acquire();
+        limiter.acquire(2);
 
+        // assert
         assertThat(waits.isEmpty(), is(true));
         assertThat(limiter.startedInWindow(), is(2));
     }
 
     @Test
     public void acquire_atTheLimit_waitsUntilTheOldestStartLeavesTheWindow() throws Exception {
-        final RequestRateLimiter limiter = limiter(2);
-        limiter.acquire();
+        // arrange
+        final RequestRateLimiter limiter = limiter();
+        limiter.acquire(2);
         now = 10;
-        limiter.acquire();
+        limiter.acquire(2);
         now = 20;
 
-        limiter.acquire();
+        // act
+        limiter.acquire(2);
 
+        // assert
         assertThat(waits, is(Arrays.asList(WINDOW - 20)));
         assertThat(now, is(WINDOW));
         // the start at 0 left the window, the ones at 10 and at WINDOW are in it
@@ -74,38 +80,50 @@ public class RequestRateLimiterTest {
 
     @Test
     public void acquire_aStartExactlyOneWindowOld_hasLeftIt() throws Exception {
-        final RequestRateLimiter limiter = limiter(1);
-        limiter.acquire();
+        // arrange
+        final RequestRateLimiter limiter = limiter();
+        limiter.acquire(1);
 
         now = WINDOW - 1;
-        assertThat(limiter.startedInWindow(), is(1));
-        now = WINDOW;
-        limiter.acquire();
 
+        // pre-assert
+        assertThat(limiter.startedInWindow(), is(1));
+
+        // act
+        now = WINDOW;
+        limiter.acquire(1);
+
+        // assert
         assertThat(waits.isEmpty(), is(true));
     }
 
     @Test
     public void acquire_wokenEarly_waitsForTheRest() throws Exception {
-        final RequestRateLimiter limiter = limiter(1, WINDOW / 4);
-        limiter.acquire();
+        // arrange
+        final RequestRateLimiter limiter = limiter(WINDOW / 4);
+        limiter.acquire(1);
 
-        limiter.acquire();
+        // act
+        limiter.acquire(1);
 
+        // assert
         assertThat(waits, is(Arrays.asList(WINDOW, WINDOW - WINDOW / 4)));
         assertThat(now, is(WINDOW));
     }
 
     @Test
     public void acquire_interrupted_throwsAndKeepsTheInterrupt() throws Exception {
+        // arrange
         final InterruptedException cause = new InterruptedException("stop");
-        final RequestRateLimiter limiter = new RequestRateLimiter("http://gateway K", 1, WINDOW, () -> now, nanos -> {
+        final RequestRateLimiter limiter = new RequestRateLimiter("http://gateway K", WINDOW, () -> now, nanos -> {
             throw cause;
         });
-        limiter.acquire();
+        limiter.acquire(1);
 
-        final InterruptedIOException thrown = assertThrows(InterruptedIOException.class, limiter::acquire);
+        // act
+        final InterruptedIOException thrown = assertThrows(InterruptedIOException.class, () -> limiter.acquire(1));
 
+        // assert
         assertThat(Thread.interrupted(), is(true));
         assertThat(thrown.getMessage(), is("Interrupted while holding a request to http://gateway K"));
         assertThat(thrown.getCause(), is(sameInstance(cause)));
@@ -114,20 +132,24 @@ public class RequestRateLimiterTest {
 
     @Test
     public void acquire_waiting_logsTheServerTheWaitAndTheLimit() throws Exception {
+        // arrange
         final ListAppender<ILoggingEvent> appender = new ListAppender<>();
         appender.start();
         final Logger logger = (Logger) LoggerFactory.getLogger(RequestRateLimiter.class);
+        final Level previous = logger.getLevel();
         logger.setLevel(Level.INFO);
         logger.addAppender(appender);
         try {
             final long second = TimeUnit.SECONDS.toNanos(1);
             final RequestRateLimiter limiter =
-                    new RequestRateLimiter("http://gateway K", 1, 3 * second, () -> now, nanos -> now += nanos);
-            limiter.acquire();
+                    new RequestRateLimiter("http://gateway K", 3 * second, () -> now, nanos -> now += nanos);
+            limiter.acquire(1);
             now = second / 2;
 
-            limiter.acquire();
+            // act
+            limiter.acquire(1);
 
+            // assert
             assertThat(appender.list.size(), is(1));
             assertThat(
                     appender.list.get(0).getFormattedMessage(),
@@ -135,6 +157,7 @@ public class RequestRateLimiterTest {
                             + " minute (requestsPerMinute 1)"));
         } finally {
             logger.detachAppender(appender);
+            logger.setLevel(previous);
             appender.stop();
         }
     }
@@ -146,45 +169,177 @@ public class RequestRateLimiterTest {
      */
     @Test
     public void acquire_realWaiter_waitsTheWindowOut() throws Exception {
+        // arrange
         final long window = TimeUnit.MILLISECONDS.toNanos(50);
-        final RequestRateLimiter limiter =
-                new RequestRateLimiter("http://gateway K", 1, window, System::nanoTime, null);
-        limiter.acquire();
+        final RequestRateLimiter limiter = new RequestRateLimiter("http://gateway K", window, System::nanoTime, null);
+        limiter.acquire(1);
         final long start = System.nanoTime();
 
-        limiter.acquire();
+        // act
+        limiter.acquire(1);
 
+        // assert
         assertThat(System.nanoTime() - start, is(greaterThanOrEqualTo(window * 9 / 10)));
+    }
+
+    /**
+     * A later run of the same JVM that names a higher limit sends at it: the earlier, lower limit is
+     * the earlier run's, not the server's.
+     *
+     * @throws Exception if a wait is interrupted
+     */
+    @Test
+    public void acquire_aHigherLimitAfterALowerOne_startsAtTheHigherLimit() throws Exception {
+        // arrange
+        final RequestRateLimiter limiter = limiter();
+        limiter.acquire(1);
+
+        // act
+        limiter.acquire(3);
+        limiter.acquire(3);
+
+        // assert
+        assertThat(waits.isEmpty(), is(true));
+        assertThat(limiter.startedInWindow(), is(3));
+    }
+
+    /**
+     * A request at a lower limit counts the requests of every model of the server in the window, not
+     * only its own.
+     *
+     * @throws Exception if a wait is interrupted
+     */
+    @Test
+    public void acquire_aLowerLimitAfterAHigherOne_countsTheOtherRequestsToo() throws Exception {
+        // arrange
+        final RequestRateLimiter limiter = limiter();
+        limiter.acquire(5);
+        limiter.acquire(5);
+        limiter.acquire(5);
+        now = 10;
+
+        // act
+        limiter.acquire(2);
+
+        // assert: the three starts at 0 had to leave the window first
+        assertThat(waits, is(Arrays.asList(WINDOW - 10)));
+        assertThat(limiter.startedInWindow(), is(1));
+    }
+
+    /**
+     * Three starts in the window at a limit of two: two have to leave it, so the wait runs to the newer
+     * of them, in one wait and one log line.
+     *
+     * @throws Exception if a wait is interrupted
+     */
+    @Test
+    public void acquire_twoStartsMustLeave_waitsOnceUntilTheNewerOfThemLeaves() throws Exception {
+        // arrange
+        final ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        final Logger logger = (Logger) LoggerFactory.getLogger(RequestRateLimiter.class);
+        final Level previous = logger.getLevel();
+        logger.setLevel(Level.INFO);
+        logger.addAppender(appender);
+        final RequestRateLimiter limiter = limiter();
+        limiter.acquire(5);
+        now = 10;
+        limiter.acquire(5);
+        now = 20;
+        limiter.acquire(5);
+        now = 30;
+        try {
+            // act
+            limiter.acquire(2);
+        } finally {
+            logger.detachAppender(appender);
+            logger.setLevel(previous);
+            appender.stop();
+        }
+
+        // assert: the starts at 0 and 10 left the window, the one at 20 and this one are in it
+        assertThat(waits, is(Arrays.asList(WINDOW - 20)));
+        assertThat(appender.list.size(), is(1));
+        assertThat(limiter.startedInWindow(), is(2));
+    }
+
+    @Test
+    public void acquire_limitBelowOne_throws() {
+        // arrange
+        final RequestRateLimiter limiter = limiter();
+
+        // act
+        final IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> limiter.acquire(0));
+
+        // assert
+        assertThat(thrown.getMessage(), is("requestsPerMinute must be positive: 0"));
+        assertThat(limiter.startedInWindow(), is(0));
+    }
+
+    @Test
+    public void acquire_limitOfOne_startsTheFirstRequest() throws Exception {
+        // arrange
+        final RequestRateLimiter limiter = limiter();
+
+        // act
+        limiter.acquire(1);
+
+        // assert
+        assertThat(waits.isEmpty(), is(true));
+        assertThat(limiter.startedInWindow(), is(1));
     }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="shared">
+    /** Every model of one server shares one window; another key variable is another window. */
     @Test
-    public void shared_oneWindowPerServerAndLimit() {
-        final RequestRateLimiter first = RequestRateLimiter.shared("http://shared-test K", 30);
+    public void shared_oneWindowPerServer() {
+        // arrange
+        final RequestRateLimiter first = RequestRateLimiter.shared("http://shared-test K");
 
-        assertThat(RequestRateLimiter.shared("http://shared-test K", 30), is(sameInstance(first)));
-        assertThat(RequestRateLimiter.shared("http://shared-test K", 31), is(not(sameInstance(first))));
-        assertThat(RequestRateLimiter.shared("http://shared-test L", 30), is(not(sameInstance(first))));
+        // act, assert
+        assertThat(RequestRateLimiter.shared("http://shared-test K"), is(sameInstance(first)));
+        assertThat(RequestRateLimiter.shared("http://shared-test L"), is(not(sameInstance(first))));
+        assertThat(first.toString(), containsString("server=http://shared-test K"));
     }
 
     @Test
-    public void shared_countsAMinuteOnTheSystemClock() throws Exception {
-        final RequestRateLimiter limiter = RequestRateLimiter.shared("http://shared-clock-test K", 2);
+    public void shared_defaultWindow_countsAMinuteOnTheSystemClock() throws Exception {
+        // arrange
+        final RequestRateLimiter limiter = RequestRateLimiter.shared("http://shared-clock-test K");
 
-        limiter.acquire();
+        // act
+        limiter.acquire(2);
 
+        // assert
         assertThat(limiter.startedInWindow(), is(1));
         assertThat(RequestRateLimiter.WINDOW_NANOS, is(TimeUnit.MINUTES.toNanos(1)));
-        assertThat(limiter.toString(), containsString("perMinute=2"));
         assertThat(limiter.toString(), containsString("windowNanos=" + RequestRateLimiter.WINDOW_NANOS));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="toString">
+    @Test
+    public void toString_aServerWithUserInfo_isMasked() {
+        // arrange
+        final RequestRateLimiter limiter = new RequestRateLimiter("https://u:secret@h/v1 K", WINDOW, () -> 0, null);
+
+        // act
+        final String shown = limiter.toString();
+
+        // assert
+        assertThat(shown, containsString("server=https://***@h/v1 K"));
+        assertThat(shown, not(containsString("secret")));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="constructor">
     @Test
     public void constructor_nullArguments_throw() {
-        assertThrows(NullPointerException.class, () -> new RequestRateLimiter(null, 1, WINDOW, () -> 0, null));
-        assertThrows(NullPointerException.class, () -> new RequestRateLimiter("s", 1, WINDOW, null, null));
-        assertThat(new RequestRateLimiter("s", 1, WINDOW, () -> 0, null), is(instanceOf(RequestRateLimiter.class)));
+        // act, assert
+        assertThrows(NullPointerException.class, () -> new RequestRateLimiter(null, WINDOW, () -> 0, null));
+        assertThrows(NullPointerException.class, () -> new RequestRateLimiter("s", WINDOW, null, null));
+        assertThat(new RequestRateLimiter("s", WINDOW, () -> 0, null), is(instanceOf(RequestRateLimiter.class)));
     }
     // </editor-fold>
 }

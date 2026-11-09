@@ -21,7 +21,7 @@ retrieval.
 
 ## Features
 - Generate AI summaries for source files
-- Per-language prompts — Java, SQL schema, shell, Perl, XML and a generic fallback — selected by file extension
+- Per-kind prompts — class-based languages, SQL, shell, Perl, XML, views, API contracts, deploy files and a generic fallback — selected by routing rules (extension, file name, path, shebang, content)
 - Weave searchable type, API and domain names into every summary
 - Aggregate summaries at package level
 - Build a single project index (one line + link per package) for top-down navigation, optionally with a one-call AI `#### Overview`
@@ -42,14 +42,14 @@ The plugin runs in three phases, building a navigable index from fine to coarse.
 - Traverses generated `.ai.md` files
 - Builds hierarchical package summaries
 - Produces `package.ai.md` files; the header carries a deterministic `F` link list to each child (package → file navigation)
-- Takes exactly one rule, `packageFieldGenerations` of the configuration file (the package prompt and its model); none or more fail the goal
+- Takes exactly one rule, `packageRules` of the configuration file (the package prompt and its model); none or more fail the goal
 ### 3. Project Index (aggregate-project)
 - Harvests the one-line lead from every `package.ai.md` — the per-package listing is deterministic, no AI call
 - Produces a single `project.ai.md`: one body line per package (its lead) with the clickable links in the header `F` list
 - A compact, always-loadable table of contents an agent reads first to navigate down
-- **Optional** (opt-in): configure one rule in `projectFieldGenerations` (more fail the goal) and it makes *one* extra AI call to
+- **Optional** (opt-in): configure one rule in `projectRules` (more fail the goal) and it makes *one* extra AI call to
   write a short `#### Overview` paragraph from the package leads. The deterministic per-package listing is
-  unchanged; with no field generation the goal stays purely deterministic and calls no model.
+  unchanged; with no rule the goal stays purely deterministic and calls no model.
 ## Example Output
 ```
 ### AiMdDocument.java
@@ -62,6 +62,7 @@ The plugin runs in three phases, building a navigable index from fine to coarse.
 - X: file
 - P: 3F2A91C0
 - N: 7D04E5B1
+- M: 5C1E08A2
 ---
 > Immutable value type pairing a deterministic metadata header with the AI-generated markdown body of one .ai.md document.
 
@@ -76,10 +77,32 @@ The plugin runs in three phases, building a navigable index from fine to coarse.
 - `body() -> String` — the AI-generated markdown body.
 ```
 
-`P` and `N` are the CRC32 of the system prompt (with the rule's map and reduce prompts, when it names
-them) and of the fact counters the summary was written with
-(file summaries only, and only when set): a run record names them for an unchanged file, so a changed
-prompt shows which summaries it has not rewritten yet.
+`P`, `N`, `M` and `K` are the CRC32 of what the summary was written with, each only when set: the
+system prompt (with the rule's map and reduce prompts, when it names them), the fact counters, the
+model (the definition's key, its `remoteModel` and the file name of its `modelPath`) and, for a
+package or the project, the child summaries it read. A summary is rewritten when it is missing or
+empty, or its header format (`H`), node type (`X`), title or `aiVersion` (`A`) changed, always; and
+when one of the fields below differs while its switch under `regenerateOn` is `true`, as each is by
+default (a summary that does not record a field differs too):
+
+| Switch | Field | Changes with |
+|---|---|---|
+| `source` | `C` | the file's source; a package's files; the packages the project lists and their checksums |
+| `prompt` | `P` | the rule's prompts, its map and reduce prompts too: a changed `map-chunk` rewrites every file of a rule that names it, also one that fit the window and never used it |
+| `facts` | `N` | the rule's fact counters |
+| `model` | `M` | the rule's model definition, or the model it names |
+| `children` | `K` | a summary a package or the project is written from (a file re-summarized over the same source) |
+
+```yaml
+srcMorph:
+  force: false            # true: rewrite every summary, whatever regenerateOn says
+  regenerateOn:
+    prompt: false         # e.g. keep the summaries of the old prompt after a prompt edit
+```
+
+A switch set to `false` keeps the summary and records the new value at its next rewrite: a run
+record names the hashes for an unchanged file, so it shows which summaries an older prompt wrote.
+`D`, `T` and `G` never cause a rewrite; a sampling parameter is in no hash (raise `aiVersion`).
 ## Requirements
 - Java 8+ (the plugin and the core are Java 8 bytecode; the descriptor states Java 1.8)
 - Maven 3.6.3+
@@ -114,13 +137,16 @@ nothing else. What the file leaves unset, Maven fills from the project:
 | `subtrees` | the project's source directory and resource directories that exist below the base directory (a resource's includes and excludes are not applied; a resource directory that holds the source directory, such as the project directory itself, is left out) |
 | `outputDirectory` | `src/site/ai` below the base directory |
 | `projectName` | `${project.name}` |
-| `pluginVersion` | `${project.version}` |
 
-Relative paths in the file resolve against the file's directory: the directories, `runRecordFile`,
+`generatorVersion`, the header's `G`, is srcmorph's own version unless the file sets it, as in the CLI.
+
+Relative paths in the file resolve against the file's directory: the directories (`partsDirectory`
+too), `runRecordFile`,
 and a `modelPath`, `templateFile` or `factsFile` through `modelDirectory` / `profileDirectory`,
 which are the file's directory when unset. A `${name}` in a value is a Maven property (the command
 line's `-D`, then the project's `<properties>`, then the project's own values as a POM names them,
-then the system's), so `gpuLayers: ${ai.gpuLayers}` takes `-Dai.gpuLayers=12`. The project's values
+then the system's), so `gpuLayers: ${ai.gpuLayers}` takes `-Dai.gpuLayers=12`; `$${name}` writes a
+literal `${name}` (a shell variable in an inline prompt). The project's values
 are `basedir`, `project.basedir`, `project.build.directory`, `project.build.sourceDirectory`,
 `project.groupId`, `project.artifactId`, `project.version` and `project.name`. An unknown one stays as
 it is, except in a directory, `runRecordFile` or a subtree, where it fails the goal. Every goal takes
@@ -128,9 +154,9 @@ its section of the file:
 
 | Goal | Rules |
 |---|---|
-| `generate`, `calibrate` | `srcMorph.fieldGenerations`, the file rules |
-| `aggregate-packages` | `packageFieldGenerations`, exactly one rule |
-| `aggregate-project` | `projectFieldGenerations`, none (a deterministic index) or one (with an overview) |
+| `generate`, `calibrate` | `srcMorph.rules`, the file rules |
+| `aggregate-packages` | `packageRules`, exactly one rule |
+| `aggregate-project` | `projectRules`, none (a deterministic index) or one (with an overview) |
 | `check` | all three |
 
 The file has three building blocks:
@@ -139,17 +165,27 @@ The file has three building blocks:
 2. **`profileDirectory`** — the profile: one directory with a file per prompt (`<key>.md`) and per
    group of exact fact counters (`<key>.tsv`), named by key from the rules, so no prompt text and no
    regex is written into the configuration. A prompt is the **system prompt** and takes **no
-   placeholders**: the file/package name and the source (for packages, the child summaries; for the
+   placeholders**: the file's path below the base directory (a package's name) and the source (for
+   packages, the child summaries; for the
    optional project overview, the per-package leads) are sent as a separate user message
-   (`AiPromptSupport`). A `%s` in a prompt reaches the model literally. The measured profile of this
+   (`PromptCatalog`). A `%s` in a prompt reaches the model literally. The measured profile of this
    repository is [`profiles/v3/`](../profiles/README.md); copy it into your project or point at a
    checkout. A `promptDefinitions` entry with an inline `template` (or its own `templateFile`) still
    works and wins over a file of the same key, as does a `factDefinitions` entry for facts.
-3. **`fieldGenerations`** — the routing **rules** of the file phase. Each rule maps a `promptKey` to an
+3. **`rules`** — the routing **rules** of the file phase. Each rule maps a `promptKey` to an
    `aiDefinitionKey` (model id, which carries the full parameter set) and selects files with a
    composable **`condition`** tree: `and`/`or`/`not` over the leaves `extensions`, `size`
-   (`min`/`max` bytes), `lines` (`min`/`max`), `modifiedAfter`/`modifiedBefore` (ISO-8601 instant vs
-   the file's last-modified time), and `pathGlob` (base-relative glob). When several rules match, the
+   (`min`/`max` bytes of the source as srcmorph reads it: the file's bytes with `\n` line endings and
+   no BOM, a UTF-16 file its text's UTF-8 length; the run's `minFileSizeBytes`/`maxFileSizeBytes`
+   band takes the size on disk instead, before a file is read), `lines` (`min`/`max`), `modifiedAfter`/`modifiedBefore` (ISO-8601 instant vs
+   the file's last-modified time), `pathGlob` (base-relative glob, in the case written, so it
+   matches the same on every system), `fileNames` (globs over the name without its directory, in any
+   case: `Dockerfile`, `Jenkinsfile`, `Dockerfile.*`), `contentMatches` (a Java regular expression
+   found in the first `contentHeadChars` characters of the file, 16,384 by default, so a Kubernetes
+   manifest and an OpenAPI document of the same extension take different rules:
+   `(?m)^apiVersion:`) and `interpreters` (the interpreter the file's `#!` line names, a version of
+   it too: `[bash, sh]`, `[python]` matches `#!/usr/bin/env python3`). A glob takes `*`, `**`, `?`
+   and `{a,b}` alternatives (`**/*.{yml,yaml}`). When several rules match, the
    highest `priority` wins (ties by declaration order). A rule may instead be `skip: true` (ignore
    matching files — a high-priority skip beats routes and the fallback), and **exactly one**
    `fallback: true` (no condition) catches the rest. A file that matches no rule and no fallback
@@ -178,7 +214,9 @@ The file has three building blocks:
      far faster than a few giant ones (one 384K-token pass alone can dwarf a whole run): the self-test
      map-reduces with H-Tiny over 64K and samples with H-1B over 16K; map-reduce over a 384K-class window
      is the slowest combination. A local model sizes the chunks by the source's density in tokens; a
-     chunk denser than that is read in two halves.
+     chunk denser than that is read in two halves. The plan loads no model, so it counts the chunks by
+     the character estimate: for a dense file of a local model, its chunk count and time are an
+     estimate the run can correct.
    - **`sampleChunks`** — the same over `maxChunks` representative chunks (always the first and the last,
      evenly spaced between), to bound the time of an arbitrarily large file (e.g. 7 MB): a 16K-window
      model with `maxChunks: 6` is ~7 calls (~1 h order on a reference CPU; less on GPU) — the right
@@ -206,7 +244,9 @@ The file has three building blocks:
    **Exact counts with `factsKey` (optional, every file — not just oversize).** A sampled/chunked AI
    summary can't reliably *count* things (no single call sees the whole file — it will guess "25 rows").
    A rule's `factsKey` names a group of counters, `<profileDirectory>/<key>.tsv` (one `label<TAB>regex`
-   per line, `#` comments, an `[ignore]` label for a region blanked before counting), and each reports
+   per line, `#` comments, an `[ignore]` label for a region blanked before counting, `[raw]` for a
+   counter that counts before the blanking, `[distinct]` for one that counts different names; see
+   [`profiles/README.md`](../profiles/README.md)), and each reports
    its regex match count over the **whole** source, prepended to the body of every file the rule
    matches as an exact facts line — so downstream agents get authoritative structural counts in every
    summary. It's fully generic — the meaning is in the regex, so the same mechanism counts SQL rows or
@@ -250,10 +290,10 @@ and `srcmorph.yaml` next to it:
 
 ```yaml
 # provider defaults to "mock"; llamacpp-jni runs a real GGUF model
-packageFieldGenerations:            # aggregate-packages: exactly one rule
+packageRules:            # aggregate-packages: exactly one rule
   - promptKey: package-body
     aiDefinitionKey: coder
-projectFieldGenerations:            # aggregate-project: leave it out for a purely deterministic index
+projectRules:            # aggregate-project: leave it out for a purely deterministic index
   - promptKey: project-body
     aiDefinitionKey: coder
 
@@ -268,14 +308,14 @@ srcMorph:
       temperature: 0.7
       threads: 8
   # 2) The profile: srcmorph's profiles/v3/ copied into your project (or a checkout of it). Every
-  #    promptKey and factsKey here is a file there: file-body-java.md, file-body-fallback.md,
+  #    promptKey and factsKey here is a file there: file-body-oop.md, file-body-fallback.md,
   #    package-body.md, project-body.md, java-facts.tsv.
   profileDirectory: src/srcmorph/profile
   # 3) The file rules: a .java rule (matched by its condition) and the fallback for everything else.
   #    See "Routing rules" below for size/lines/modified/glob conditions, priority, and skip.
-  fieldGenerations:
+  rules:
     - id: java
-      promptKey: file-body-java
+      promptKey: file-body-oop
       aiDefinitionKey: coder
       factsKey: java-facts
       condition:
@@ -298,13 +338,13 @@ the same model and different `contextSize`), a map-reduce over a small fast Gran
 files, skip generated sources, and a fallback for everything else:
 
 ```yaml
-  fieldGenerations:
+  rules:
     - id: skip-generated                             # skip wins by priority
       skip: true
       priority: 100
       condition: {pathGlob: "**/generated/**"}
     - id: java-small
-      promptKey: file-body-java-terse
+      promptKey: file-body-oop
       aiDefinitionKey: gpt-oss-16k
       condition:
         and:
@@ -312,7 +352,7 @@ files, skip generated sources, and a fallback for everything else:
             - extensions: [".java"]
             - size: {max: 16384}
     - id: java-mid
-      promptKey: file-body-java
+      promptKey: file-body-oop
       aiDefinitionKey: gpt-oss-48k
       condition:
         and:
@@ -320,15 +360,15 @@ files, skip generated sources, and a fallback for everything else:
             - extensions: [".java"]
             - size: {min: 16384, max: 49152}
     - id: java-large
-      promptKey: file-body-java-detailed
+      promptKey: file-body-oop
       aiDefinitionKey: gpt-oss-20B-mxfp4
       condition:
         and:
           conditions:
             - extensions: [".java"]
-            - size: {min: 49152}
+            - size: {min: 49152, max: 1048576}     # a max: at one priority the first match wins
     - id: java-huge                                  # huge files: chunk over a SMALL fast window + combine
-      promptKey: file-body-java
+      promptKey: file-body-oop
       aiDefinitionKey: granite-4.0-h-1b-fastchunk
       onOversize: sampleChunks
       maxChunks: 6                                   # ~7 cheap calls; bounds time to ~1 h/file
@@ -336,7 +376,7 @@ files, skip generated sources, and a fallback for everything else:
       reducePromptKey: reduce-parts                  # appended in a reduce call: merge the parts
       facts:                                         # exact whole-file counts, prepended to the body
         - {label: boolean fields, pattern: '\bboolean\b'}
-        - {label: methods, pattern: '(?m)^\s+(public|private|protected).*\('}
+        - {label: methods, pattern: '(?m)^[ \t]+(public|private|protected)[^(\n]*+\('}
       condition:
         and:
           conditions:
@@ -349,7 +389,9 @@ files, skip generated sources, and a fallback for everything else:
 ```
 
 Notes: size bounds are **min-exclusive / max-inclusive** so `band2.min == band1.max` is non-overlapping;
-`lines` works the same way; `modifiedAfter: "2026-01-01T00:00:00Z"` only (re)indexes
+`lines` works the same way; of two matching rules of one priority the one declared first wins, so
+bands of one priority need a `max` each (or the narrower band a higher priority), or a later band is
+never reached; `modifiedAfter: "2026-01-01T00:00:00Z"` only (re)indexes
 recently changed files. `onOversize` (`fail` *(default)* / `sample` / `mapReduce` / `sampleChunks` / `deterministic` —
 see the context-window note above) chooses what a rule does when a file is still larger than its routed
 model's window; `maxChunks` is how many chunks `sampleChunks` summarizes, `mapPromptKey` and
@@ -386,8 +428,9 @@ The POM sets only these; everything else is the configuration file (above).
   `${project.basedir}/srcmorph.yaml`). A missing file fails the goal, naming where it looked
 - `force` (`srcmorph.force`) — regenerate every summary although it is up to date (default: `false`);
   `true` overrides the file's `force`
-- `planOnly` (`srcmorph.planOnly`, goal `generate`) — print the routing plan and stop before loading any
-  model (default: `false`); `true` overrides the file's `planOnly`
+- `planOnly` (`srcmorph.planOnly`, goals `generate`, `aggregate-packages`, `aggregate-project`) —
+  `generate` prints the routing plan and stops before loading any model, the two aggregation goals do
+  not run (default: `false`); `true` overrides the file's `planOnly`
 - `skip` (`srcmorph.skip`) — global switch: skip **every** goal (default: `false`)
 - Per-phase switches — turn any of the three phases on/off independently (each default `false`).
   Named after the three index levels (`file` / `package` / `project`, the `x` node types):
@@ -400,18 +443,39 @@ The POM sets only these; everything else is the configuration file (above).
   global switch skips.
 
 The keys of the file under `srcMorph` (`baseDirectory`, `subtrees`, `outputDirectory`, `fileExtensions`,
-`excludes`, `minFileSizeBytes` / `maxFileSizeBytes`, `generationProvider`, `modelDirectory`,
-`profileDirectory`, `promptDefinitions`, `factDefinitions`, `aiDefinitions`, `fieldGenerations`,
-`force`, `planOnly`, `aiVersion`, `projectName`, `runRecordFile`) are described in
+`fileNames`, `fileInterpreters`, `contentHeadChars`, `excludes`, `minFileSizeBytes` /
+`maxFileSizeBytes`, `generationProvider`, `modelDirectory`,
+`profileDirectory`, `promptDefinitions`, `factDefinitions`, `aiDefinitions`, `rules`,
+`force`, `regenerateOn`, `planOnly`, `pruneOrphans`, `aiVersion`, `projectName`, `runRecordFile`,
+`partsDirectory`) are described in
 [`srcmorph-cli/README.md`](../srcmorph-cli/README.md) and [`srcmorph/README.md`](../srcmorph/README.md).
 A configured subtree that does not exist, or lies outside the base directory, fails the goal; file
-extensions match with their dot and in any case.
+extensions match with their dot and in any case. `fileNames` adds files by name, for those without an
+extension (`Dockerfile`, `Jenkinsfile`, `Makefile`): globs over the name, in any case.
+`fileInterpreters` adds the scripts without an extension whose `#!` line names one of the
+interpreters (`[bash, sh, perl, python]`: `bin/deploy`, a Git hook); that line is read only for a
+file the subtrees, the excludes and the size band let through, and one that cannot be read is
+skipped with a warning. `contentHeadChars` (default 16,384, at least 256) is how much of a file the
+`contentMatches` and `interpreters` conditions read while planning: raise it when the marker of a kind
+comes after a long license header; the head is never read past the file's end. A source file
+is read as UTF-8, or as UTF-16 when it starts with that byte order mark; a byte order mark is not
+part of the text the model and the fact counters see.
+
+The `generate` plan lists the **orphaned summaries**: the file summaries (`X: file`) below the output
+directory that no file of the plan is summarized into, of a source that was deleted, renamed or newly
+excluded, or that a skip rule takes now, and the `package.ai.md` of a directory left without any
+summary and sub-package. The package and project phases would go on reading them.
+`pruneOrphans: true` (default `false`) deletes them before the run generates, each with a log line;
+a `planOnly` run and `srcmorph:check` delete nothing. A summary whose header cannot be read, what the
+walk of the output directory cannot read, and every summary below a source path the walk could not
+read are kept, with a warning. Leave it off while you narrow the subtrees for a single run: the
+summaries of the subtrees left out are orphans of that run too.
 
 ### Per-model `aiDefinitions` parameters
 
 Every model knob lives inside its entry of `aiDefinitions` (referenced by `aiDefinitionKey`). Only `key` and `modelPath` are required (`modelPath` not for an `openai-compatible`
 model); everything else has a default. The defaults below are the shipped values
-(`AiGenerationConfig.DEFAULT_*`).
+(`ModelDefinition.DEFAULT_*`).
 
 | Key | Default | Description |
 |---|---|---|
@@ -419,11 +483,11 @@ model); everything else has a default. The defaults below are the shipped values
 | `modelPath` | *(required)* | Path to the GGUF model file: absolute, or relative to `modelDirectory` (without it, to the configuration file's directory). Not used by an `openai-compatible` model |
 | `provider` | *(empty)* | The backend of this model: `llamacpp-jni`, `openai-compatible` or `mock`; empty uses the run's `generationProvider`. Lets one run send some files to a local GGUF and others to a remote model |
 | `remoteModel` | *(empty)* | `openai-compatible` only: the model id requested (the `model` field, e.g. `openai/gpt-6-luna` on OpenRouter); empty sends none, which a single-model `llama-server` or `NativeServer` accepts |
-| `baseUrl` | `https://openrouter.ai/api/v1` | `openai-compatible` only: the API base; `<baseUrl>/chat/completions` is called. A local server is `http://127.0.0.1:<port>/v1`. Must be `http(s)`, checked before the run starts |
+| `baseUrl` | `https://openrouter.ai/api/v1` | `openai-compatible` only: the API base; `<baseUrl>/chat/completions` is called. A local server is `http://127.0.0.1:<port>/v1`. Must be an `http(s)` URL without an `@` (no `user:key@`), query or fragment, checked before the run starts: the key goes in `apiKeyEnv` |
 | `apiKeyEnv` | *(empty)* | `openai-compatible` only: the **name** of the environment variable holding the API key, sent as `Authorization: Bearer` (for OpenRouter `OPENROUTER_API_KEY`). The key itself never goes into a configuration file. Empty (the default) sends no key. A named variable that is unset or empty fails the run before any request, as does a key that would go over plain `http` to another machine: a key goes only where a model names it, so a custom `baseUrl` never receives your OpenRouter key by accident. A key is only sent over `https`, or over plain `http` to a loopback host (`localhost`, `127.x.x.x`, `[::1]`); any other plain-`http` `baseUrl` fails before anything is sent, so set `apiKeyEnv` empty for a keyless server on another machine |
 | `stream` | `false` | `openai-compatible` only: request the answer as Server-Sent Events (`stream: true`, `stream_options.include_usage: true`) and assemble it into the same chat response, so the summary does not change. A stream without the closing `data: [DONE]` or with an `error` chunk fails the file. Required for the GitHub Copilot API Gateway, whose non-streaming path adds and runs VS Code's own tools (see [docs/copilot-api-gateway.md](../docs/copilot-api-gateway.md)); it also moves the read timeout from the whole answer to the gap between two events |
-| `requestsPerMinute` | `0` | `openai-compatible` only: at most this many requests to the model's server start within any minute; a request beyond it waits until the oldest of the last minute is a minute old, instead of being answered with `429`. Every model of one server with the same `apiKeyEnv` and limit counts in one window, across the phases of a run in one process. Set it below the server's own limit, e.g. 25 for the Copilot API Gateway's `rateLimitPerMinute` 30. `0` or less: no limit |
-| `maxRetries` | `3` | `openai-compatible` only: how often a request is sent again after a `408`, a `429` (not one that says the quota or credit is used up), a `5xx` other than `501` / `505` or a connect timeout, after the server's `Retry-After` (in seconds, at most 5 minutes) or an exponential backoff from 1 s (at most 60 s, plus up to a quarter as jitter). Any other failure is final at once; a prompt the server refuses as longer than the model's context (`413`, or `400` saying so) is shrunk and asked again, as for a local model. `0` sends every request once. A request that got no answer within the read timeout, or whose answer stopped while it was read, is not sent again: the server may already be generating and billing it (a `POST` goes in streaming mode, so the JDK does not resend it either). A request that still fails counts its file as failed; the other files are indexed and the goal fails at its end |
+| `requestsPerMinute` | `0` | `openai-compatible` only: at most this many requests to the model's server start within any minute; a request beyond it waits until fewer than that many started in the last minute (until the newest of the starts that have to leave the window is a minute old), instead of being answered with `429`. Every model of one server with the same `apiKeyEnv` counts in one window, across the phases of a run and the runs of one process (mvnd, an IDE); each request waits for its own model's limit (a model at 10 sends while fewer than 10 requests of any of them started in the last minute), so a later run with a higher limit sends at it. Set it below the server's own limit, e.g. 25 for the Copilot API Gateway's `rateLimitPerMinute` 30. `0` or less: no limit |
+| `maxRetries` | `3` | `openai-compatible` only: how often a request is sent again after a `408`, a `429` (not one that says the quota or credit is used up), a `5xx` other than `501` / `505` or a connect timeout, after the server's `Retry-After` (seconds or an HTTP date, at most 5 minutes) or an exponential backoff from 1 s (at most 60 s, plus up to a quarter as jitter). Any other failure is final at once; a prompt the server refuses as longer than the model's context (`413`, or `400` saying so) is shrunk and asked again, as for a local model. `0` sends every request once. A request that got no answer within the read timeout, or whose answer stopped while it was read, is not sent again: the server may already be generating and billing it (a `POST` goes in streaming mode, so the JDK does not resend it either). A request that still fails counts its file as failed; the other files are indexed and the goal fails at its end |
 | `contextSize` | `32768` | Context window in tokens |
 | `maxOutputTokens` | `128` | Max generated tokens per call |
 | `threads` | `4` (fewer on a machine with fewer cores) | CPU threads for inference. Never set more than the machine has cores: ggml's threads wait on each other, and an oversubscribed run is orders of magnitude slower |
@@ -434,7 +498,7 @@ model); everything else has a default. The defaults below are the shipped values
 | `topNSigma` | `-1.0` | Top-n-sigma sampling threshold (`-1.0` = disabled) |
 | `repeatPenalty` | `1.0` | Repetition penalty (`1.0` = disabled) |
 | `repeatLastN` | `-1` | Window the `repeatPenalty` above acts on (`--repeat-last-n`); `-1` = leave llama.cpp's own window (64 tokens), `0` = disable the penalty entirely. Configuring a penalty without its range leaves the strength adjustable but the reach fixed, which is why the two belong together |
-| `charsPerToken` | `4` | Chars-per-token estimate; drives the automatic `maxInputChars` trim budget (`maxInputChars` itself is derived, not a field) and the plan. Use a value at or below your model's real ratio so the budget stays conservative. A local (`llamacpp-jni`) model counts each prompt with its own tokenizer before the call, so there the estimate only picks which files are counted: one over it is counted whole, goes in one call when it fits after all, and is otherwise chunked by its measured density; a prompt over `contextSize - maxOutputTokens` (less 4 tokens a count does not see) is not sent: its window shrinks by the measured density, up to four times, and a prompt still over the limit then fails its file |
+| `charsPerToken` | `4` | Chars-per-token estimate; drives the automatic `maxInputChars` trim budget (`maxInputChars` itself is derived, not a field) and the plan. Use a value at or below your model's real ratio so the budget stays conservative. A local (`llamacpp-jni`) model counts each prompt with its own tokenizer before the call, so there the estimate only picks which files are counted: of one over it the prompt with a head of at most four estimated windows is counted (the whole file when it is shorter), and by that density it goes in one call when it fits after all, and is otherwise chunked; a prompt over `contextSize - maxOutputTokens` (less 4 tokens a count does not see) is not sent: its window shrinks by the measured density, up to four times. Where the source may not be cut (a whole file, a chunk), a window that would cut it hands the file to the rule's `onOversize` (a chunk is read in two halves); only a `sample` head still over the limit after the four smaller windows fails its file |
 | `warnOnTrim` | `true` | Log a warning when the source is trimmed to fit the window |
 | `cachePrompt` | `true` | Reuse the shared prompt-prefix KV across files (`cache_prompt`) |
 | `swaFull` | `true` | Keep the full-size sliding-window-attention KV cache (`--swa-full`) |
@@ -454,7 +518,7 @@ model); everything else has a default. The defaults below are the shipped values
 | `mainGpu` | `-1` | Primary GPU index (`--main-gpu`); `-1` = leave default. Matters on multi-GPU hosts (e.g. a Vulkan build enumerates every GPU) |
 | `devices` | *(empty)* | Explicit device selection (`--device`), comma-separated backend device names (e.g. `Vulkan1`); takes precedence over `mainGpu` |
 | `chatTemplateEnableThinking` | *(unset)* | Chat-template thinking mode (`enable_thinking` kwarg): `true` or `false` is forwarded verbatim, unset omits the kwarg so the model's own template default applies. Set `false` for Gemma 4 to keep thought tokens out of stored output |
-| `reasoningEffort` | `low` | Reasoning effort (`low`/`medium`/`high`), the `reasoning_effort` kwarg for gpt-oss harmony and templates such as Kolibri-1's; empty omits the kwarg (e.g. for models without it). Thinking off is sent as llama.cpp's server sends it, `enable_thinking` `false` and no `reasoning_effort`: `none` sends that instead of the effort, and while `chatTemplateEnableThinking` is `false` the effort is not sent, since a template that reads it first (Kolibri-1) would reason anyway |
+| `reasoningEffort` | *(empty)* | Reasoning effort (`low`/`medium`/`high`), the `reasoning_effort` kwarg for gpt-oss harmony and templates such as Kolibri-1's, and for an `openai-compatible` model a field of the request; empty sends none, so the model's own default applies. gpt-oss was measured at `low` (its template's default is `medium`), so a gpt-oss definition names `low`, as the self-test's does. Thinking off is sent as llama.cpp's server sends it, `enable_thinking` `false` and no `reasoning_effort`: `none` sends that instead of the effort, and while `chatTemplateEnableThinking` is `false` the effort is not sent, since a template that reads it first (Kolibri-1) would reason anyway |
 | `reasoningBudgetTokens` | `-1` | Cap on harmony reasoning tokens (`-1` = unrestricted) |
 | `dryMultiplier` | `0.0` | DRY repetition-penalty multiplier (`0.0` = disabled); the other `dry*` knobs only apply when this is `> 0` |
 | `dryBase` | `1.75` | DRY exponential base |
@@ -466,8 +530,11 @@ model); everything else has a default. The defaults below are the shipped values
 **An `openai-compatible` model** sends the source file to the server at `baseUrl`; with the default
 that is OpenRouter, i.e. a third party. It sends the same system prompt and user message as the
 local provider and only the portable sampling knobs: `maxOutputTokens`, `temperature`, `topP`,
-`topK` and `minP` (when positive), `repeatPenalty`, `seed` (when set), `stopStrings` and
-`reasoningEffort`. The knobs of a local llama.cpp context (threads, GPU, KV cache, DRY, prompt
+`seed` (when set), `stopStrings`, and these only when the definition gives them a value of its own:
+`topK` (other than `40`), `minP` (when positive), `repeatPenalty`
+(other than `1.0`; as `repetition_penalty` and `repeat_penalty`) and `reasoningEffort` (when set; as
+`reasoning.effort` and `reasoning_effort`). The body is shaped for OpenRouter and llama.cpp's
+`llama-server`, each of which reads its own name and ignores the other. The knobs of a local llama.cpp context (threads, GPU, KV cache, DRY, prompt
 caching) are ignored. A `408`, a `429` (not one saying the quota is used up), a `5xx` other than `501` /
 `505` or a connect timeout is retried (`maxRetries`); a read timeout after the request was sent, and any
 other non-2xx answer, fail the file with the status and the server's error text. With `stream` set, the answer arrives as Server-Sent Events and is assembled
@@ -485,14 +552,22 @@ before it is parsed. For the models of a GitHub Copilot subscription through a l
 
 ## Prompt System
 Prompts are referenced by key from the rules and read from the profile (`profileDirectory`). The
-self-test configuration uses the ten prompt files and the six fact-counter files of
+self-test configuration uses thirteen prompt files (nine file prompts, the package and project
+prompts and the two map-reduce parts) and 35 fact-counter files (all but those of Ansible and Java
+EE) of
 [`profiles/v3/`](../profiles/README.md); the benchmark and the examples read the same files, so each
 prompt and each counter exists once in the repository:
-- `file-body-java` — summarizes a single Java source file (types, public API, dependencies)
+- `file-body-oop` — summarizes a single source file of a class-based language: Java, Kotlin, Groovy, Scala, and TypeScript (types, public API, dependencies)
 - `file-body-sql` — summarizes a single SQL file as schema (tables/views/procedures, columns,
   the tables it reads vs writes, and relationships)
 - `file-body-shell`, `file-body-perl`, `file-body-xml` — the same for shell scripts, Perl and XML
 - `file-body-fallback` — generic multi-language summary for any other source file
+- `file-body-view`, `file-body-contract`, `file-body-ops` — JSP and Facelets views; API contracts
+  (OpenAPI, Protobuf, ...); CI, Docker, Kubernetes and other deploy files. The self-test routes
+  every kind `examples/copilot-api-gateway/srcmorph-luna.yaml` routes but the Java EE classes (the
+  `java` rule takes their prompt), each measured on real projects, most with their fact counters
+  (`typescript` and `pyproject` have none); Ansible goes to `file-body-fallback` without counters
+  there, where the self-test's model names more of a play's modules
 - `package-body` — synthesizes a package summary from the already-generated file summaries
 - `project-body` — (optional) synthesizes the short project `#### Overview` paragraph from the package leads
 - `map-chunk`, `reduce-parts` — not prompts of their own: a chunked rule's `mapPromptKey` /
@@ -586,9 +661,15 @@ covers, measured on CPU (full rationale in [COMPARISON.md §11](../docs/ai-index
   per-file time, so it covers every file up to ~250 KB with no trimming while small files stay just as
   fast. Lower `contextSize` only to save RAM. Hard ceiling is the 128K window (~480–500 KB of code);
   larger files route to the Granite presets.
-- **Timing is quadratic, not linear:** prefill ≈ `24.4·n + 0.000674·n²` ms (n = prompt tokens),
-  because attention is O(n) per token — which is why throughput drops as files grow. The plugin logs
-  this estimate per file.
+- **On a CPU, timing is quadratic, not linear:** prefill ≈ `24.4·n + 0.000674·n²` ms (n = prompt
+  tokens; gpt-oss-20b on a Ryzen 7 5800H), because attention is O(n) per token — which is why
+  throughput drops as files grow.
+- **The logged estimate is based on GPT-6 Luna**, the benchmark's remote model: `2.1 s + 0.105 ms`
+  per prompt token `+ 6.45 ms` per output token, linear up to the largest measured prompts (98K
+  tokens). The plan, the progress bar and the per-file line use it for every model without a
+  `calibration`; the plan and the per-file line say so (`based on GPT-6 Luna`). A local model is far
+  slower, so run `Calibrate` once and paste its `calibration:` block, after which they say `from the
+  model's calibration`.
 
 ## GPU acceleration (opt-in)
 The default natives are CPU (from `net.ladenthin:llama-platform`, see "Dependency" above). On an NVIDIA

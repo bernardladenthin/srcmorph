@@ -92,7 +92,7 @@ mvn prepare-package -P ai-index-selftest -DskipTests \
 `EXP-*` model definitions, the `config`+`provider` subtree scope, and the
 `package-info`/`module-info` excludes live in the self-test profile (`srcmorph-selftest` in
 `srcmorph-maven-plugin/pom.xml` today, `ai-index-selftest` in the root `pom.xml` then, marked
-`claude2026_06_26_00`); its v2 prompts are in the history of `profiles/` (commit `cd2e15f`). The model files are catalogued in `X:\Modelle\index.md`.
+`claude2026_06_26_00`); its v2 prompts are in the history of `profiles/` (commit `cd2e15f`). The model files are catalogued in `M:\Modelle\index.md`.
 
 > These are temporary experiment scaffolds on the `claude2026_06_26_00` branch, not production
 > configuration.

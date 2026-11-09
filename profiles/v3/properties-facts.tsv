@@ -1,0 +1,21 @@
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# Java properties counters (.properties: application.properties, messages, log4j, gradle.properties),
+# for a rule with the prompt file-body-ops: one per line, label TAB pattern (Java regex). The
+# [ignore] line blanks comment lines (# or ! first on the line). "keys (approx)" counts every line
+# that holds a key as java.util.Properties reads it: a key separated from its value by =, : or a blank
+# alone (welcome message), or a key without a value; not a line the line before continues (it ends in
+# an odd number of backslashes; a comment line continues nothing), however many = it holds. A key
+# written twice counts twice, and a run of more than 41 backslashes is not read as written.
+# "keys naming a secret" a key with password, passwd, secret, token or credential in it (at its
+# start too: password=, db.password=, db.password hunter2), which the prompt names without its value;
+# "placeholders" a ${name}, the innermost of nested ones.
+# OpsFactPatternsTest pins every case; ProfileFactPatternsLinearityTest measures that every pattern
+# reads linearly.
+[ignore] comment lines	(?m)^[ \t]*+[#!][^\n]*+
+keys (approx)	(?m)^(?=[ \t\f]*+\S)(?<!(?:^|[^\\])(?:\\\\){0,20}\\\n)[ \t\f]*+\S
+keys naming a secret	(?im)^(?=[ \t\f]*+[^\s#!=:])(?<!(?:^|[^\\])(?:\\\\){0,20}\\\n)[ \t\f]*+[^\s=:]*?(?:password|passwd|secret|token|credential)
+placeholders	\$\{[^{}\n]*+\}
+URLs	\b[a-z][a-z0-9+.-]*+://

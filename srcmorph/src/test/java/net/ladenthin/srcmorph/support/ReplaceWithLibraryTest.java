@@ -66,14 +66,20 @@ public class ReplaceWithLibraryTest {
         }
     }
 
+    // <editor-fold defaultstate="collapsed" desc="ReplaceWithLibrary">
     @Test
-    public void everyBridge_namesALibraryClassThatIsNotThereYet() {
+    public void replaceWithLibrary_everyBridge_namesALibraryClassThatIsNotThereYet() {
+        // arrange
         final List<String> due = new ArrayList<>();
+
+        // act
         for (final Bridge bridge : bridges()) {
             if (onClasspath(bridge.marker.value())) {
                 due.add(bridge.location + " -> use " + bridge.marker.value() + " (" + bridge.marker.since() + ")");
             }
         }
+
+        // assert
         assertThat(
                 "the library now carries these classes: replace the marked code with them, delete it and its"
                         + " TODO.md item",
@@ -82,18 +88,23 @@ public class ReplaceWithLibraryTest {
     }
 
     @Test
-    public void aBridgeIsLeft_otherwiseDeleteTheAnnotationAndThisTest() {
+    public void replaceWithLibrary_productionCode_aBridgeIsLeftOtherwiseDeleteTheAnnotationAndThisTest() {
+        // act, assert
         assertThat(
                 "no @ReplaceWithLibrary is left: delete ReplaceWithLibrary and ReplaceWithLibraryTest",
                 bridges(),
                 is(not(empty())));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="onClasspath">
     /** The check itself: a class that is there is found, one that is not is not. */
     @Test
-    public void onClasspath_findsWhatIsThereAndOnlyThat() {
+    public void onClasspath_presentAndAbsentClasses_findsWhatIsThereAndOnlyThat() {
+        // act, assert
         assertThat(onClasspath("java.lang.String"), is(true));
         assertThat(onClasspath(ReplaceWithLibrary.class.getName()), is(true));
         assertThat(onClasspath("net.ladenthin.srcmorph.NoSuchClass"), is(false));
     }
+    // </editor-fold>
 }

@@ -1,12 +1,12 @@
 {
   "command": "All",
-  "packageFieldGenerations": [
+  "packageRules": [
     {
       "promptKey": "package-body",
       "aiDefinitionKey": "mock-model"
     }
   ],
-  "projectFieldGenerations": [
+  "projectRules": [
     {
       "promptKey": "project-body",
       "aiDefinitionKey": "mock-model"
@@ -37,10 +37,10 @@
         "threads": 2
       }
     ],
-    "fieldGenerations": [
+    "rules": [
       {
         "id": "java",
-        "promptKey": "file-body-java",
+        "promptKey": "file-body-oop",
         "aiDefinitionKey": "mock-model",
         "condition": {
           "extensions": [

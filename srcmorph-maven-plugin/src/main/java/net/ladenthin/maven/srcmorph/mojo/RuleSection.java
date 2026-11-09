@@ -4,37 +4,37 @@
 package net.ladenthin.maven.srcmorph.mojo;
 
 import java.util.List;
-import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
+import net.ladenthin.srcmorph.config.RoutingRule;
 import net.ladenthin.srcmorph.config.SrcMorphConfigurationFile;
 import org.jspecify.annotations.Nullable;
 
 /** The rules of the configuration file a goal runs with. */
 enum RuleSection {
 
-    /** The file rules ({@code srcMorph.fieldGenerations}): {@code generate}, {@code calibrate}. */
+    /** The file rules ({@code srcMorph.rules}): {@code generate}, {@code calibrate}. */
     FILES {
         @Override
         @Nullable
-        List<AiFieldGenerationConfig> rulesOf(final SrcMorphConfigurationFile file) {
-            return file.getSrcMorph().getFieldGenerations();
+        List<RoutingRule> rulesOf(final SrcMorphConfigurationFile file) {
+            return file.getSrcMorph().getRules();
         }
     },
 
-    /** The package rule ({@code packageFieldGenerations}): {@code aggregate-packages}. */
+    /** The package rule ({@code packageRules}): {@code aggregate-packages}. */
     PACKAGE {
         @Override
         @Nullable
-        List<AiFieldGenerationConfig> rulesOf(final SrcMorphConfigurationFile file) {
-            return file.getPackageFieldGenerations();
+        List<RoutingRule> rulesOf(final SrcMorphConfigurationFile file) {
+            return file.getPackageRules();
         }
     },
 
-    /** The project rule ({@code projectFieldGenerations}): {@code aggregate-project}. */
+    /** The project rule ({@code projectRules}): {@code aggregate-project}. */
     PROJECT {
         @Override
         @Nullable
-        List<AiFieldGenerationConfig> rulesOf(final SrcMorphConfigurationFile file) {
-            return file.getProjectFieldGenerations();
+        List<RoutingRule> rulesOf(final SrcMorphConfigurationFile file) {
+            return file.getProjectRules();
         }
     };
 
@@ -44,5 +44,5 @@ enum RuleSection {
      * @param file the content of the configuration file
      * @return the rules, or {@code null} when the file has none there
      */
-    abstract @Nullable List<AiFieldGenerationConfig> rulesOf(SrcMorphConfigurationFile file);
+    abstract @Nullable List<RoutingRule> rulesOf(SrcMorphConfigurationFile file);
 }

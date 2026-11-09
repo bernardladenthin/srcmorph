@@ -1,0 +1,24 @@
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# npm manifest counters (package.json), for a rule with the prompt file-body-ops: one per line, label
+# TAB pattern (Java regex). JSON has no comments, so nothing is blanked. An entry of an object or a
+# list counts where it stands: the first one after the key's { or [, then each one after a comma that
+# directly follows the last (\G), so the count stops at the object's } and an entry after it does not
+# count; a key of that name in another object counts as well (rare in a package.json). "scripts", the
+# dependency objects and "engines" count their "name": "value" entries,
+# "workspaces" the strings of its list. A VS Code extension's manifest counts its contributed
+# commands (each object of a "commands" list, its keys in any order and one level of nested objects,
+# an icon's, in it; a menu entry or a key binding naming a command is none) and its
+# language model tools (each one's required "modelDescription"). OpsFactPatternsTest pins every case;
+# ProfileFactPatternsLinearityTest measures that every pattern reads linearly.
+scripts	(?:"scripts"[ \t\r\n]*+:[ \t\r\n]*+\{|\G[ \t\r\n]*+,)[ \t\r\n]*+"(?:[^"\\\n]|\\.)*+"[ \t\r\n]*+:[ \t\r\n]*+"(?:[^"\\\n]|\\.)*+"
+dependencies	(?:"dependencies"[ \t\r\n]*+:[ \t\r\n]*+\{|\G[ \t\r\n]*+,)[ \t\r\n]*+"(?:[^"\\\n]|\\.)*+"[ \t\r\n]*+:[ \t\r\n]*+"(?:[^"\\\n]|\\.)*+"
+dev dependencies	(?:"devDependencies"[ \t\r\n]*+:[ \t\r\n]*+\{|\G[ \t\r\n]*+,)[ \t\r\n]*+"(?:[^"\\\n]|\\.)*+"[ \t\r\n]*+:[ \t\r\n]*+"(?:[^"\\\n]|\\.)*+"
+peer dependencies	(?:"peerDependencies"[ \t\r\n]*+:[ \t\r\n]*+\{|\G[ \t\r\n]*+,)[ \t\r\n]*+"(?:[^"\\\n]|\\.)*+"[ \t\r\n]*+:[ \t\r\n]*+"(?:[^"\\\n]|\\.)*+"
+optional dependencies	(?:"optionalDependencies"[ \t\r\n]*+:[ \t\r\n]*+\{|\G[ \t\r\n]*+,)[ \t\r\n]*+"(?:[^"\\\n]|\\.)*+"[ \t\r\n]*+:[ \t\r\n]*+"(?:[^"\\\n]|\\.)*+"
+engines	(?:"engines"[ \t\r\n]*+:[ \t\r\n]*+\{|\G[ \t\r\n]*+,)[ \t\r\n]*+"(?:[^"\\\n]|\\.)*+"[ \t\r\n]*+:[ \t\r\n]*+"(?:[^"\\\n]|\\.)*+"
+workspaces	(?:"workspaces"[ \t\r\n]*+:[ \t\r\n]*+\[|\G[ \t\r\n]*+,)[ \t\r\n]*+"(?:[^"\\\n]|\\.)*+"
+contributed commands	(?:"commands"[ \t\r\n]*+:[ \t\r\n]*+\[|\G[ \t\r\n]*+,)[ \t\r\n]*+\{(?:[^{}"]++|"(?:[^"\\\n]|\\.)*+"|\{(?:[^{}"]++|"(?:[^"\\\n]|\\.)*+")*+\})*+\}
+language model tools	"modelDescription"[ \t\r\n]*+:

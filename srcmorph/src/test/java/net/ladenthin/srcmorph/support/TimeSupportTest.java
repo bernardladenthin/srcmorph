@@ -1,0 +1,44 @@
+// SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+//
+// SPDX-License-Identifier: Apache-2.0
+package net.ladenthin.srcmorph.support;
+
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+
+import java.time.Instant;
+import org.junit.jupiter.api.Test;
+
+public class TimeSupportTest {
+
+    private final TimeSupport timeSupport = new TimeSupport();
+
+    // <editor-fold defaultstate="collapsed" desc="formatInstant">
+    @Test
+    public void formatInstant_instantWithMillis_formatsAsIso8601WithSecondPrecision() {
+        // arrange
+        Instant instant = Instant.parse("2026-01-02T03:04:05.678Z");
+
+        // act, assert
+        assertThat(timeSupport.formatInstant(instant), is("2026-01-02T03:04:05Z"));
+    }
+
+    @Test
+    public void formatInstant_epoch_matchesEpochDateConstant() {
+        // Ties the two derivations of the Unix epoch string together: EPOCH_DATE is a static-context
+        // constant (used as a fold seed by PackageIndexer/ProjectIndexer, where no instance-bound
+        // formatInstant call is convenient), formatInstant is the instance-bound formatter every other
+        // timestamp in a .ai.md header goes through. Both must agree.
+        // act, assert
+        assertThat(timeSupport.formatInstant(Instant.EPOCH), is(TimeSupport.EPOCH_DATE));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="EPOCH_DATE">
+    @Test
+    public void epochDate_constant_isTheUnixEpochInIso8601() {
+        // act, assert
+        assertThat(TimeSupport.EPOCH_DATE, is("1970-01-01T00:00:00Z"));
+    }
+    // </editor-fold>
+}

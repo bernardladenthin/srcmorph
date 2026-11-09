@@ -1,0 +1,22 @@
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# MyBatis mapper counters (the XML mapper files of MyBatis): one per line, label TAB
+# pattern (Java regex). The [ignore] line blanks comments, processing instructions and the DOCTYPE,
+# but not CDATA: a mapper writes its SQL in CDATA, and its #{} parameters and ${} substitutions are
+# what the counters read. A region that is never closed runs to the end of the file. "dynamic SQL
+# tags" counts every <if>, <choose>, <when>, <otherwise>, <foreach>, <where>, <set>, <trim> and
+# <bind>; a ${} substitution is spliced into the SQL unescaped, which a reader of the index wants to
+# find. A #{ or ${ counts up to its } on the same line, without another { before it. EnterpriseXmlFactPatternsTest pins every case; ProfileFactPatternsLinearityTest measures that every
+# pattern reads linearly.
+[ignore] comments, processing instructions and the DOCTYPE	(?s)<!--(?:.*?-->|.*+)|<\?(?:.*?\?>|.*+)|<!DOCTYPE[^\[>]*+(?:\[(?:.*?\]|.*+))?[^>]*+>?
+mapper namespaces	<mapper[ \t\r\n]
+select statements	<select[ \t\r\n]
+insert, update and delete statements	<(?:insert|update|delete)[ \t\r\n]
+result maps	<resultMap[ \t\r\n]
+SQL fragments	<sql[ \t\r\n]
+fragment includes	<include[ \t\r\n]
+dynamic SQL tags	<(?:if|choose|when|otherwise|foreach|where|set|trim|bind)[ \t\r\n>]
+parameters #{}	#\{[^{}\r\n]*+\}
+substitutions ${}	\$\{[^{}\r\n]*+\}

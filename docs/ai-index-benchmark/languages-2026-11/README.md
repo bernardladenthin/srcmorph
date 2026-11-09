@@ -22,5 +22,25 @@ a table, an XML element and an error-code area in each file's middle (`middle` i
 
 ```bash
 python score.py --work <copy of corpus-languages> --out ../languages-2026-11/languages/run1/out \
-    --facts facts-languages.json
+    --meta ../languages-2026-11/languages/run1/meta --facts facts-languages.json --scores <dir>
 ```
+
+`--meta` names the run's own cut-offs and `--scores` a directory of its own; score.py refuses an
+`--out` other than the card's without them (it would apply the card's cut-offs and overwrite the
+card's `scores/`).
+
+The quality figures of finding 7 and of `profiles/README.md` (per run and the mean, min and max of
+each model) come from `repeat.py`, with a copy of `corpus-languages` as the work directory (as for
+`score.py`: the facts name the files by their path below it, `other/...`):
+
+```bash
+L=../languages-2026-11/languages
+python repeat.py --work <copy of corpus-languages> --facts facts-languages.json --scores <dir> \
+    --runs $L/run1,$L/run2,$L/run3,$L/run4,$L/run5,$L/run6
+```
+
+(and `languages-generic/run1..3` for the generic prompt). The corpus has only other files, so the
+score has two parts, (recall + format share) / 2, where the card's has four (Java, SQL and other
+recall, format share). On 2026-11-05 it gave gpt-oss-20b 100, 98.5, 99.3, 98.9, 99.7 and 89.5 %
+(mean 97.7) and 95.6, 96.1 and 95.3 % with the generic prompt (mean 95.7), GPT-6 Luna 99.9 and
+99.6 % (each 99.3 to 100).

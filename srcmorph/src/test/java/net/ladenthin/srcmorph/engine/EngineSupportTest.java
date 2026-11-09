@@ -27,14 +27,18 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
-import net.ladenthin.srcmorph.config.AiModelDefinition;
-import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
+import net.ladenthin.srcmorph.CommonTestFixtures;
+import net.ladenthin.srcmorph.config.FactCounter;
+import net.ladenthin.srcmorph.config.FactDefinition;
+import net.ladenthin.srcmorph.config.ModelDefinition;
+import net.ladenthin.srcmorph.config.ModelRegistry;
+import net.ladenthin.srcmorph.config.OversizeStrategy;
+import net.ladenthin.srcmorph.config.PromptDefinition;
+import net.ladenthin.srcmorph.config.RoutingRule;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
-import net.ladenthin.srcmorph.prompt.AiPromptDefinition;
-import net.ladenthin.srcmorph.prompt.AiPromptSupport;
-import net.ladenthin.srcmorph.provider.AiGenerationProviderFactory;
-import net.ladenthin.srcmorph.provider.LlamaCppJniConfig;
+import net.ladenthin.srcmorph.prompt.PromptCatalog;
+import net.ladenthin.srcmorph.provider.GenerationProviderFactory;
+import net.ladenthin.srcmorph.provider.ProviderConfig;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -46,18 +50,24 @@ public class EngineSupportTest {
 
     private ListAppender<ILoggingEvent> logAppender;
 
+    /** The logger's level before the test, restored after it (null: inherited). */
+    private Level previousLevel;
+
     @BeforeEach
     public void attachLogAppender() {
         logAppender = new ListAppender<>();
         logAppender.start();
         final Logger logger = (Logger) LoggerFactory.getLogger(EngineSupport.class);
+        previousLevel = logger.getLevel();
         logger.setLevel(Level.DEBUG);
         logger.addAppender(logAppender);
     }
 
     @AfterEach
     public void detachLogAppender() {
-        ((Logger) LoggerFactory.getLogger(EngineSupport.class)).detachAppender(logAppender);
+        final Logger logger = (Logger) LoggerFactory.getLogger(EngineSupport.class);
+        logger.detachAppender(logAppender);
+        logger.setLevel(previousLevel);
         logAppender.stop();
     }
 
@@ -66,122 +76,180 @@ public class EngineSupportTest {
 
     // <editor-fold defaultstate="collapsed" desc="resolveSubtrees">
     @Test
-    public void resolveSubtrees_nullReturnsEmpty() throws SrcMorphException {
+    public void resolveSubtrees_null_returnsEmpty() throws SrcMorphException {
+        // act, assert
         assertThat(EngineSupport.resolveSubtrees(tempDir, null), is(Collections.<Path>emptyList()));
     }
 
     @Test
-    public void resolveSubtrees_emptyReturnsEmpty() throws SrcMorphException {
+    public void resolveSubtrees_empty_returnsEmpty() throws SrcMorphException {
+        // act, assert
         assertThat(
                 EngineSupport.resolveSubtrees(tempDir, Collections.<String>emptyList()),
                 is(Collections.<Path>emptyList()));
     }
 
     @Test
-    public void resolveSubtrees_earlyReturnResultIsMutable() throws SrcMorphException {
+    public void resolveSubtrees_earlyReturn_resultIsMutable() throws SrcMorphException {
+        // arrange
         // The early-return (null/empty subtrees) branch returns the same mutable ArrayList as the
         // loop-completion branch, not an immutable Collections.emptyList(), so callers can treat every
         // result uniformly. Mutating it here must not throw UnsupportedOperationException.
         final List<Path> resolved = EngineSupport.resolveSubtrees(tempDir, null);
+
+        // act
         resolved.add(tempDir);
+
+        // assert
         assertThat(resolved, hasItem(tempDir));
     }
 
     @Test
-    public void resolveSubtrees_existingSubtreeIsResolved() throws IOException, SrcMorphException {
+    public void resolveSubtrees_existingSubtree_isResolved() throws IOException, SrcMorphException {
+        // arrange
         final Path sub = tempDir.resolve("exists");
         Files.createDirectories(sub);
 
+        // act
         final List<Path> resolved = EngineSupport.resolveSubtrees(tempDir, Arrays.asList("exists"));
 
+        // assert
         assertThat(resolved, hasItem(sub.normalize()));
     }
 
     @Test
     public void resolveSubtrees_aSubtreeInsideAnotherOrTwice_isLeftOut() throws IOException, SrcMorphException {
+        // arrange
         // without this, every file below src/main/java would be collected twice and fail the run
         for (final String directory : new String[] {"src/main/java", "src/test", "lib"}) {
             Files.createDirectories(tempDir.resolve(directory));
         }
 
+        // act
         final List<Path> resolved =
                 EngineSupport.resolveSubtrees(tempDir, Arrays.asList("src/main/java", "src", "lib", "src/test", "lib"));
 
+        // assert
         assertThat(resolved, is(Arrays.asList(tempDir.resolve("src"), tempDir.resolve("lib"))));
     }
 
     @Test
-    public void resolveSubtrees_missingSubtree_isRefused() {
-        final SrcMorphException thrown = assertThrows(
-                SrcMorphException.class, () -> EngineSupport.resolveSubtrees(tempDir, Arrays.asList("does-not-exist")));
+    public void resolveSubtrees_aSubtreeBehindALink_isKeptUnlessItsTargetLiesInASubtree() throws Exception {
+        // arrange: docs/latest leads into docs, src/shared out of src, src/deep/lib into src/shared's target
+        Files.createDirectories(tempDir.resolve("docs/v2"));
+        Files.createDirectories(tempDir.resolve("shared/lib"));
+        Files.createDirectories(tempDir.resolve("src/deep"));
+        CommonTestFixtures.directoryLink(tempDir.resolve("docs/latest"), tempDir.resolve("docs/v2"));
+        CommonTestFixtures.directoryLink(tempDir.resolve("src/shared"), tempDir.resolve("shared"));
+        CommonTestFixtures.directoryLink(tempDir.resolve("src/deep/lib"), tempDir.resolve("shared/lib"));
 
+        // act
+        final List<Path> resolved = EngineSupport.resolveSubtrees(
+                tempDir, Arrays.asList("docs/latest", "docs", "src/shared", "src", "src/deep/lib"));
+
+        // assert: docs walks docs/v2 once, src/shared walks shared/lib once
+        assertThat(
+                resolved,
+                is(Arrays.asList(tempDir.resolve("docs"), tempDir.resolve("src/shared"), tempDir.resolve("src"))));
+    }
+
+    @Test
+    public void resolveSubtrees_missingSubtree_isRefused() {
+        // arrange
+        final List<String> subtrees = Arrays.asList("does-not-exist");
+
+        // act
+        final SrcMorphException thrown =
+                assertThrows(SrcMorphException.class, () -> EngineSupport.resolveSubtrees(tempDir, subtrees));
+
+        // assert
         assertThat(thrown.getMessage(), containsString("Subtree 'does-not-exist' does not exist: "));
     }
 
     @Test
     public void resolveSubtrees_aFileInsteadOfADirectory_isRefused() throws IOException {
+        // arrange
         Files.write(tempDir.resolve("plain.txt"), new byte[0]);
+        final List<String> subtrees = Arrays.asList("plain.txt");
 
-        assertThrows(SrcMorphException.class, () -> EngineSupport.resolveSubtrees(tempDir, Arrays.asList("plain.txt")));
+        // act, assert
+        assertThrows(SrcMorphException.class, () -> EngineSupport.resolveSubtrees(tempDir, subtrees));
     }
 
     @Test
     public void resolveSubtrees_outsideTheBaseDirectory_isRefused() throws IOException {
+        // arrange
         final Path base = Files.createDirectories(tempDir.resolve("base"));
         Files.createDirectories(tempDir.resolve("other"));
+        final List<String> subtrees = Arrays.asList("../other");
 
-        final SrcMorphException thrown = assertThrows(
-                SrcMorphException.class, () -> EngineSupport.resolveSubtrees(base, Arrays.asList("../other")));
+        // act
+        final SrcMorphException thrown =
+                assertThrows(SrcMorphException.class, () -> EngineSupport.resolveSubtrees(base, subtrees));
 
+        // assert
         assertThat(thrown.getMessage(), containsString("outside the base directory"));
     }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="buildPromptSupport">
     @Test
-    public void buildPromptSupport_nullListBuildsEmptySupport() throws SrcMorphException {
-        final AiPromptSupport support = EngineSupport.buildPromptSupport(null, null, null);
+    public void buildPromptSupport_nullList_buildsEmptySupport() throws SrcMorphException {
+        // act
+        final PromptCatalog support = EngineSupport.buildPromptSupport(null, null, null);
+
+        // assert
         assertThat(support, is(notNullValue()));
     }
 
     @Test
-    public void buildPromptSupport_missingKeyThrowsSrcMorphException() {
-        final AiPromptDefinition bad = new AiPromptDefinition();
+    public void buildPromptSupport_missingKey_throwsSrcMorphException() {
+        // arrange
+        final PromptDefinition bad = new PromptDefinition();
         bad.setTemplate("template with no key");
+        final List<PromptDefinition> definitions = Arrays.asList(bad);
 
-        final SrcMorphException e = assertThrows(
-                SrcMorphException.class, () -> EngineSupport.buildPromptSupport(Arrays.asList(bad), null, null));
+        // act
+        final SrcMorphException e =
+                assertThrows(SrcMorphException.class, () -> EngineSupport.buildPromptSupport(definitions, null, null));
+
+        // assert
         assertThat(e.getMessage(), containsString("Invalid configuration:"));
     }
 
     @Test
     public void buildPromptSupport_templateFile_isReadFromTheProfileDirectory() throws Exception {
+        // arrange
         Files.write(tempDir.resolve("file-body-java.md"), "You are a Java code indexer.".getBytes(UTF_8));
-        final AiPromptDefinition fromFile = new AiPromptDefinition();
+        final PromptDefinition fromFile = new PromptDefinition();
         fromFile.setKey("file-body-java");
         fromFile.setTemplateFile("file-body-java.md");
 
-        final AiPromptSupport support =
-                EngineSupport.buildPromptSupport(Arrays.asList(fromFile), tempDir.toFile(), null);
+        // act
+        final PromptCatalog support = EngineSupport.buildPromptSupport(Arrays.asList(fromFile), tempDir.toFile(), null);
 
+        // assert
         assertThat(support.systemPrompt("file-body-java"), is("You are a Java code indexer."));
     }
 
     @Test
     public void buildPromptSupport_aRulesMapAndReducePrompts_areReadFromTheProfileDirectory() throws Exception {
+        // arrange
         Files.write(tempDir.resolve("file-body-java.md"), "BODY".getBytes(UTF_8));
         Files.write(tempDir.resolve("map-chunk.md"), "MAP".getBytes(UTF_8));
         Files.write(tempDir.resolve("reduce-parts.md"), "REDUCE".getBytes(UTF_8));
-        final AiFieldGenerationConfig rule = new AiFieldGenerationConfig();
+        final RoutingRule rule = new RoutingRule();
         rule.setPromptKey("file-body-java");
         rule.setMapPromptKey("map-chunk");
         rule.setReducePromptKey("reduce-parts");
-        final AiFieldGenerationConfig plain = new AiFieldGenerationConfig();
+        final RoutingRule plain = new RoutingRule();
         plain.setPromptKey("file-body-java");
 
-        final AiPromptSupport support =
+        // act
+        final PromptCatalog support =
                 EngineSupport.buildPromptSupport(null, tempDir.toFile(), Arrays.asList(rule, plain));
 
+        // assert
         assertThat(support.systemPrompt("map-chunk"), is("MAP"));
         assertThat(support.systemPrompt("reduce-parts"), is("REDUCE"));
         assertThat(support.systemPrompt("file-body-java+map-chunk"), is("BODY\n\nMAP"));
@@ -189,58 +257,107 @@ public class EngineSupportTest {
 
     @Test
     public void buildPromptSupport_missingTemplateFile_throwsSrcMorphException() {
-        final AiPromptDefinition fromFile = new AiPromptDefinition();
+        // arrange
+        final PromptDefinition fromFile = new PromptDefinition();
         fromFile.setKey("file-body-java");
         fromFile.setTemplateFile("missing.md");
+        final List<PromptDefinition> definitions = Arrays.asList(fromFile);
+        final File profileDirectory = tempDir.toFile();
 
+        // act
         final SrcMorphException e = assertThrows(
-                SrcMorphException.class,
-                () -> EngineSupport.buildPromptSupport(Arrays.asList(fromFile), tempDir.toFile(), null));
+                SrcMorphException.class, () -> EngineSupport.buildPromptSupport(definitions, profileDirectory, null));
 
+        // assert
         assertThat(e.getMessage(), containsString("Invalid configuration: promptDefinitions[0]"));
         assertThat(e.getMessage(), containsString("missing.md cannot be read"));
     }
 
     @Test
     public void buildPromptSupport_templateAndTemplateFile_throwsSrcMorphException() {
-        final AiPromptDefinition both = new AiPromptDefinition();
+        // arrange
+        final PromptDefinition both = new PromptDefinition();
         both.setKey("file-body-java");
         both.setTemplate("inline");
         both.setTemplateFile("file.md");
+        final List<PromptDefinition> definitions = Arrays.asList(both);
 
-        final SrcMorphException e = assertThrows(
-                SrcMorphException.class, () -> EngineSupport.buildPromptSupport(Arrays.asList(both), null, null));
+        // act
+        final SrcMorphException e =
+                assertThrows(SrcMorphException.class, () -> EngineSupport.buildPromptSupport(definitions, null, null));
 
+        // assert
         assertThat(e.getMessage(), containsString("sets both template and templateFile"));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="basePath">
+    @Test
+    public void basePath_isTheBaseDirectory_absoluteAndNormalized() throws SrcMorphException {
+        // arrange
+        final SrcMorphConfiguration config = new SrcMorphConfiguration();
+        config.setBaseDirectory(new File("a/../b"));
+
+        // act
+        final Path base = EngineSupport.basePath(config);
+
+        // assert
+        assertThat(base, is(new File("b").toPath().toAbsolutePath()));
+    }
+
+    @Test
+    public void basePath_unset_isAConfigurationError() {
+        // arrange
+        final SrcMorphConfiguration config = new SrcMorphConfiguration();
+
+        // act
+        final SrcMorphException thrown = assertThrows(SrcMorphException.class, () -> EngineSupport.basePath(config));
+
+        // assert
+        assertThat(
+                thrown.getMessage(),
+                is("The configuration has no baseDirectory (its outputDirectory is "
+                        + SrcMorphConfiguration.DEFAULT_OUTPUT_DIRECTORY.replace('/', File.separatorChar)
+                        + "); set the directory the run reads"));
     }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="buildAiModelDefinitionSupport">
     @Test
-    public void buildAiModelDefinitionSupport_nullListBuildsEmptySupport() throws SrcMorphException {
+    public void buildAiModelDefinitionSupport_nullList_buildsEmptySupport() throws SrcMorphException {
+        // act, assert
         assertThat(EngineSupport.buildAiModelDefinitionSupport(null, null), is(notNullValue()));
     }
 
     @Test
-    public void buildAiModelDefinitionSupport_resolvesAgainstTheModelDirectory() throws SrcMorphException {
-        final AiModelDefinition definition = new AiModelDefinition();
+    public void buildAiModelDefinitionSupport_relativeModelPath_resolvesAgainstTheModelDirectory()
+            throws SrcMorphException {
+        // arrange
+        final ModelDefinition definition = new ModelDefinition();
         definition.setKey("named");
         definition.setModelPath("named.gguf");
         final File modelDirectory = new File("models");
 
-        final AiModelDefinitionSupport support =
+        // act
+        final ModelRegistry support =
                 EngineSupport.buildAiModelDefinitionSupport(Arrays.asList(definition), modelDirectory);
 
-        assertThat(support.getConfig("named").getModelPath(), is(new File(modelDirectory, "named.gguf").getPath()));
+        // assert
+        assertThat(support.definition("named").getModelPath(), is(new File(modelDirectory, "named.gguf").getPath()));
     }
 
     @Test
-    public void buildAiModelDefinitionSupport_missingKeyThrowsSrcMorphException() {
-        final AiModelDefinition bad = new AiModelDefinition();
+    public void buildAiModelDefinitionSupport_missingKey_throwsSrcMorphException() {
+        // arrange
+        final ModelDefinition bad = new ModelDefinition();
         bad.setModelPath("model.gguf");
+        final List<ModelDefinition> definitions = Arrays.asList(bad);
 
+        // act
         final SrcMorphException e = assertThrows(
-                SrcMorphException.class, () -> EngineSupport.buildAiModelDefinitionSupport(Arrays.asList(bad), null));
+                SrcMorphException.class, () -> EngineSupport.buildAiModelDefinitionSupport(definitions, null));
+
+        // assert
         assertThat(e.getMessage(), containsString("Invalid configuration:"));
     }
     // </editor-fold>
@@ -248,17 +365,21 @@ public class EngineSupportTest {
     // <editor-fold defaultstate="collapsed" desc="requireDefinedModels">
     @Test
     public void requireDefinedModels_anUndefinedModel_namesTheRuleAndTheKey() {
-        final AiFieldGenerationConfig rule = phaseRule("file-body-java", "no-such-model");
+        // arrange
+        final RoutingRule rule = phaseRule("file-body-java", "no-such-model");
         rule.setId("java");
-        final AiFieldGenerationConfig unnamed = phaseRule("file-body-sql", "other-missing");
+        final RoutingRule unnamed = phaseRule("file-body-sql", "other-missing");
+        final ModelRegistry registry = new ModelRegistry(null);
+        final List<RoutingRule> ruleWithId = Arrays.asList(rule);
+        final List<RoutingRule> ruleWithoutId = Arrays.asList(unnamed);
 
-        final SrcMorphException byId = assertThrows(
-                SrcMorphException.class,
-                () -> EngineSupport.requireDefinedModels(new AiModelDefinitionSupport(null), Arrays.asList(rule)));
+        // act
+        final SrcMorphException byId =
+                assertThrows(SrcMorphException.class, () -> EngineSupport.requireDefinedModels(registry, ruleWithId));
         final SrcMorphException byPrompt = assertThrows(
-                SrcMorphException.class,
-                () -> EngineSupport.requireDefinedModels(new AiModelDefinitionSupport(null), Arrays.asList(unnamed)));
+                SrcMorphException.class, () -> EngineSupport.requireDefinedModels(registry, ruleWithoutId));
 
+        // assert
         assertThat(
                 byId.getMessage(),
                 containsString("The rule 'java' names the model 'no-such-model', which no aiDefinition defines"));
@@ -267,139 +388,165 @@ public class EngineSupportTest {
 
     @Test
     public void requireDefinedModels_skipRulesAndRulesWithoutAModel_needNone() throws SrcMorphException {
-        final AiFieldGenerationConfig skip = phaseRule("p", "no-such-model");
+        // arrange
+        final RoutingRule skip = phaseRule("p", "no-such-model");
         skip.setSkip(true);
-        final AiFieldGenerationConfig noModel = new AiFieldGenerationConfig();
+        final RoutingRule noModel = new RoutingRule();
 
-        EngineSupport.requireDefinedModels(new AiModelDefinitionSupport(null), Arrays.asList(skip, noModel, null));
+        // act, assert -- no exception
+        EngineSupport.requireDefinedModels(new ModelRegistry(null), Arrays.asList(skip, noModel, null));
     }
 
     @Test
     public void requireDefinedModels_aDefinedModel_passes() throws SrcMorphException {
-        final AiModelDefinition definition = new AiModelDefinition();
+        // arrange
+        final ModelDefinition definition = new ModelDefinition();
         definition.setKey("m");
         definition.setModelPath("m.gguf");
 
+        // act, assert -- no exception
         EngineSupport.requireDefinedModels(
-                new AiModelDefinitionSupport(Arrays.asList(definition)), Arrays.asList(phaseRule("p", "m")));
+                new ModelRegistry(Arrays.asList(definition)), Arrays.asList(phaseRule("p", "m")));
     }
     // </editor-fold>
 
-    // <editor-fold defaultstate="collapsed" desc="phaseRule">
-    private static AiFieldGenerationConfig phaseRule(final String promptKey, final String aiDefinitionKey) {
-        final AiFieldGenerationConfig rule = new AiFieldGenerationConfig();
+    private static RoutingRule phaseRule(final String promptKey, final String aiDefinitionKey) {
+        final RoutingRule rule = new RoutingRule();
         rule.setPromptKey(promptKey);
         rule.setAiDefinitionKey(aiDefinitionKey);
         return rule;
     }
 
+    // <editor-fold defaultstate="collapsed" desc="phaseRule">
     @Test
-    public void requiredPhaseRule_exactlyOne_isReturned() throws SrcMorphException {
-        final AiFieldGenerationConfig rule = phaseRule("package-body", "m");
-
-        final AiFieldGenerationConfig returned = EngineSupport.requiredPhaseRule("p", "k", Arrays.asList(rule));
-
-        assertThat(returned.getPromptKey(), is("package-body"));
-        assertThat(returned.getAiDefinitionKey(), is("m"));
-    }
-
-    @Test
-    public void phaseRule_withoutOnOversize_readsAllOfItsInput_theConfigurationStaysAsGiven() throws SrcMorphException {
+    public void phaseRule_withoutOnOversize_readsAllOfItsInputAndKeepsTheConfigurationAsGiven()
+            throws SrcMorphException {
         // arrange
-        final AiFieldGenerationConfig rule = phaseRule("package-body", "m");
+        final RoutingRule rule = phaseRule("package-body", "m");
 
         // act
-        final AiFieldGenerationConfig required = EngineSupport.requiredPhaseRule("p", "k", Arrays.asList(rule));
-        final AiFieldGenerationConfig optional = EngineSupport.optionalPhaseRule("p", "k", Arrays.asList(rule));
+        final RoutingRule required = EngineSupport.requiredPhaseRule("p", "k", Arrays.asList(rule));
+        final RoutingRule optional = EngineSupport.optionalPhaseRule("p", "k", Arrays.asList(rule));
 
         // assert
-        assertThat(required.oversizeStrategy(), is(net.ladenthin.srcmorph.config.AiOversizeStrategy.MAP_REDUCE));
-        assertThat(optional.oversizeStrategy(), is(net.ladenthin.srcmorph.config.AiOversizeStrategy.MAP_REDUCE));
+        assertThat(required.oversizeStrategy(), is(OversizeStrategy.MAP_REDUCE));
+        assertThat(optional.oversizeStrategy(), is(OversizeStrategy.MAP_REDUCE));
         assertThat(rule.getOnOversize(), is(nullValue()));
     }
 
     @Test
     public void phaseRule_withAnOnOversize_keepsIt() throws SrcMorphException {
-        final AiFieldGenerationConfig rule = phaseRule("package-body", "m");
+        // arrange
+        final RoutingRule rule = phaseRule("package-body", "m");
         rule.setOnOversize("fail");
 
+        // act, assert
         assertThat(
                 EngineSupport.requiredPhaseRule("p", "k", Arrays.asList(rule)).oversizeStrategy(),
-                is(net.ladenthin.srcmorph.config.AiOversizeStrategy.FAIL));
+                is(OversizeStrategy.FAIL));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="requiredPhaseRule">
+    @Test
+    public void requiredPhaseRule_exactlyOne_isReturned() throws SrcMorphException {
+        // arrange
+        final RoutingRule rule = phaseRule("package-body", "m");
+
+        // act
+        final RoutingRule returned = EngineSupport.requiredPhaseRule("p", "k", Arrays.asList(rule));
+
+        // assert
+        assertThat(returned.getPromptKey(), is("package-body"));
+        assertThat(returned.getAiDefinitionKey(), is("m"));
     }
 
     @Test
     public void requiredPhaseRule_noneOrTwo_isRefusedNamingThePhaseAndItsKey() {
-        for (final List<AiFieldGenerationConfig> rules : Arrays.asList(
-                null,
-                Collections.<AiFieldGenerationConfig>emptyList(),
-                Arrays.asList(phaseRule("a", "m"), phaseRule("b", "m")))) {
+        // arrange
+        for (final List<RoutingRule> rules : Arrays.asList(
+                null, Collections.<RoutingRule>emptyList(), Arrays.asList(phaseRule("a", "m"), phaseRule("b", "m")))) {
+            // act
             final SrcMorphException thrown = assertThrows(
                     SrcMorphException.class,
-                    () -> EngineSupport.requiredPhaseRule("aggregate-packages", "packageFieldGenerations", rules));
+                    () -> EngineSupport.requiredPhaseRule("aggregate-packages", "packageRules", rules));
 
+            // assert
             assertThat(thrown.getMessage(), containsString("aggregate-packages takes exactly one rule"));
-            assertThat(thrown.getMessage(), containsString("packageFieldGenerations in the configuration file"));
+            assertThat(thrown.getMessage(), containsString("packageRules in the configuration file"));
             assertThat(thrown.getMessage(), containsString((rules == null ? 0 : rules.size()) + " given"));
         }
     }
 
     @Test
     public void requiredPhaseRule_withoutPromptOrModel_isRefused() {
-        for (final AiFieldGenerationConfig rule :
-                Arrays.asList(phaseRule("", "m"), phaseRule("p", " "), new AiFieldGenerationConfig())) {
-            final SrcMorphException thrown = assertThrows(
-                    SrcMorphException.class, () -> EngineSupport.requiredPhaseRule("p", "k", Arrays.asList(rule)));
+        // arrange
+        for (final RoutingRule rule : Arrays.asList(phaseRule("", "m"), phaseRule("p", " "), new RoutingRule())) {
+            final List<RoutingRule> rules = Arrays.asList(rule);
 
+            // act
+            final SrcMorphException thrown =
+                    assertThrows(SrcMorphException.class, () -> EngineSupport.requiredPhaseRule("p", "k", rules));
+
+            // assert
             assertThat(thrown.getMessage(), containsString("needs a promptKey and an aiDefinitionKey"));
         }
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="optionalPhaseRule">
     @Test
     public void optionalPhaseRule_none_isNull() throws SrcMorphException {
+        // act, assert
         assertThat(EngineSupport.optionalPhaseRule("p", "k", null), is(nullValue()));
-        assertThat(
-                EngineSupport.optionalPhaseRule("p", "k", Collections.<AiFieldGenerationConfig>emptyList()),
-                is(nullValue()));
+        assertThat(EngineSupport.optionalPhaseRule("p", "k", Collections.<RoutingRule>emptyList()), is(nullValue()));
     }
 
     @Test
-    public void optionalPhaseRule_one_isReturned_two_areRefused() throws SrcMorphException {
-        final AiFieldGenerationConfig rule = phaseRule("project-body", "m");
+    public void optionalPhaseRule_oneOrTwo_returnsOneAndRefusesTwo() throws SrcMorphException {
+        // arrange
+        final RoutingRule rule = phaseRule("project-body", "m");
+        final List<RoutingRule> twoRules = Arrays.asList(rule, rule);
+
+        // act, assert
         assertThat(
                 EngineSupport.optionalPhaseRule("p", "k", Arrays.asList(rule)).getPromptKey(), is("project-body"));
 
+        // act
         final SrcMorphException thrown = assertThrows(
                 SrcMorphException.class,
-                () -> EngineSupport.optionalPhaseRule(
-                        "aggregate-project", "projectFieldGenerations", Arrays.asList(rule, rule)));
+                () -> EngineSupport.optionalPhaseRule("aggregate-project", "projectRules", twoRules));
+
+        // assert
         assertThat(thrown.getMessage(), containsString("aggregate-project takes at most one rule"));
     }
     // </editor-fold>
 
-    // <editor-fold defaultstate="collapsed" desc="resolveLlamaCppJniConfig">
+    // <editor-fold defaultstate="collapsed" desc="resolveProviderConfig">
     @Test
-    public void resolveLlamaCppJniConfig_byKey_looksUpNamedDefinition() {
-        final SrcMorphConfiguration config = new SrcMorphConfiguration();
-
-        final AiModelDefinition definition = new AiModelDefinition();
+    public void resolveProviderConfig_byKey_looksUpNamedDefinition() {
+        // arrange
+        final ModelDefinition definition = new ModelDefinition();
         definition.setKey("named");
         definition.setModelPath("named.gguf");
-        final AiModelDefinitionSupport modelDefinitionSupport = new AiModelDefinitionSupport(Arrays.asList(definition));
+        final ModelRegistry modelDefinitionSupport = new ModelRegistry(Arrays.asList(definition));
 
-        final LlamaCppJniConfig result = EngineSupport.resolveLlamaCppJniConfig(modelDefinitionSupport, "named");
+        // act
+        final ProviderConfig result = EngineSupport.resolveProviderConfig(modelDefinitionSupport, "named");
 
+        // assert
         assertThat(result.modelPath(), is("named.gguf"));
     }
 
     @Test
-    public void resolveLlamaCppJniConfig_byKey_missingKeyThrowsIllegalArgumentException() {
-        final SrcMorphConfiguration config = new SrcMorphConfiguration();
-        final AiModelDefinitionSupport modelDefinitionSupport = new AiModelDefinitionSupport(null);
+    public void resolveProviderConfig_missingKey_throwsIllegalArgumentException() {
+        // arrange
+        final ModelRegistry modelDefinitionSupport = new ModelRegistry(null);
 
+        // act, assert
         assertThrows(
                 IllegalArgumentException.class,
-                () -> EngineSupport.resolveLlamaCppJniConfig(modelDefinitionSupport, "missing"));
+                () -> EngineSupport.resolveProviderConfig(modelDefinitionSupport, "missing"));
     }
     // </editor-fold>
 
@@ -414,11 +561,11 @@ public class EngineSupportTest {
      * @param modelPath the definition's model path, may be {@code null}
      * @return the lookup
      */
-    private static AiModelDefinitionSupport supportWithModelPath(final String modelPath) {
-        final AiModelDefinition definition = new AiModelDefinition();
+    private static ModelRegistry supportWithModelPath(final String modelPath) {
+        final ModelDefinition definition = new ModelDefinition();
         definition.setKey("routed");
         definition.setModelPath(modelPath);
-        return new AiModelDefinitionSupport(Arrays.asList(definition));
+        return new ModelRegistry(Arrays.asList(definition));
     }
 
     /**
@@ -428,12 +575,12 @@ public class EngineSupportTest {
      * @param baseUrl  its base URL
      * @return the lookup
      */
-    private static AiModelDefinitionSupport supportWithRemote(final String provider, final String baseUrl) {
-        final AiModelDefinition definition = new AiModelDefinition();
+    private static ModelRegistry supportWithRemote(final String provider, final String baseUrl) {
+        final ModelDefinition definition = new ModelDefinition();
         definition.setKey("routed");
         definition.setProvider(provider);
         definition.setBaseUrl(baseUrl);
-        return new AiModelDefinitionSupport(Arrays.asList(definition));
+        return new ModelRegistry(Arrays.asList(definition));
     }
 
     /**
@@ -443,8 +590,8 @@ public class EngineSupportTest {
      * @param aiDefinitionKey the definition key, may be {@code null}
      * @return the rule
      */
-    private static AiFieldGenerationConfig routedRule(final boolean skip, final String aiDefinitionKey) {
-        final AiFieldGenerationConfig rule = new AiFieldGenerationConfig();
+    private static RoutingRule routedRule(final boolean skip, final String aiDefinitionKey) {
+        final RoutingRule rule = new RoutingRule();
         rule.setPromptKey("p1");
         rule.setAiDefinitionKey(aiDefinitionKey);
         rule.setSkip(skip);
@@ -453,13 +600,13 @@ public class EngineSupportTest {
 
     @Test
     public void validateRoutedModelPaths_anUnknownProvider_isRefusedBeforeTheRun() {
+        // arrange
+        final ModelRegistry registry = supportWithRemote("openai-compatibel", "http://127.0.0.1:1/v1");
+        final List<RoutingRule> rules = Arrays.asList(routedRule(false, "routed"));
+
         // act
         final SrcMorphException thrown = assertThrows(
-                SrcMorphException.class,
-                () -> EngineSupport.validateRoutedModelPaths(
-                        "mock",
-                        supportWithRemote("openai-compatibel", "http://127.0.0.1:1/v1"),
-                        Arrays.asList(routedRule(false, "routed"))));
+                SrcMorphException.class, () -> EngineSupport.validateRoutedModelPaths("mock", registry, rules));
 
         // assert
         assertThat(thrown.getMessage(), containsString("unknown provider 'openai-compatibel'"));
@@ -467,6 +614,7 @@ public class EngineSupportTest {
 
     @Test
     public void validateRoutedModelPaths_theMockProvider_passes() throws SrcMorphException {
+        // act, assert -- no exception
         EngineSupport.validateRoutedModelPaths(
                 "mock", supportWithModelPath("absent.gguf"), Arrays.asList(routedRule(false, "routed")));
     }
@@ -475,14 +623,14 @@ public class EngineSupportTest {
     public void validateRoutedModelPaths_missingModelFile_throwsNamingTheDefinitionAndPath() {
         // arrange
         final String missing = modelDir.resolve("nope.gguf").toString();
+        final ModelRegistry registry = supportWithModelPath(missing);
+        final List<RoutingRule> rules = Arrays.asList(routedRule(false, "routed"));
 
         // act
         final SrcMorphException thrown = assertThrows(
                 SrcMorphException.class,
                 () -> EngineSupport.validateRoutedModelPaths(
-                        AiGenerationProviderFactory.PROVIDER_LLAMACPP_JNI,
-                        supportWithModelPath(missing),
-                        Arrays.asList(routedRule(false, "routed"))));
+                        GenerationProviderFactory.PROVIDER_LLAMACPP_JNI, registry, rules));
 
         // assert -- the message must name both the definition and the path the user has to fix
         assertThat(thrown.getMessage(), containsString("routed"));
@@ -512,9 +660,9 @@ public class EngineSupportTest {
         final Path model = modelDir.resolve("real.gguf");
         writeMinimalGguf(model);
 
-        // act / assert -- no exception
+        // act, assert -- no exception
         EngineSupport.validateRoutedModelPaths(
-                AiGenerationProviderFactory.PROVIDER_LLAMACPP_JNI,
+                GenerationProviderFactory.PROVIDER_LLAMACPP_JNI,
                 supportWithModelPath(model.toString()),
                 Arrays.asList(routedRule(false, "routed")));
     }
@@ -529,18 +677,15 @@ public class EngineSupportTest {
     public void validateRoutedModelPaths_fileExistsButIsNotAGguf_throws() throws IOException {
         // arrange -- what `git clone` leaves behind without LFS installed
         final Path pointer = modelDir.resolve("real.gguf");
-        Files.write(
-                pointer,
-                "version https://git-lfs.github.com/spec/v1\noid sha256:0\nsize 1\n"
-                        .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        Files.write(pointer, "version https://git-lfs.github.com/spec/v1\noid sha256:0\nsize 1\n".getBytes(UTF_8));
+        final ModelRegistry registry = supportWithModelPath(pointer.toString());
+        final List<RoutingRule> rules = Arrays.asList(routedRule(false, "routed"));
 
         // act
         final SrcMorphException thrown = assertThrows(
                 SrcMorphException.class,
                 () -> EngineSupport.validateRoutedModelPaths(
-                        AiGenerationProviderFactory.PROVIDER_LLAMACPP_JNI,
-                        supportWithModelPath(pointer.toString()),
-                        Arrays.asList(routedRule(false, "routed"))));
+                        GenerationProviderFactory.PROVIDER_LLAMACPP_JNI, registry, rules));
 
         // assert -- names the definition, the path, and why the file was rejected
         assertThat(thrown.getMessage(), containsString("routed"));
@@ -550,24 +695,28 @@ public class EngineSupportTest {
 
     @Test
     public void validateRoutedModelPaths_pathIsADirectoryNotAFile_throws() {
-        // act / assert -- a directory is not a usable model file
+        // arrange
+        final ModelRegistry registry = supportWithModelPath(modelDir.toString());
+        final List<RoutingRule> rules = Arrays.asList(routedRule(false, "routed"));
+
+        // act, assert -- a directory is not a usable model file
         assertThrows(
                 SrcMorphException.class,
                 () -> EngineSupport.validateRoutedModelPaths(
-                        AiGenerationProviderFactory.PROVIDER_LLAMACPP_JNI,
-                        supportWithModelPath(modelDir.toString()),
-                        Arrays.asList(routedRule(false, "routed"))));
+                        GenerationProviderFactory.PROVIDER_LLAMACPP_JNI, registry, rules));
     }
 
     @Test
     public void validateRoutedModelPaths_nullModelPath_throws() {
-        // act / assert
+        // arrange
+        final ModelRegistry registry = supportWithModelPath(null);
+        final List<RoutingRule> rules = Arrays.asList(routedRule(false, "routed"));
+
+        // act, assert
         assertThrows(
                 SrcMorphException.class,
                 () -> EngineSupport.validateRoutedModelPaths(
-                        AiGenerationProviderFactory.PROVIDER_LLAMACPP_JNI,
-                        supportWithModelPath(null),
-                        Arrays.asList(routedRule(false, "routed"))));
+                        GenerationProviderFactory.PROVIDER_LLAMACPP_JNI, registry, rules));
     }
 
     /**
@@ -578,41 +727,39 @@ public class EngineSupportTest {
      */
     @Test
     public void validateRoutedModelPaths_mockProvider_ignoresAMissingModelFile() throws SrcMorphException {
-        // act / assert -- no exception despite the missing file
+        // act, assert -- no exception despite the missing file
         EngineSupport.validateRoutedModelPaths(
-                AiGenerationProviderFactory.PROVIDER_MOCK,
+                GenerationProviderFactory.PROVIDER_MOCK,
                 supportWithModelPath("unused-with-mock-provider.gguf"),
                 Arrays.asList(routedRule(false, "routed")));
     }
 
     @Test
     public void validateRoutedModelPaths_skipRule_isNotChecked() throws SrcMorphException {
-        // act / assert -- a skip rule never loads a model, so its path is irrelevant
+        // act, assert -- a skip rule never loads a model, so its path is irrelevant
         EngineSupport.validateRoutedModelPaths(
-                AiGenerationProviderFactory.PROVIDER_LLAMACPP_JNI,
+                GenerationProviderFactory.PROVIDER_LLAMACPP_JNI,
                 supportWithModelPath("missing.gguf"),
                 Arrays.asList(routedRule(true, "routed")));
     }
 
     @Test
     public void validateRoutedModelPaths_ruleWithoutDefinitionKey_isNotChecked() throws SrcMorphException {
-        // act / assert -- a fallback-shaped rule with no model key routes nowhere to check
+        // act, assert -- a fallback-shaped rule with no model key routes nowhere to check
         EngineSupport.validateRoutedModelPaths(
-                AiGenerationProviderFactory.PROVIDER_LLAMACPP_JNI,
+                GenerationProviderFactory.PROVIDER_LLAMACPP_JNI,
                 supportWithModelPath("missing.gguf"),
                 Arrays.asList(routedRule(false, null)));
     }
 
     @Test
     public void validateRoutedModelPaths_nullRuleEntry_isSkipped() throws SrcMorphException {
-        // act / assert -- a null entry in the list must not NPE
+        // act, assert -- a null entry in the list must not NPE
         EngineSupport.validateRoutedModelPaths(
-                AiGenerationProviderFactory.PROVIDER_LLAMACPP_JNI,
+                GenerationProviderFactory.PROVIDER_LLAMACPP_JNI,
                 supportWithModelPath("missing.gguf"),
-                Collections.<AiFieldGenerationConfig>singletonList(null));
+                Collections.<RoutingRule>singletonList(null));
     }
-
-    // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="contextSize vs what the model declares">
 
@@ -624,7 +771,7 @@ public class EngineSupportTest {
 
     /** Appends a GGUF string: a 64-bit byte length followed by the UTF-8 bytes. */
     private static void putGgufString(final ByteArrayOutputStream out, final String value) throws IOException {
-        final byte[] bytes = value.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        final byte[] bytes = value.getBytes(UTF_8);
         final ByteBuffer length = ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN);
         length.putLong(bytes.length);
         out.write(length.array());
@@ -692,13 +839,12 @@ public class EngineSupportTest {
         Files.write(file, out.toByteArray());
     }
 
-    private static AiModelDefinitionSupport supportWithModelPathAndContextSize(
-            final String modelPath, final int contextSize) {
-        final AiModelDefinition definition = new AiModelDefinition();
+    private static ModelRegistry supportWithModelPathAndContextSize(final String modelPath, final int contextSize) {
+        final ModelDefinition definition = new ModelDefinition();
         definition.setKey("routed");
         definition.setModelPath(modelPath);
         definition.setContextSize(contextSize);
-        return new AiModelDefinitionSupport(Collections.singletonList(definition));
+        return new ModelRegistry(Collections.singletonList(definition));
     }
 
     private List<String> warnings() {
@@ -728,7 +874,7 @@ public class EngineSupportTest {
 
         // act
         EngineSupport.validateRoutedModelPaths(
-                AiGenerationProviderFactory.PROVIDER_LLAMACPP_JNI,
+                GenerationProviderFactory.PROVIDER_LLAMACPP_JNI,
                 supportWithModelPathAndContextSize(model.toString(), 32768),
                 Arrays.asList(routedRule(false, "routed")));
 
@@ -740,6 +886,37 @@ public class EngineSupportTest {
             }
         }
         assertThat("a contextSize larger than the model's own must be reported", warned, is(true));
+    }
+
+    /**
+     * A cache type the binding does not know fails the check, before the model is loaded: llama.cpp
+     * would refuse it at the first file's load.
+     *
+     * @throws Exception if the fixture cannot be written
+     */
+    @Test
+    public void validateRoutedModelPaths_unknownCacheType_isRefusedBeforeTheModelLoads() throws Exception {
+        // arrange
+        final Path model = modelDir.resolve("cache-type.gguf");
+        writeGgufDeclaringContextLength(model, 4096);
+        final ModelDefinition definition = new ModelDefinition();
+        definition.setKey("routed");
+        definition.setModelPath(model.toString());
+        definition.setContextSize(4096);
+        definition.setCacheTypeV("q3_k");
+        final ModelRegistry registry = new ModelRegistry(Collections.singletonList(definition));
+
+        // act
+        final SrcMorphException thrown = assertThrows(
+                SrcMorphException.class,
+                () -> EngineSupport.validateRoutedModelPaths(
+                        GenerationProviderFactory.PROVIDER_LLAMACPP_JNI,
+                        registry,
+                        Arrays.asList(routedRule(false, "routed"))));
+
+        // assert
+        assertThat(thrown.getMessage(), containsString("aiDefinition 'routed'"));
+        assertThat(thrown.getMessage(), containsString("cacheTypeV"));
     }
 
     /**
@@ -757,7 +934,7 @@ public class EngineSupportTest {
 
         // act
         EngineSupport.validateRoutedModelPaths(
-                AiGenerationProviderFactory.PROVIDER_LLAMACPP_JNI,
+                GenerationProviderFactory.PROVIDER_LLAMACPP_JNI,
                 supportWithModelPathAndContextSize(model.toString(), 32768),
                 Arrays.asList(routedRule(false, "routed")));
 
@@ -768,28 +945,34 @@ public class EngineSupportTest {
     /** Configuring exactly what the model declares is not a mismatch and must stay silent. */
     @Test
     public void validateRoutedModelPaths_contextSizeMatchesTheModel_isSilent() throws Exception {
+        // arrange
         final Path model = modelDir.resolve("matching-window.gguf");
         writeGgufDeclaringContextLength(model, 4096);
 
+        // act
         EngineSupport.validateRoutedModelPaths(
-                AiGenerationProviderFactory.PROVIDER_LLAMACPP_JNI,
+                GenerationProviderFactory.PROVIDER_LLAMACPP_JNI,
                 supportWithModelPathAndContextSize(model.toString(), 4096),
                 Arrays.asList(routedRule(false, "routed")));
 
+        // assert
         assertThat(warnings(), is(Collections.<String>emptyList()));
     }
 
     /** A GGUF that declares no context length cannot be compared against, and must stay silent too. */
     @Test
     public void validateRoutedModelPaths_modelDeclaresNoContextLength_isSilent() throws Exception {
+        // arrange
         final Path model = modelDir.resolve("no-window.gguf");
         writeMinimalGguf(model);
 
+        // act
         EngineSupport.validateRoutedModelPaths(
-                AiGenerationProviderFactory.PROVIDER_LLAMACPP_JNI,
+                GenerationProviderFactory.PROVIDER_LLAMACPP_JNI,
                 supportWithModelPathAndContextSize(model.toString(), 32768),
                 Arrays.asList(routedRule(false, "routed")));
 
+        // assert
         assertThat(warnings(), is(Collections.<String>emptyList()));
     }
 
@@ -797,47 +980,56 @@ public class EngineSupportTest {
 
     @Test
     public void validateRoutedModelPaths_remoteModelInAJniRun_needsNoModelFile() throws SrcMorphException {
+        // act, assert -- no exception
         EngineSupport.validateRoutedModelPaths(
-                AiGenerationProviderFactory.PROVIDER_LLAMACPP_JNI,
-                supportWithRemote(
-                        AiGenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE, "https://openrouter.ai/api/v1"),
+                GenerationProviderFactory.PROVIDER_LLAMACPP_JNI,
+                supportWithRemote(GenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE, "https://openrouter.ai/api/v1"),
                 Arrays.asList(routedRule(false, "routed")));
     }
 
     @Test
     public void validateRoutedModelPaths_remoteModel_acceptsHttpAndATrimmedUrl() throws SrcMorphException {
+        // act, assert -- no exception
         EngineSupport.validateRoutedModelPaths(
-                AiGenerationProviderFactory.PROVIDER_MOCK,
-                supportWithRemote(AiGenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE, " http://127.0.0.1:8080/v1 "),
+                GenerationProviderFactory.PROVIDER_MOCK,
+                supportWithRemote(GenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE, " http://127.0.0.1:8080/v1 "),
                 Arrays.asList(routedRule(false, "routed")));
     }
 
     @Test
     public void validateRoutedModelPaths_remoteModelWithoutAnHttpUrl_throwsNamingTheDefinition() {
+        // arrange
+        final ModelRegistry registry =
+                supportWithRemote(GenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE, "ftp://example.org");
+        final List<RoutingRule> rules = Arrays.asList(routedRule(false, "routed"));
+
+        // act
         final SrcMorphException thrown = assertThrows(
                 SrcMorphException.class,
-                () -> EngineSupport.validateRoutedModelPaths(
-                        AiGenerationProviderFactory.PROVIDER_MOCK,
-                        supportWithRemote(AiGenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE, "ftp://example.org"),
-                        Arrays.asList(routedRule(false, "routed"))));
+                () -> EngineSupport.validateRoutedModelPaths(GenerationProviderFactory.PROVIDER_MOCK, registry, rules));
+
+        // assert
         assertThat(thrown.getMessage(), containsString("routed"));
         assertThat(thrown.getMessage(), containsString("ftp://example.org"));
     }
 
     @Test
     public void validateRoutedModelPaths_remoteModelWithAnUnsetApiKeyEnv_throwsBeforeAnyRequest() {
-        final AiModelDefinition definition = new AiModelDefinition();
+        // arrange
+        final ModelDefinition definition = new ModelDefinition();
         definition.setKey("routed");
-        definition.setProvider(AiGenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE);
+        definition.setProvider(GenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE);
         definition.setBaseUrl("https://openrouter.ai/api/v1");
         definition.setApiKeyEnv("SRCMORPH_TEST_KEY_THAT_IS_NEVER_SET");
-        final AiModelDefinitionSupport remote = new AiModelDefinitionSupport(Arrays.asList(definition));
+        final ModelRegistry remote = new ModelRegistry(Arrays.asList(definition));
+        final List<RoutingRule> rules = Arrays.asList(routedRule(false, "routed"));
 
+        // act
         final SrcMorphException thrown = assertThrows(
                 SrcMorphException.class,
-                () -> EngineSupport.validateRoutedModelPaths(
-                        AiGenerationProviderFactory.PROVIDER_MOCK, remote, Arrays.asList(routedRule(false, "routed"))));
+                () -> EngineSupport.validateRoutedModelPaths(GenerationProviderFactory.PROVIDER_MOCK, remote, rules));
 
+        // assert
         assertThat(
                 thrown.getMessage(),
                 is("aiDefinition 'routed': its apiKeyEnv names SRCMORPH_TEST_KEY_THAT_IS_NEVER_SET, which is not set"
@@ -846,26 +1038,86 @@ public class EngineSupportTest {
 
     @Test
     public void validateRoutedModelPaths_runProviderOpenAiCompatible_checksTheUrlToo() {
+        // arrange
+        final ModelRegistry registry = supportWithRemote("", "not a url");
+        final List<RoutingRule> rules = Arrays.asList(routedRule(false, "routed"));
+
+        // act, assert
         assertThrows(
                 SrcMorphException.class,
                 () -> EngineSupport.validateRoutedModelPaths(
-                        AiGenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE,
-                        supportWithRemote("", "not a url"),
-                        Arrays.asList(routedRule(false, "routed"))));
+                        GenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE, registry, rules));
     }
 
     @Test
     public void validateRoutedModelPaths_jniModelInAMockRun_isChecked() {
+        // arrange
         // The gate is per model: a definition that names llamacpp-jni itself is checked in a mock run.
-        final AiModelDefinition definition = new AiModelDefinition();
+        final ModelDefinition definition = new ModelDefinition();
         definition.setKey("routed");
-        definition.setProvider(AiGenerationProviderFactory.PROVIDER_LLAMACPP_JNI);
+        definition.setProvider(GenerationProviderFactory.PROVIDER_LLAMACPP_JNI);
         definition.setModelPath(modelDir.resolve("nope.gguf").toString());
+        final ModelRegistry registry = new ModelRegistry(Arrays.asList(definition));
+        final List<RoutingRule> rules = Arrays.asList(routedRule(false, "routed"));
+
+        // act, assert
         assertThrows(
                 SrcMorphException.class,
-                () -> EngineSupport.validateRoutedModelPaths(
-                        AiGenerationProviderFactory.PROVIDER_MOCK,
-                        new AiModelDefinitionSupport(Arrays.asList(definition)),
-                        Arrays.asList(routedRule(false, "routed"))));
+                () -> EngineSupport.validateRoutedModelPaths(GenerationProviderFactory.PROVIDER_MOCK, registry, rules));
     }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="resolveFactsKeys">
+    @Test
+    public void resolveFactsKeys_aPhaseRuleWithAnInvalidInlinePattern_isRefusedBeforeAModelLoads() {
+        // arrange: a package rule names an inline definition whose pattern does not compile
+        final FactCounter counter = new FactCounter();
+        counter.setLabel("broken");
+        counter.setPattern("(");
+        final FactDefinition definition = new FactDefinition();
+        definition.setKey("pk");
+        definition.setFacts(Collections.singletonList(counter));
+        final SrcMorphConfiguration config = new SrcMorphConfiguration();
+        config.setFactDefinitions(Collections.singletonList(definition));
+        final RoutingRule rule = new RoutingRule();
+        rule.setPromptKey("package-body");
+        rule.setAiDefinitionKey("default");
+        rule.setFactsKey("pk");
+        final List<RoutingRule> rules = Collections.singletonList(rule);
+
+        // act
+        final SrcMorphException thrown =
+                assertThrows(SrcMorphException.class, () -> EngineSupport.resolveFactsKeys(config, rules));
+
+        // assert: a rule without an id is named by its prompt key
+        assertThat(thrown.getMessage(), containsString("broken"));
+        assertThat(thrown.getMessage(), containsString("the facts of rule 'package-body'"));
+    }
+
+    @Test
+    public void resolveFactsKeys_aRuleWithAnIdAndAnInvalidInlinePattern_isNamedByItsId() {
+        // arrange
+        final FactCounter counter = new FactCounter();
+        counter.setLabel("broken");
+        counter.setPattern("(");
+        final FactDefinition definition = new FactDefinition();
+        definition.setKey("pk");
+        definition.setFacts(Collections.singletonList(counter));
+        final SrcMorphConfiguration config = new SrcMorphConfiguration();
+        config.setFactDefinitions(Collections.singletonList(definition));
+        final RoutingRule rule = new RoutingRule();
+        rule.setId("packages");
+        rule.setPromptKey("package-body");
+        rule.setAiDefinitionKey("default");
+        rule.setFactsKey("pk");
+        final List<RoutingRule> rules = Collections.singletonList(rule);
+
+        // act
+        final SrcMorphException thrown =
+                assertThrows(SrcMorphException.class, () -> EngineSupport.resolveFactsKeys(config, rules));
+
+        // assert
+        assertThat(thrown.getMessage(), containsString("the facts of rule 'packages'"));
+    }
+    // </editor-fold>
 }

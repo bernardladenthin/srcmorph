@@ -20,8 +20,9 @@ cd examples/build-your-own-jar
 java -jar target/srcmorph.jar <path-to-config.json-or-.yaml>
 ```
 
-The examples follow this repository and need srcmorph 1.4.0; against a reactor build, `mvn install` it
-and pass its version as `-Dsrcmorph.version`.
+The examples follow this repository: on `main` they need the next release; until it is out,
+`mvn install` the reactor and pass its version as `-Dsrcmorph.version` (`1.5.0-SNAPSHOT`). For 1.4.0,
+take the examples of the `v1.4.0` tag.
 
 Its `pom.xml` takes `srcmorph-cli` from Maven Central, swaps the CPU natives of every desktop
 platform (`llama-platform`) for the one natives jar of your OS/arch (picked by a Maven profile), and
@@ -45,7 +46,7 @@ same one the Maven plugin reads (since 1.4.0), through the same loader
 (`SrcMorphConfigurationFileLoader`): an unknown key fails the run immediately rather than being
 silently ignored, a `${name}` in a value is the Java system property `name` (`java -Dname=value -jar
 ...`; an unknown one stays as it is, except in a directory, `runRecordFile` or a subtree, where it fails
-the run), and **relative paths resolve against the directory of the file**,
+the run; `$${name}` writes a literal `${name}`), and **relative paths resolve against the directory of the file**,
 so a configuration names the same tree whatever directory you start the CLI in. On startup the CLI
 logs the parsed configuration back to you (re-serialized as both JSON and YAML, its paths resolved) so
 you can confirm exactly what will run before any model loads or file is written.
@@ -71,8 +72,8 @@ public class CConfiguration {
     public CCommand command = CCommand.Plan;
     public String modelFilter = "";
     public SrcMorphConfiguration srcMorph = new SrcMorphConfiguration();
-    public List<AiFieldGenerationConfig> packageFieldGenerations;   // exactly one rule
-    public List<AiFieldGenerationConfig> projectFieldGenerations;   // none or one
+    public List<RoutingRule> packageRules;   // exactly one rule
+    public List<RoutingRule> projectRules;   // none or one
 }
 ```
 
@@ -80,9 +81,15 @@ public class CConfiguration {
   command means no model load and nothing written. An unknown one fails, naming the eight.
 - **`srcMorph`** — the run: `baseDirectory` (unset: the directory of the file), `outputDirectory`
   (unset: `src/site/ai` below the base directory), `subtrees`, `excludes`, `fileExtensions`,
+  `fileNames` (globs over the file name, for files without an extension), `fileInterpreters`
+  (scripts without an extension, by their `#!` line), `contentHeadChars`,
   `minFileSizeBytes` / `maxFileSizeBytes`, `generationProvider`, `promptDefinitions`,
-  `profileDirectory`, `aiDefinitions`, `modelDirectory`, `fieldGenerations` (the file rules),
-  `factDefinitions`, `force`, `planOnly`, `aiVersion`, `projectName`, `runRecordFile` (below). A
+  `profileDirectory`, `aiDefinitions`, `modelDirectory`, `rules` (the file rules),
+  `factDefinitions`, `force`, `regenerateOn`, `planOnly`, `pruneOrphans` (deletes the file summaries
+  no file of the plan is summarized into, and the package summaries left without any; default `false`,
+  the plan lists them either way), `aiVersion`,
+  `projectName`,
+  `runRecordFile` and `partsDirectory` (below). A
   relative directory or `runRecordFile` resolves
   against the file's directory, a relative `modelPath` against `modelDirectory`, a relative
   `templateFile` or `factsFile` against `profileDirectory`; unset, those two are the file's directory
@@ -92,7 +99,7 @@ public class CConfiguration {
   [`../srcmorph-maven-plugin/README.md`](../srcmorph-maven-plugin/README.md)'s "Configuration" section
   (routing-rule conditions, oversize strategies, per-model sampling parameters, etc.) applies verbatim
   here.
-- **`packageFieldGenerations`** / **`projectFieldGenerations`** — the rule of the package phase and of
+- **`packageRules`** / **`projectRules`** — the rule of the package phase and of
   the project overview (see "Each phase its own rules" below).
 - **`modelFilter`** — `ListModels` only: keeps the model ids that contain it, ignoring case.
 
@@ -103,6 +110,12 @@ prompt and of its fact counters; and the totals. It costs a run per file and mod
 summaries a changed prompt touches. Unset (the default), no record is written, so a committed output
 tree does not change with every run.
 
+**The map-reduce answers.** With `srcMorph.partsDirectory` set, the file phase keeps, for each file it
+read in chunks, every map answer and every reduce batch's answer in
+`<partsDirectory>/<path below the base directory>.parts.md`, in the order they came. A measurement can
+then see where a summary loses what a part said. A file read in one piece has none; unset (the
+default), nothing is kept.
+
 ### The eight `CCommand` values
 
 | Command | What it does |
@@ -110,22 +123,22 @@ tree does not change with every run.
 | `Plan` | Runs `GenerateEngine` with `planOnly` **forced** to `true`, regardless of what the file says — builds and logs the routing plan (which model + prompt each file would get) and stops. No model is loaded, nothing is written. The default; always safe to run. |
 | `Check` | Checks the configuration as the three phases would run it, without loading a model or writing anything: the plan of the file rules (every file routed, none over a window with `onOversize: fail`, no two into one summary), the package rule when there is one, the project rule, the profile files of every rule, and every model a rule names (a local model's file and GGUF header, a remote model's `baseUrl` and `apiKeyEnv`). Fails naming the first problem. The plugin's `srcmorph:check` does the same. |
 | `GenerateFileIndex` | Phase 1, exactly as configured: indexes source files and fills in their AI-generated summaries (`GenerateEngine`). |
-| `AggregatePackages` | Phase 2: aggregates per-package `.ai.md` index files (`AggregatePackagesEngine`), with the one rule of the top-level `packageFieldGenerations` (the plugin's `aggregate-packages` reads the same key); it fails without one. |
-| `AggregateProject` | Phase 3: aggregates the single project-level `.ai.md` index (`AggregateProjectEngine`), with the one rule of the top-level `projectFieldGenerations` for the overview paragraph; unset, the index is written without one. |
+| `AggregatePackages` | Phase 2: aggregates per-package `.ai.md` index files (`AggregatePackagesEngine`), with the one rule of the top-level `packageRules` (the plugin's `aggregate-packages` reads the same key); it fails without one. |
+| `AggregateProject` | Phase 3: aggregates the single project-level `.ai.md` index (`AggregateProjectEngine`), with the one rule of the top-level `projectRules` for the overview paragraph; unset, the index is written without one. |
 | `All` | Runs `GenerateFileIndex`, then `AggregatePackages`, then `AggregateProject` in order, stopping at the first phase that fails; each aggregation phase with its own rule. [`examples/build-your-own-jar/srcmorph.yaml`](../examples/build-your-own-jar/srcmorph.yaml) is the plugin's self-test configuration in this form. |
-| `Calibrate` | Loads each distinct model your `fieldGenerations` would route to, measures its prefill/decode throughput, and prints a paste-ready YAML `calibration:` block per model, for its entry under `aiDefinitions`, to standard output (`CalibrateEngine`). |
+| `Calibrate` | Loads each distinct model your `rules` would route to, measures its prefill/decode throughput, and prints a paste-ready YAML `calibration:` block per model, for its entry under `aiDefinitions`, to standard output (`CalibrateEngine`). |
 | `ListModels` | Asks every OpenAI-compatible server your `aiDefinitions` name (`GET <baseUrl>/models`, with the definition's key) which models it serves, and prints to standard output a table (id, token limit, price where the server states one, as OpenRouter does) and a paste-ready `aiDefinitions` YAML block with one entry per model, copied from that server's first definition (`ListModelsEngine`). The top-level `modelFilter` keeps the ids that contain it, ignoring case. Sends no prompt, writes nothing. |
 
 ### Each phase its own rules
 
-`srcMorph.fieldGenerations` are the file rules: `GenerateFileIndex` *routes* each file to exactly one
+`srcMorph.rules` are the file rules: `GenerateFileIndex` *routes* each file to exactly one
 of them by `condition` + `priority` (the explicit `fallback` catches anything unmatched), and
 `Calibrate` measures the models they route to. They never reach an aggregation phase, which the
 plugin's aggregate goals read from the same keys:
 
-- **`AggregatePackages`** takes exactly one rule, the top-level `packageFieldGenerations` (the
+- **`AggregatePackages`** takes exactly one rule, the top-level `packageRules` (the
   package prompt and its model), and fails without it.
-- **`AggregateProject`** takes none or one, the top-level `projectFieldGenerations`: with one it
+- **`AggregateProject`** takes none or one, the top-level `projectRules`: with one it
   writes the `#### Overview` paragraph, without one the index is fully deterministic.
 
 [`../examples/config_All.json`](../examples/config_All.json) sets all three.

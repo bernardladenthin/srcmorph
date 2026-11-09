@@ -12,14 +12,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import net.ladenthin.srcmorph.config.AiGenerationConfig;
+import net.ladenthin.srcmorph.config.ModelDefinition;
 import net.ladenthin.srcmorph.provider.RemoteModel;
 import org.junit.jupiter.api.Test;
 
 public class ModelListReportTest {
 
-    private static AiGenerationConfig gatewayPattern() {
-        final AiGenerationConfig pattern = new AiGenerationConfig();
+    private static ModelDefinition gatewayPattern() {
+        final ModelDefinition pattern = new ModelDefinition();
         pattern.setBaseUrl(" http://127.0.0.1:3030/v1 ");
         pattern.setApiKeyEnv("COPILOT_GATEWAY_API_KEY");
         pattern.setStream(true);
@@ -30,8 +30,8 @@ public class ModelListReportTest {
         return pattern;
     }
 
-    private static AiGenerationConfig openRouterPattern() {
-        final AiGenerationConfig pattern = new AiGenerationConfig();
+    private static ModelDefinition openRouterPattern() {
+        final ModelDefinition pattern = new ModelDefinition();
         pattern.setApiKeyEnv("OPENROUTER_API_KEY");
         pattern.setMaxOutputTokens(4096);
         pattern.setTemperature(0.2f);
@@ -48,10 +48,12 @@ public class ModelListReportTest {
     // <editor-fold defaultstate="collapsed" desc="render">
     @Test
     public void render_gateway_tableAsCommentsThenOneEntryPerModel() {
+        // arrange
         final ModelListReport report = new ModelListReport(
                 "",
                 Collections.singletonList(ModelListReport.Listing.of("copilot", gatewayPattern(), 3, GATEWAY_MODELS)));
 
+        // act, assert
         assertThat(
                 report.render(),
                 is("# aiDefinition 'copilot': http://127.0.0.1:3030/v1, 3 models\n"
@@ -84,11 +86,13 @@ public class ModelListReportTest {
 
     @Test
     public void render_filteredOpenRouter_namesTheFilterThePriceAndAChangedReasoningEffort() {
+        // arrange
         final ModelListReport report = new ModelListReport(
                 " grok ",
                 Collections.singletonList(ModelListReport.Listing.of(
                         "openrouter", openRouterPattern(), 2, Collections.singletonList(GROK))));
 
+        // act, assert
         assertThat(
                 report.render(),
                 is("# aiDefinition 'openrouter': https://openrouter.ai/api/v1, 2 models, 1 matching 'grok'\n"
@@ -109,19 +113,23 @@ public class ModelListReportTest {
 
     @Test
     public void render_noKeyNoLimitNoStream_leavesThoseFieldsOut() {
-        final AiGenerationConfig pattern = new AiGenerationConfig();
+        // arrange
+        final ModelDefinition pattern = new ModelDefinition();
         pattern.setBaseUrl("http://localhost:8080/v1");
         pattern.setApiKeyEnv("  ");
 
+        // act
         final String rendered = new ModelListReport(
                         "  ",
                         Collections.singletonList(ModelListReport.Listing.of(
                                 "local",
                                 pattern,
                                 1,
-                                Collections.singletonList(new RemoteModel("local", 0, null, null)))))
+                                Collections.singletonList(
+                                        new RemoteModel("local", RemoteModel.UNKNOWN_CONTEXT_LENGTH, null, null)))))
                 .render();
 
+        // assert
         assertThat(
                 rendered,
                 is("# aiDefinition 'local': http://localhost:8080/v1, 1 models\n"
@@ -140,12 +148,14 @@ public class ModelListReportTest {
 
     @Test
     public void render_nothingMatches_isAnEmptyListAfterEveryServersHeading() {
+        // arrange
         final ModelListReport report = new ModelListReport(
                 "zzz",
                 Arrays.asList(
                         ModelListReport.Listing.of("copilot", gatewayPattern(), 3, Collections.emptyList()),
                         ModelListReport.Listing.of("openrouter", openRouterPattern(), 2, Collections.emptyList())));
 
+        // act, assert
         assertThat(
                 report.render(),
                 is("# aiDefinition 'copilot': http://127.0.0.1:3030/v1, 3 models, 0 matching 'zzz'\n"
@@ -157,6 +167,7 @@ public class ModelListReportTest {
 
     @Test
     public void render_twoServers_oneListWithTheEntriesOfBoth() {
+        // act
         final String rendered = new ModelListReport(
                         "",
                         Arrays.asList(
@@ -169,6 +180,7 @@ public class ModelListReportTest {
                                         "openrouter", openRouterPattern(), 1, Collections.singletonList(GROK))))
                 .render();
 
+        // assert
         assertThat(rendered.indexOf("aiDefinitions:"), is(rendered.lastIndexOf("aiDefinitions:")));
         assertThat(rendered.indexOf("# aiDefinition 'openrouter'") < rendered.indexOf("aiDefinitions:"), is(true));
         assertThat(
@@ -177,44 +189,78 @@ public class ModelListReportTest {
     }
     // </editor-fold>
 
-    // <editor-fold defaultstate="collapsed" desc="contextSize / quote">
+    // <editor-fold defaultstate="collapsed" desc="contextSize">
     @Test
-    public void contextSize_isLoweredOnlyToASmallerKnownLimit() {
+    public void contextSize_knownOrUnknownLimit_isLoweredOnlyToASmallerKnownLimit() {
+        // act, assert
         assertThat(ModelListReport.contextSize(100, RemoteModel.UNKNOWN_CONTEXT_LENGTH), is(100));
         assertThat(ModelListReport.contextSize(100, 99), is(99));
         assertThat(ModelListReport.contextSize(100, 100), is(100));
         assertThat(ModelListReport.contextSize(100, 101), is(100));
         assertThat(ModelListReport.contextSize(100, 1), is(1));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="quote">
     @Test
-    public void quote_escapesBackslashAndDoubleQuote() {
+    public void quote_backslashAndDoubleQuote_areEscaped() {
+        // act, assert
         assertThat(ModelListReport.quote("a\"b\\c"), is("\"a\\\"b\\\\c\""));
         assertThat(ModelListReport.quote(""), is("\"\""));
+    }
+
+    @Test
+    public void quote_lineFeedInAnId_isEscapedAndStaysOnOneLine() {
+        // act, assert
+        assertThat(ModelListReport.quote("a\nkey: x"), is("\"a\\u000akey: x\""));
+    }
+
+    @Test
+    public void escapeLineBreaks_everyLineBreakAndControl_isEscaped() {
+        // act, assert: C0, DEL, C1 (U+0085, a YAML line break), the line and paragraph separators
+        assertThat(
+                ModelListReport.escapeLineBreaks("\r\t\u007f\u0085\u2028\u2029"),
+                is("\\u000d\\u0009\\u007f\\u0085\\u2028\\u2029"));
+    }
+
+    @Test
+    public void escapeLineBreaks_printableText_staysAsItIs() {
+        // act, assert: the characters next to the escaped ones stay
+        assertThat(ModelListReport.escapeLineBreaks(" ~\u00a0\u2027\u202a"), is(" ~\u00a0\u2027\u202a"));
     }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="listings">
     @Test
-    public void listings_areACopyAndUnmodifiable() {
+    public void listings_givenListClearedAfterCreation_areACopyAndUnmodifiable() {
+        // arrange
         final List<ModelListReport.Listing> given = new ArrayList<>();
         given.add(ModelListReport.Listing.of("copilot", gatewayPattern(), 3, GATEWAY_MODELS));
         final ModelListReport report = new ModelListReport("", given);
+
+        // act
         given.clear();
 
+        // assert
         assertThat(report.listings().size(), is(1));
-        assertThrows(
-                UnsupportedOperationException.class, () -> report.listings().clear());
+        final List<ModelListReport.Listing> listings = report.listings();
+        assertThrows(UnsupportedOperationException.class, listings::clear);
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="Listing.of">
     @Test
-    public void listing_copiesThePatternAtCreation() {
-        final AiGenerationConfig pattern = gatewayPattern();
+    public void listingOf_patternChangedAfterCreation_copiesThePatternAtCreation() {
+        // arrange
+        final ModelDefinition pattern = gatewayPattern();
         final List<RemoteModel> models = new ArrayList<>(GATEWAY_MODELS);
         final ModelListReport.Listing listing = ModelListReport.Listing.of("copilot", pattern, 3, models);
+
+        // act
         pattern.setBaseUrl("http://changed");
         models.clear();
 
+        // assert
         assertThat(listing.key(), is("copilot"));
         assertThat(listing.baseUrl(), is("http://127.0.0.1:3030/v1"));
         assertThat(listing.apiKeyEnv(), is("COPILOT_GATEWAY_API_KEY"));
@@ -223,18 +269,25 @@ public class ModelListReportTest {
         assertThat(listing.contextSize(), is(200000));
         assertThat(listing.maxOutputTokens(), is(2048));
         assertThat(listing.temperature(), is(0.2f));
-        assertThat(listing.reasoningEffort(), is(AiGenerationConfig.DEFAULT_REASONING_EFFORT));
+        assertThat(listing.reasoningEffort(), is(ModelDefinition.DEFAULT_REASONING_EFFORT));
         assertThat(listing.listed(), is(3));
         assertThat(listing.models(), is(GATEWAY_MODELS));
-        assertThrows(UnsupportedOperationException.class, () -> listing.models().clear());
+        final List<RemoteModel> listedModels = listing.models();
+        assertThrows(UnsupportedOperationException.class, listedModels::clear);
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="constructors">
     @Test
-    public void constructors_nullArguments_throw() {
-        assertThrows(NullPointerException.class, () -> new ModelListReport(null, Collections.emptyList()));
-        assertThrows(
-                NullPointerException.class,
-                () -> ModelListReport.Listing.of(null, gatewayPattern(), 0, Collections.emptyList()));
+    public void constructors_nullArguments_throwNullPointerException() {
+        // arrange
+        final List<ModelListReport.Listing> noListings = Collections.emptyList();
+        final ModelDefinition pattern = gatewayPattern();
+        final List<RemoteModel> noModels = Collections.emptyList();
+
+        // act, assert
+        assertThrows(NullPointerException.class, () -> new ModelListReport(null, noListings));
+        assertThrows(NullPointerException.class, () -> ModelListReport.Listing.of(null, pattern, 0, noModels));
     }
     // </editor-fold>
 }

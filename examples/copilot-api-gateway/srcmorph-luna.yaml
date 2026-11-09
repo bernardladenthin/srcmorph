@@ -18,15 +18,18 @@
 command: Plan
 
 # The package maps and the project overview, from the file summaries. A package whose summaries do
-# not fit the window is read in parts too (the default, fail, would stop the run).
-packageFieldGenerations:
+# not fit the window is read in parts too: mapReduce is a phase rule's default as well, written out
+# here so the map and reduce prompts beside it read as what they are for.
+packageRules:
   - promptKey: package-body
+    onIncomplete: retryOnce                # an answer cut off or empty is asked for once more: one more request
     onOversize: mapReduce
     mapPromptKey: map-chunk
     reducePromptKey: reduce-parts
     aiDefinitionKey: luna
-projectFieldGenerations:
+projectRules:
   - promptKey: project-body
+    onIncomplete: retryOnce
     onOversize: mapReduce
     mapPromptKey: map-chunk
     reducePromptKey: reduce-parts
@@ -39,8 +42,9 @@ srcMorph:
   outputDirectory: "/path/to/project/target/srcmorph-ai"
   subtrees:
     - "."                                    # the whole project, the root pom.xml too
-  # A kind without an extension here is not indexed. C, Python, JavaScript and every other kind
-  # without a prompt of its own take the fallback rule.
+  # A kind without an extension here (or a name under fileNames) is not indexed: JavaScript (.js),
+  # for one, is not. C and Python, listed at the end, have no prompt of their own and take the
+  # fallback rule.
   fileExtensions:
     - ".java"
     - ".sql"
@@ -60,14 +64,67 @@ srcMorph:
     - ".xslt"
     - ".wsdl"
     - ".xhtml"
+    - ".kt"
+    - ".kts"
+    - ".groovy"
+    - ".gvy"
+    - ".gradle"
+    - ".scala"
+    - ".ts"
+    - ".mts"
+    - ".cts"
+    - ".jsp"
+    - ".jspf"
+    - ".jspx"
+    - ".tag"
+    - ".tagx"
+    - ".bpmn"
+    - ".dmn"
+    - ".yml"
+    - ".yaml"
+    - ".proto"
+    - ".avsc"
+    - ".graphql"
+    - ".graphqls"
+    - ".gql"
+    - ".tf"
+    - ".hcl"
+    - ".properties"
+    - ".ps1"
+    - ".psm1"
+    - ".bat"
+    - ".cmd"
     - ".py"
     - ".c"
     - ".h"
+  # Files without an extension, or with one not listed above, by name (globs, any case).
+  fileNames:
+    - "Dockerfile"
+    - "Dockerfile.*"
+    - "*.dockerfile"
+    - "Containerfile"
+    - "Jenkinsfile"
+    - "openapi*.json"
+    - "swagger*.json"
+    - "asyncapi*.json"
+    - "package.json"
+    - "pyproject.toml"
+  # Scripts without an extension (bin/deploy, a Git hook), by the interpreter their #! line names; a
+  # name also matches its versions (python matches python3 and python3.12).
+  fileInterpreters:
+    - "bash"
+    - "sh"
+    - "ksh"
+    - "zsh"
+    - "dash"
+    - "perl"
+    - "python"
   # Globs against the path below baseDirectory, "/" as separator; "**/" matches no directory too, so
   # "**/target/**" excludes target/ at the root and the target/ of every module.
   excludes:
     - "**/package-info.java"
     - "**/module-info.java"
+    - "**/*.dockerignore"                    # BuildKit's Dockerfile.dockerignore, which Dockerfile.* takes
     - "**/target/**"                         # Maven build output, the index included
     - "**/.git/**"
     - "**/.idea/**"
@@ -75,6 +132,18 @@ srcMorph:
     - "**/.gradle/**"
     - "**/node_modules/**"
     - "**/.claude/**"                        # agent worktrees: a second copy of the sources
+
+  # When a summary is rewritten. force: true rewrites every one. Otherwise a summary is rewritten when
+  # it is missing or empty, its aiVersion changed, or a change below whose switch is true (each one is
+  # by default); false keeps the summary and records the new value at its next rewrite. Every rewrite
+  # is one request of the plan's quota: after a prompt edit, prompt: false keeps the old summaries.
+  force: false
+  regenerateOn:
+    source: true                             # C: the file's source, a package's files, the project's packages
+    prompt: true                             # P: the rule's prompts, its map and reduce prompts too
+    facts: true                              # N: the rule's fact counters
+    model: true                              # M: the rule's model (definition key, remoteModel, model file)
+    children: true                           # K: the summaries a package or the project is written from
 
   generationProvider: openai-compatible
 
@@ -96,14 +165,88 @@ srcMorph:
                                              # fewer chunks, so fewer requests, for a large file
       maxOutputTokens: 4096
       temperature: 0.2
+      reasoningEffort: low                   # what the measured runs sent (the default sends no effort)
 
   # One rule per kind, each with its prompt and its exact fact counters. The counters cost no model
   # call; a single-shot call does not read them, a reduce call does. A file larger than the window is
   # read chunk by chunk (mapReduce): Luna named every name planted in the middle of a 1.6 MB SQL dump,
   # an 870 KB XML catalog and a 283 KB Java enum in three of three runs (MODEL-CARD finding 7).
-  fieldGenerations:
+  rules:
+    # Files that hold credentials are never sent to a model: the files named below, Maven's
+    # settings.xml, a properties file with a secret and a Kubernetes Secret, at the highest priority, so
+    # no other rule takes them. A secret in another file (a password in an application.yml) is not
+    # recognized: the prompts name a secret and never copy it. fileNames match the name in any case.
+    - id: secrets
+      skip: true
+      priority: 1000
+      condition:
+        or:
+          conditions:
+            - fileNames:
+                - ".env"
+                - ".env.*"
+                - "*.tfvars"
+                - "*.pkrvars.hcl"                # Packer's variable values, as Terraform's .tfvars
+                - "*.tfstate"
+                - "*.tfstate.backup"
+                - "settings-security.xml"
+                - "*.pem"
+                - "*.key"
+                - "id_rsa*"
+                - "id_ed25519*"
+            - and:                               # Maven's settings.xml (server passwords) by its root
+                conditions:                      # element, not an Android res/xml/settings.xml
+                  - fileNames: ["settings.xml"]
+                  - contentMatches: '<settings[\s>]'
+            # A properties file that gives a password, secret, token, API key, private key or credentials
+            # a value, whatever its name (gradle.properties, application.properties), a secret key too
+            # (aws.secretKey, secret-access-key, jwt.secret.key), also spelled pwd, pass or passphrase,
+            # after =, : or a blank; a whole placeholder (${DB_PASSWORD}, "${X}", @db.password@,
+            # #{...}), a flag, a number or a log level is none, nor is a key that only starts so
+            # (password.label). A message bundle that labels a password field (login.password=Password)
+            # is skipped too. Not seen: a plural or a qualifier after the key (passwords=,
+            # password.prod=), credentials in a URL, an account-key, a value on a continuation line.
+            # Read in the file's head.
+            - and:
+                conditions:
+                  - extensions: [".properties"]
+                  - contentMatches: '(?im)^[ \t]*+[\w.\-]*?(?:password|passwd|pwd|passphrase|(?<![^._\s-])pass|secret|token|api[._-]?key|private[._-]?key|credentials?)(?:[._-]?(?:access[._-]?)?key)?(?:[ \t]*+[=:]|[ \t]++(?![=:]))[ \t]*+(?!["'']?\$\{[\w.\-]+\}["'']?\s*$|@[\w.\-]+@\s*$|#\{[^}\n]*\}\s*$|(?:true|false|yes|no|on|off|\d+|trace|debug|info|warn|error|fatal|all)\s*$)\S'
+            # A Kubernetes Secret, whatever its name (deploy/postgres.yaml): its data are the
+            # credentials. Not a Helm chart's template, which names the values it renders. Read in the
+            # file's head, so a Secret in a later document of a long multi-document file is not seen.
+            - and:
+                conditions:
+                  - extensions: [".yml", ".yaml"]
+                  - contentMatches: '(?m)^kind:[ \t]*["'']?Secret\b'
+                  - not:
+                      and:
+                        conditions:
+                          - pathGlob: "**/templates/**"
+                          - contentMatches: '\{\{'
+            # A file named for a vault, secrets or credentials, but not a CI workflow or action
+            # (secret-scan.yml), a Helm chart's template (it names the values it renders) or a
+            # Kubernetes manifest of another kind than Secret (vault-deployment.yaml).
+            - and:
+                conditions:
+                  - fileNames:
+                      - "vault*.{yml,yaml}"
+                      - "*{secret,secrets,credential,credentials}*.{yml,yaml,properties,json,xml,conf,env,hcl}"
+                  - not:
+                      or:
+                        conditions:
+                          - pathGlob: "**/.github/**"
+                          - and:
+                              conditions:
+                                - pathGlob: "**/templates/**"
+                                - contentMatches: '\{\{'
+                          - and:
+                              conditions:
+                                - contentMatches: '(?m)^kind:[ \t]*["'']?[A-Z]'
+                                - not:
+                                    contentMatches: '(?m)^kind:[ \t]*["'']?Secret\b'
     - id: java
-      promptKey: file-body-java
+      promptKey: file-body-oop
+      onIncomplete: retryOnce
       aiDefinitionKey: luna
       factsKey: java-facts
       onOversize: mapReduce
@@ -113,6 +256,7 @@ srcMorph:
         extensions: [".java"]
     - id: sql
       promptKey: file-body-sql
+      onIncomplete: retryOnce
       aiDefinitionKey: luna
       factsKey: sql-facts
       onOversize: mapReduce
@@ -122,24 +266,33 @@ srcMorph:
         extensions: [".sql"]
     - id: shell
       promptKey: file-body-shell
+      onIncomplete: retryOnce
       aiDefinitionKey: luna
       factsKey: shell-facts
       onOversize: mapReduce
       mapPromptKey: map-chunk
       reducePromptKey: reduce-parts
       condition:
-        extensions: [".sh", ".bash", ".ksh", ".zsh", ".bats"]
+        or:
+          conditions:
+            - extensions: [".sh", ".bash", ".ksh", ".zsh", ".bats"]
+            - interpreters: ["bash", "sh", "ksh", "zsh", "dash"]
     - id: perl
       promptKey: file-body-perl
+      onIncomplete: retryOnce
       aiDefinitionKey: luna
       factsKey: perl-facts
       onOversize: mapReduce
       mapPromptKey: map-chunk
       reducePromptKey: reduce-parts
       condition:
-        extensions: [".pl", ".pm", ".t", ".cgi", ".psgi"]
+        or:
+          conditions:
+            - extensions: [".pl", ".pm", ".t", ".cgi", ".psgi"]
+            - interpreters: ["perl"]
     - id: pom                                # matches xml too; the priority gives a POM the Maven counters
       promptKey: file-body-xml
+      onIncomplete: retryOnce
       aiDefinitionKey: luna
       priority: 10
       factsKey: pom-facts
@@ -150,15 +303,415 @@ srcMorph:
         pathGlob: "**/*pom.xml"
     - id: xml
       promptKey: file-body-xml
+      onIncomplete: retryOnce
       aiDefinitionKey: luna
       factsKey: xml-facts
       onOversize: mapReduce
       mapPromptKey: map-chunk
       reducePromptKey: reduce-parts
       condition:
-        extensions: [".xml", ".xsd", ".xsl", ".xslt", ".wsdl", ".xhtml"]
+        extensions: [".xml", ".xsd", ".xsl", ".xslt"]          # .wsdl and .xhtml have rules of their own
+    - id: java-ee                            # Java using Jakarta EE: the EE counters too
+      promptKey: file-body-oop
+      onIncomplete: retryOnce
+      aiDefinitionKey: luna
+      priority: 10
+      factsKey: java-ee-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        and:
+          conditions:
+            - extensions: [".java"]
+            # an import, or an annotation written with its package and no import
+            - contentMatches: '(?m)(?:^import[ \t]+(?:static[ \t]+)?|@)(?:javax|jakarta)\.(?:ejb|persistence|ws\.rs|servlet|jws|xml\.ws|inject|transaction|enterprise|annotation\.security)\.'
+    - id: kotlin                             # the prompt Java, Kotlin, Groovy, Scala share
+      promptKey: file-body-oop
+      onIncomplete: retryOnce
+      aiDefinitionKey: luna
+      factsKey: kotlin-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".kt", ".kts"]
+    - id: groovy
+      promptKey: file-body-oop
+      onIncomplete: retryOnce
+      aiDefinitionKey: luna
+      factsKey: groovy-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".groovy", ".gvy"]
+    - id: scala
+      promptKey: file-body-oop
+      onIncomplete: retryOnce
+      aiDefinitionKey: luna
+      factsKey: scala-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".scala"]
+    - id: typescript                         # the oop prompt names more of a TypeScript file's API than
+      promptKey: file-body-oop               # the fallback (measured 2026-11-05); no counters of its own
+      onIncomplete: retryOnce
+      aiDefinitionKey: luna
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".ts", ".mts", ".cts"]
+    - id: jee                                # Jakarta EE descriptors
+      promptKey: file-body-xml
+      onIncomplete: retryOnce
+      aiDefinitionKey: luna
+      priority: 10
+      factsKey: jee-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        fileNames: ["web.xml", "web-fragment.xml", "ejb-jar.xml", "application.xml"]
+    - id: persistence
+      promptKey: file-body-xml
+      onIncomplete: retryOnce
+      aiDefinitionKey: luna
+      priority: 10
+      factsKey: persistence-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        fileNames: ["persistence.xml", "orm.xml", "*.hbm.xml"]
+    - id: mybatis
+      promptKey: file-body-xml
+      onIncomplete: retryOnce
+      aiDefinitionKey: luna
+      priority: 10
+      factsKey: mybatis-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        and:
+          conditions:
+            - extensions: [".xml"]
+            - contentMatches: 'mybatis\.org//DTD Mapper'
+    - id: integration                        # Camel, Spring Integration, Mule, Synapse; over jee, so a
+      promptKey: file-body-xml               # Spring application.xml with Camel routes gets these counters
+      onIncomplete: retryOnce
+      aiDefinitionKey: luna
+      priority: 11
+      factsKey: integration-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        and:
+          conditions:
+            - extensions: [".xml"]
+            - contentMatches: 'camel\.apache\.org/schema|springframework\.org/schema/integration|mulesoft\.org/schema/mule|ws\.apache\.org/ns/synapse'
+    - id: bpmn
+      promptKey: file-body-xml
+      onIncomplete: retryOnce
+      aiDefinitionKey: luna
+      priority: 10
+      factsKey: bpmn-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        or:
+          conditions:
+            - extensions: [".bpmn"]
+            - fileNames: ["*.bpmn20.xml"]        # Flowable and Activiti, over the xml rule
+    - id: dmn
+      promptKey: file-body-xml
+      onIncomplete: retryOnce
+      aiDefinitionKey: luna
+      priority: 10
+      factsKey: dmn-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".dmn"]
+    - id: wsdl
+      promptKey: file-body-xml
+      onIncomplete: retryOnce
+      aiDefinitionKey: luna
+      priority: 10
+      factsKey: wsdl-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".wsdl"]
+    - id: jsp
+      promptKey: file-body-view
+      onIncomplete: retryOnce
+      aiDefinitionKey: luna
+      factsKey: jsp-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".jsp", ".jspf", ".tag"]
+    - id: jspx                               # a JSP document is XML: its comments are never sent
+      promptKey: file-body-view
+      onIncomplete: retryOnce
+      aiDefinitionKey: luna
+      factsKey: jspx-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".jspx", ".tagx"]
+    - id: facelets
+      promptKey: file-body-view
+      onIncomplete: retryOnce
+      aiDefinitionKey: luna
+      factsKey: facelets-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".xhtml"]
+    - id: openapi                            # by its version key (swagger: 2.0), not a Spring flag
+      promptKey: file-body-contract
+      onIncomplete: retryOnce
+      aiDefinitionKey: luna
+      priority: 10
+      factsKey: openapi-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        or:
+          conditions:
+            - and:
+                conditions:
+                  - extensions: [".yml", ".yaml"]
+                  - contentMatches: '(?m)^["'']?(?:openapi|swagger)["'']?[ \t]*:[ \t]*["'']?\d'
+            - fileNames: ["openapi*.json", "swagger*.json"]
+    - id: asyncapi
+      promptKey: file-body-contract
+      onIncomplete: retryOnce
+      aiDefinitionKey: luna
+      priority: 10
+      factsKey: asyncapi-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        or:
+          conditions:
+            - and:
+                conditions:
+                  - extensions: [".yml", ".yaml"]
+                  - contentMatches: '(?m)^["'']?asyncapi["'']?[ \t]*:'
+            - fileNames: ["asyncapi*.json"]
+    - id: proto
+      promptKey: file-body-contract
+      onIncomplete: retryOnce
+      aiDefinitionKey: luna
+      factsKey: proto-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".proto"]
+    - id: avro
+      promptKey: file-body-contract
+      onIncomplete: retryOnce
+      aiDefinitionKey: luna
+      factsKey: avro-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".avsc"]
+    - id: graphql
+      promptKey: file-body-contract
+      onIncomplete: retryOnce
+      aiDefinitionKey: luna
+      factsKey: graphql-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".graphql", ".graphqls", ".gql"]
+    - id: actions
+      promptKey: file-body-ops
+      onIncomplete: retryOnce
+      aiDefinitionKey: luna
+      priority: 10
+      factsKey: actions-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        pathGlob: "**/.github/{workflows,actions}/**/*.{yml,yaml}"
+    - id: camel-yaml                         # Camel routes in the YAML DSL; a from: names an endpoint
+      promptKey: file-body-ops
+      onIncomplete: retryOnce
+      aiDefinitionKey: luna
+      priority: 10
+      factsKey: camel-yaml-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        and:
+          conditions:
+            - extensions: [".yml", ".yaml"]
+            - contentMatches: '(?m)^-[ \t]+(?:(?:route|routeTemplate|templatedRoute|rest)[ \t]*:|from[ \t]*:[ \t]*(?:["'']?(?!https?:)[a-z][\w+.-]*:|(?:#[^\n]*)?\r?\n(?:[ \t]*+(?:#[^\n]*+)?\r?\n|[ \t]++(?:id|description)[ \t]*+:[^\n]*+\n)*+[ \t]+(?:uri|steps|parameters)[ \t]*:))'
+    - id: k8s                                # Kubernetes manifests and Helm templates
+      promptKey: file-body-ops
+      onIncomplete: retryOnce
+      aiDefinitionKey: luna
+      priority: 5
+      factsKey: k8s-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        and:
+          conditions:
+            - extensions: [".yml", ".yaml"]
+            - contentMatches: '(?m)^kind:[ \t]*["'']?[A-Z]'   # kind: Deployment, quoted too
+    - id: dockerfile
+      promptKey: file-body-ops
+      onIncomplete: retryOnce
+      aiDefinitionKey: luna
+      factsKey: dockerfile-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        fileNames: ["Dockerfile", "Dockerfile.*", "*.dockerfile", "Containerfile"]
+    - id: compose
+      promptKey: file-body-ops
+      onIncomplete: retryOnce
+      aiDefinitionKey: luna
+      priority: 10
+      factsKey: compose-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        fileNames: ["docker-compose*.{yml,yaml}", "compose*.{yml,yaml}"]
+    - id: ansible                            # playbooks and the YAML of a role
+      promptKey: file-body-ops
+      onIncomplete: retryOnce
+      aiDefinitionKey: luna
+      priority: 5
+      factsKey: ansible-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        or:
+          conditions:
+            - pathGlob: "**/roles/*/{tasks,handlers,defaults,vars,meta}/*.{yml,yaml}"
+            - and:
+                conditions:
+                  - extensions: [".yml", ".yaml"]
+                  - contentMatches: '(?m)^-[ \t]++(?:name[ \t]*+:[^\n]*+\n[ \t]++)?hosts[ \t]*+:'
+    - id: terraform
+      promptKey: file-body-ops
+      onIncomplete: retryOnce
+      aiDefinitionKey: luna
+      factsKey: terraform-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".tf", ".hcl"]
+    - id: gradle                             # build scripts of both DSLs; .gradle.kts over the Kotlin rule
+      promptKey: file-body-ops
+      onIncomplete: retryOnce
+      aiDefinitionKey: luna
+      priority: 10
+      factsKey: gradle-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        or:
+          conditions:
+            - extensions: [".gradle"]
+            - fileNames: ["*.gradle.kts"]
+    - id: properties
+      promptKey: file-body-ops
+      onIncomplete: retryOnce
+      aiDefinitionKey: luna
+      factsKey: properties-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".properties"]
+    - id: powershell                         # no prompt of its own: the fallback prompt with counters
+      promptKey: file-body-fallback
+      onIncomplete: retryOnce
+      aiDefinitionKey: luna
+      factsKey: powershell-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".ps1", ".psm1"]
+    - id: batch
+      promptKey: file-body-fallback
+      onIncomplete: retryOnce
+      aiDefinitionKey: luna
+      factsKey: batch-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        extensions: [".bat", ".cmd"]
+    - id: npm                                # an npm manifest: the ops prompt has a line for it (measured
+      promptKey: file-body-ops               # 2026-11-06 on an extension's manifest)
+      onIncomplete: retryOnce
+      aiDefinitionKey: luna
+      priority: 10
+      factsKey: npm-facts
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        fileNames: ["package.json"]
+    - id: pyproject                          # a Python project's manifest: the ops prompt keeps more of
+      promptKey: file-body-ops               # its names than the fallback (97 % against 86 %, 2026-11-07)
+      onIncomplete: retryOnce
+      aiDefinitionKey: luna
+      priority: 10
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        fileNames: ["pyproject.toml"]
+    - id: ops                                # every other YAML, Jenkinsfile
+      promptKey: file-body-ops
+      onIncomplete: retryOnce
+      aiDefinitionKey: luna
+      onOversize: mapReduce
+      mapPromptKey: map-chunk
+      reducePromptKey: reduce-parts
+      condition:
+        or:
+          conditions:
+            - extensions: [".yml", ".yaml"]
+            - fileNames: ["Jenkinsfile", ".gitlab-ci.yml"]
     - id: fallback                           # every other file; profile v3 has no counters for it
       promptKey: file-body-fallback
+      onIncomplete: retryOnce
       aiDefinitionKey: luna
       fallback: true
       onOversize: mapReduce

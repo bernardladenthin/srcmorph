@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+
+SPDX-License-Identifier: Apache-2.0
+-->
+<definitions xmlns="http://schemas.xmlsoap.org/wsdl/"
+             xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+             xmlns:tns="http://shop.example/stock"
+             xmlns:xs="http://www.w3.org/2001/XMLSchema"
+             name="StockService" targetNamespace="http://shop.example/stock">
+    <types>
+        <xs:schema targetNamespace="http://shop.example/stock">
+            <xs:element name="StockLevelRequest">
+                <xs:complexType><xs:sequence><xs:element name="sku" type="xs:string"/></xs:sequence></xs:complexType>
+            </xs:element>
+            <xs:element name="StockLevelResponse">
+                <xs:complexType><xs:sequence><xs:element name="available" type="xs:int"/></xs:sequence></xs:complexType>
+            </xs:element>
+            <xs:complexType name="UnknownSkuFault"><xs:sequence><xs:element name="sku" type="xs:string"/></xs:sequence></xs:complexType>
+        </xs:schema>
+    </types>
+
+    <message name="GetStockLevelInput"><part name="parameters" element="tns:StockLevelRequest"/></message>
+    <message name="GetStockLevelOutput"><part name="parameters" element="tns:StockLevelResponse"/></message>
+    <message name="UnknownSku"><part name="fault" type="tns:UnknownSkuFault"/></message>
+
+    <portType name="StockPortType">
+        <operation name="GetStockLevel">
+            <input message="tns:GetStockLevelInput"/>
+            <output message="tns:GetStockLevelOutput"/>
+            <fault name="UnknownSku" message="tns:UnknownSku"/>
+        </operation>
+    </portType>
+
+    <binding name="StockSoapBinding" type="tns:StockPortType">
+        <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+        <operation name="GetStockLevel">
+            <soap:operation soapAction="http://shop.example/stock/GetStockLevel"/>
+            <input><soap:body use="literal"/></input>
+            <output><soap:body use="literal"/></output>
+            <fault name="UnknownSku"><soap:fault name="UnknownSku" use="literal"/></fault>
+        </operation>
+    </binding>
+
+    <service name="StockService">
+        <port name="StockPort" binding="tns:StockSoapBinding">
+            <soap:address location="https://erp.shop.example/soap/stock"/>
+        </port>
+    </service>
+</definitions>

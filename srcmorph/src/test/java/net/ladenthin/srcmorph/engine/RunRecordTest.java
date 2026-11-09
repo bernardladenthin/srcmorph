@@ -6,14 +6,16 @@ package net.ladenthin.srcmorph.engine;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import net.ladenthin.srcmorph.indexer.AiIndexOutcome;
-import net.ladenthin.srcmorph.provider.AiGenerationUsage;
+import java.util.List;
+import net.ladenthin.srcmorph.indexer.IndexOutcome;
+import net.ladenthin.srcmorph.provider.GenerationUsage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -22,46 +24,55 @@ public class RunRecordTest {
     @TempDir
     Path tempDir;
 
-    private static RunRecord record() {
-        final RunRecord record = new RunRecord("9.9.9");
-        record.add(new RunRecord.Entry(
+    private static RunRecord runRecord() {
+        // the run starts at 1 s on its clock and is written at 5.5 s; two files were skipped
+        final long[] now = {1_000_000_000L};
+        final RunRecord runRecord = new RunRecord("9.9.9", 2, () -> now[0]);
+        now[0] = 6_500_000_000L;
+        runRecord.addModelLoad("m", 750_000_000L);
+        runRecord.addModelLoad("m", 250_000_000L);
+        runRecord.addModelLoad("other", 0L);
+        runRecord.add(new RunRecord.FileRecord(
                 "src/A.java",
                 "java",
                 "file-body-java",
                 "m",
-                AiIndexOutcome.WRITTEN,
-                new AiGenerationUsage(2, 100, 20, 80, "stop"),
+                IndexOutcome.WRITTEN,
+                new GenerationUsage(2, 100, 20, 80, "stop"),
                 1_500_000_000L,
                 "AAAA0000",
                 "BBBB1111"));
-        record.add(new RunRecord.Entry(
+        runRecord.add(new RunRecord.FileRecord(
                 "src/B.java",
                 "java",
                 "file-body-java",
                 "m",
-                AiIndexOutcome.UNCHANGED,
-                AiGenerationUsage.NONE,
+                IndexOutcome.UNCHANGED,
+                GenerationUsage.NONE,
                 500_000_000L,
                 "AAAA0000",
                 ""));
-        record.add(new RunRecord.Entry(
+        runRecord.add(new RunRecord.FileRecord(
                 "src/C.sql",
                 "sql",
                 "file-body-sql",
                 "n",
-                AiIndexOutcome.FAILED,
-                new AiGenerationUsage(1, 50, 7, 0, "length"),
+                IndexOutcome.FAILED,
+                new GenerationUsage(1, 50, 7, 0, "length"),
                 1_000_000_000L,
                 "CCCC2222",
                 ""));
-        return record;
+        return runRecord;
     }
 
+    // <editor-fold defaultstate="collapsed" desc="toJson">
     @Test
-    public void toJson_oneObjectPerFile() throws Exception {
-        final JsonNode root = new ObjectMapper().readTree(record().toJson());
+    public void toJson_threeFiles_writesOneObjectPerFile() throws Exception {
+        // act
+        final JsonNode root = new ObjectMapper().readTree(runRecord().toJson());
 
-        assertThat(root.get("pluginVersion").asText(), is(equalTo("9.9.9")));
+        // assert
+        assertThat(root.get("generatorVersion").asText(), is(equalTo("9.9.9")));
         final JsonNode a = root.get("files").get(0);
         assertThat(a.get("file").asText(), is(equalTo("src/A.java")));
         assertThat(a.get("rule").asText(), is(equalTo("java")));
@@ -81,9 +92,12 @@ public class RunRecordTest {
     }
 
     @Test
-    public void toJson_totals() throws Exception {
-        final JsonNode totals = new ObjectMapper().readTree(record().toJson()).get("totals");
+    public void toJson_threeFiles_writesTheTotals() throws Exception {
+        // act
+        final JsonNode totals =
+                new ObjectMapper().readTree(runRecord().toJson()).get("totals");
 
+        // assert
         assertThat(totals.get("files").asInt(), is(3));
         assertThat(totals.get("written").asInt(), is(1));
         assertThat(totals.get("unchanged").asInt(), is(1));
@@ -93,46 +107,65 @@ public class RunRecordTest {
         assertThat(totals.get("cachedPromptTokens").asLong(), is(80L));
         assertThat(totals.get("completionTokens").asLong(), is(27L));
         assertThat(totals.get("seconds").asDouble(), is(3.0d));
+        assertThat(totals.get("skipped").asInt(), is(2));
+        assertThat(totals.get("wallSeconds").asDouble(), is(5.5d));
+        // a model that loaded twice adds up; one that loaded in no time is not listed
+        assertThat(totals.get("modelLoadSeconds").toString(), is("{\"m\":1.0}"));
     }
 
     @Test
     public void toJson_totals_countUnchangedAndFailedApart() throws Exception {
-        final RunRecord record = record();
-        record.add(new RunRecord.Entry(
+        // arrange
+        final RunRecord runRecord = runRecord();
+        runRecord.add(new RunRecord.FileRecord(
                 "src/D.java",
                 "java",
                 "file-body-java",
                 "m",
-                AiIndexOutcome.UNCHANGED,
-                AiGenerationUsage.NONE,
+                IndexOutcome.UNCHANGED,
+                GenerationUsage.NONE,
                 0L,
                 "AAAA0000",
                 ""));
 
-        final JsonNode totals = new ObjectMapper().readTree(record.toJson()).get("totals");
+        // act
+        final JsonNode totals = new ObjectMapper().readTree(runRecord.toJson()).get("totals");
 
+        // assert
         assertThat(totals.get("unchanged").asInt(), is(2));
         assertThat(totals.get("failed").asInt(), is(1));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="write">
     @Test
-    public void write_createsTheDirectory() throws Exception {
+    public void write_missingDirectory_createsTheDirectory() throws Exception {
+        // arrange
         final Path file = tempDir.resolve("records/run.json");
 
-        record().write(file);
+        // act
+        runRecord().write(file);
 
-        assertThat(new String(Files.readAllBytes(file), StandardCharsets.UTF_8), is(equalTo(record().toJson())));
+        // assert
+        assertThat(
+                new String(Files.readAllBytes(file), StandardCharsets.UTF_8),
+                is(equalTo(runRecord().toJson())));
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="entries">
     @Test
-    public void entries_areInOrderAndUnmodifiable() {
-        final RunRecord record = record();
+    public void entries_threeFiles_areInOrderAndUnmodifiable() {
+        // arrange
+        final RunRecord runRecord = runRecord();
 
-        assertThat(record.entries().size(), is(3));
-        assertThat(record.entries().get(2).file(), is(equalTo("src/C.sql")));
-        assertThat(record.entries().get(2).outcome(), is(AiIndexOutcome.FAILED));
-        assertThat(record.entries().get(0).usage().calls(), is(2));
-        org.junit.jupiter.api.Assertions.assertThrows(
-                UnsupportedOperationException.class, () -> record.entries().clear());
+        // act, assert
+        assertThat(runRecord.entries().size(), is(3));
+        assertThat(runRecord.entries().get(2).file(), is(equalTo("src/C.sql")));
+        assertThat(runRecord.entries().get(2).outcome(), is(IndexOutcome.FAILED));
+        assertThat(runRecord.entries().get(0).usage().calls(), is(2));
+        final List<RunRecord.FileRecord> entries = runRecord.entries();
+        assertThrows(UnsupportedOperationException.class, entries::clear);
     }
+    // </editor-fold>
 }

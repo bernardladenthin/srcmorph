@@ -36,22 +36,27 @@ public class VmlensInterleavingSmokeTest {
      *
      * @throws InterruptedException if joining a worker thread is interrupted
      */
+    // <editor-fold defaultstate="collapsed" desc="incrementAndGet">
     @Test
-    public void atomicIncrementsAreLinearizable() throws InterruptedException {
+    public void incrementAndGet_twoThreadsInEveryInterleaving_countsTwo() throws InterruptedException {
         try (AllInterleavings allInterleavings = new AllInterleavings("VmlensInterleavingSmokeTest.atomicIncrements")) {
             while (allInterleavings.hasNext()) {
+                // arrange
                 final AtomicLong counter = new AtomicLong();
 
                 final Thread first = new Thread(counter::incrementAndGet);
                 final Thread second = new Thread(counter::incrementAndGet);
 
+                // act
                 first.start();
                 second.start();
                 first.join();
                 second.join();
 
+                // assert
                 assertThat(counter.get(), is(2L));
             }
         }
     }
+    // </editor-fold>
 }

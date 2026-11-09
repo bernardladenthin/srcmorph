@@ -13,10 +13,13 @@ import org.junit.jupiter.api.Test;
 
 public class RemoteModelTest {
 
+    // <editor-fold defaultstate="collapsed" desc="constructor">
     @Test
-    public void accessors_returnWhatTheConstructorGot() {
+    public void constructor_allValuesGiven_accessorsReturnWhatTheConstructorGot() {
+        // act
         final RemoteModel model = new RemoteModel("x-ai/grok-4.7", 500000, new BigDecimal("2"), new BigDecimal("6"));
 
+        // assert
         assertThat(model.id(), is("x-ai/grok-4.7"));
         assertThat(model.contextLength(), is(500000));
         assertThat(model.inputUsdPerMillion(), is(new BigDecimal("2")));
@@ -24,16 +27,20 @@ public class RemoteModelTest {
     }
 
     @Test
-    public void prices_mayBeUnknown() {
+    public void constructor_nullPrices_pricesAreUnknown() {
+        // act
         final RemoteModel model = new RemoteModel("auto", RemoteModel.UNKNOWN_CONTEXT_LENGTH, null, null);
 
-        assertThat(model.contextLength(), is(0));
+        // assert
+        assertThat(model.contextLength(), is(-1));
         assertThat(model.inputUsdPerMillion(), is(nullValue()));
         assertThat(model.outputUsdPerMillion(), is(nullValue()));
     }
 
     @Test
     public void constructor_nullId_throws() {
+        // act, assert
         assertThrows(NullPointerException.class, () -> new RemoteModel(null, 0, null, null));
     }
+    // </editor-fold>
 }

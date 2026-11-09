@@ -24,7 +24,7 @@ import org.junit.jupiter.api.Tag;
  * <p>A path with a root of its own (absolute, or on Windows root- or drive-relative) is used as it
  * is, whether the directory is unset, relative, absolute or does not exist, and an absolute directory
  * makes every relative path below it absolute. One rule implements it for both kinds of path,
- * {@link AiPathSupport#resolveAgainst}, so a test carrying this marker guards both: a change that
+ * {@link SourcePaths#resolveAgainst}, so a test carrying this marker guards both: a change that
  * breaks absolute paths for models or for prompts fails a test that says so. The marker is a JUnit
  * {@link Tag} ({@value #TAG}), so {@code mvn test -Dgroups=absolute-path} runs exactly these tests.
  * Modules that cannot see this test class tag their tests with the same string.</p>

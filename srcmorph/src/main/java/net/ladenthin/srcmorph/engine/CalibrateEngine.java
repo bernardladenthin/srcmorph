@@ -15,16 +15,18 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import lombok.ToString;
-import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
-import net.ladenthin.srcmorph.config.AiGenerationConfig;
-import net.ladenthin.srcmorph.config.AiModelDefinitionSupport;
+import net.ladenthin.srcmorph.config.ModelDefinition;
+import net.ladenthin.srcmorph.config.ModelRegistry;
+import net.ladenthin.srcmorph.config.RoutingRule;
 import net.ladenthin.srcmorph.config.SrcMorphConfiguration;
-import net.ladenthin.srcmorph.indexer.AiCalibrationMeasurement;
-import net.ladenthin.srcmorph.indexer.AiCalibrationRunner;
-import net.ladenthin.srcmorph.prompt.AiPromptPreparationSupport;
-import net.ladenthin.srcmorph.prompt.AiPromptSupport;
-import net.ladenthin.srcmorph.provider.AiGenerationProvider;
-import net.ladenthin.srcmorph.provider.AiGenerationProviderFactory;
+import net.ladenthin.srcmorph.indexer.CalibrationMeasurement;
+import net.ladenthin.srcmorph.indexer.CalibrationRunner;
+import net.ladenthin.srcmorph.prompt.PromptCatalog;
+import net.ladenthin.srcmorph.prompt.PromptPreparer;
+import net.ladenthin.srcmorph.provider.GenerationProvider;
+import net.ladenthin.srcmorph.provider.GenerationProviderFactory;
+import net.ladenthin.srcmorph.routing.RuleSelector;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,11 +36,12 @@ import org.slf4j.LoggerFactory;
  *
  * <p>Extracted from what was {@code CalibrateMojo.execute()} in the {@code llamacpp-ai-index-maven-plugin}
  * module. For each distinct model a {@link GenerateEngine} run would load (the {@code aiDefinitionKey}s
- * referenced by {@link SrcMorphConfiguration#getFieldGenerations()}), loads the model once (catching a
+ * referenced by {@link SrcMorphConfiguration#getRules()}), loads the model once (catching a
  * bad path / OOM / wrong native early), runs a couple of representative generations via
- * {@link AiCalibrationRunner}, and reads the model's own measured prefill/decode throughput. The caller
+ * {@link CalibrationRunner}, and reads the model's own measured prefill/decode throughput (an
+ * {@code openai-compatible} server reports none: its numbers are a wall-clock estimate). The caller
  * pastes {@link CalibrationReport#renderPasteBlock()} into the model's entry under {@code aiDefinitions} so the plan's time
- * estimate reflects <em>this</em> machine instead of the built-in reference-CPU coefficients.</p>
+ * estimate reflects <em>this</em> machine instead of the built-in estimate, which is based on GPT-6 Luna.</p>
  */
 @ToString
 public final class CalibrateEngine {
@@ -46,7 +49,8 @@ public final class CalibrateEngine {
     private static final Logger LOGGER = LoggerFactory.getLogger(CalibrateEngine.class);
 
     private final SrcMorphConfiguration config;
-    private final AiCalibrationRunner calibrationRunner = new AiCalibrationRunner();
+    private final GenerationProviderFactory providerFactory;
+    private final CalibrationRunner calibrationRunner = new CalibrationRunner();
 
     /**
      * Creates a new {@link CalibrateEngine} for the given run configuration.
@@ -54,46 +58,71 @@ public final class CalibrateEngine {
      * @param config the run configuration
      */
     public CalibrateEngine(final SrcMorphConfiguration config) {
-        this.config = config;
+        this(config, new GenerationProviderFactory());
     }
 
     /**
-     * Calibrates every distinct model referenced by the configured routing rules.
+     * Creates a new {@link CalibrateEngine} whose models are built by the given factory (a test hands
+     * in one whose provider fails).
+     *
+     * @param config          the run configuration
+     * @param providerFactory builds each calibrated model's provider
+     */
+    CalibrateEngine(final SrcMorphConfiguration config, final GenerationProviderFactory providerFactory) {
+        this.config = config;
+        this.providerFactory = providerFactory;
+    }
+
+    /**
+     * Calibrates every distinct model the configured routing rules route a file to; a skip rule routes
+     * none, so its model is not loaded. The rules are validated as a run validates them first (the rule
+     * set, every routed model defined, every prompt with a template, every model file).
      *
      * @return the calibration report, one measurement per distinct routed model
-     * @throws SrcMorphException if no routable rule is configured, or a model fails to load/generate (any
-     *                            {@link IOException} from the provider is caught per-model and rewrapped
-     *                            with the failing model's key)
+     * @throws SrcMorphException if no routable rule is configured, the rules are invalid, or a model fails
+     *                            to load or generate (any {@link IOException} or {@link RuntimeException}
+     *                            of the provider, a native one too, is caught per model and rewrapped with
+     *                            the failing model's key)
      */
     public CalibrationReport execute() throws SrcMorphException {
-        final List<AiFieldGenerationConfig> fieldGenerations = config.getFieldGenerations();
-        if (fieldGenerations == null || fieldGenerations.isEmpty()) {
-            throw new SrcMorphException("No fieldGenerations configured (srcMorph.fieldGenerations of the"
-                    + " configuration file); nothing to calibrate.");
+        final List<? extends @Nullable RoutingRule> rules = config.getRules();
+        if (rules == null || rules.isEmpty()) {
+            throw new SrcMorphException(
+                    "No rules configured (srcMorph.rules of the" + " configuration file); nothing to calibrate.");
         }
 
-        final AiPromptSupport promptSupport = EngineSupport.buildPromptSupport(
-                config.getPromptDefinitions(), config.getProfileDirectory(), config.getFieldGenerations());
-        final AiModelDefinitionSupport modelDefinitionSupport =
+        final PromptCatalog promptSupport = EngineSupport.buildPromptSupport(
+                config.getPromptDefinitions(), config.getProfileDirectory(), config.getRules());
+        final ModelRegistry modelDefinitionSupport =
                 EngineSupport.buildAiModelDefinitionSupport(config.getAiDefinitions(), config.getModelDirectory());
-        final AiPromptPreparationSupport promptPreparationSupport = new AiPromptPreparationSupport(promptSupport);
-        final AiGenerationProviderFactory providerFactory = new AiGenerationProviderFactory();
+        final PromptPreparer promptPreparationSupport = new PromptPreparer(promptSupport);
 
-        // Distinct routed models, each mapped to a representative prompt key (skip rules have none).
-        final Map<String, String> modelToPrompt = new LinkedHashMap<>();
-        for (final AiFieldGenerationConfig rule : fieldGenerations) {
-            if (rule == null || rule.getAiDefinitionKey() == null || rule.getPromptKey() == null) {
-                continue;
+        // the checks of a run, so a calibration fails on what the run would fail on, as a configuration error
+        try {
+            new RuleSelector().validate(rules);
+        } catch (final IllegalArgumentException e) {
+            throw new SrcMorphException("Invalid rules: " + e.getMessage(), e);
+        }
+        final List<RoutingRule> routed = new ArrayList<>(rules.size());
+        for (final @Nullable RoutingRule rule : rules) {
+            if (rule != null && !rule.isSkip()) {
+                routed.add(rule);
             }
-            modelToPrompt.putIfAbsent(rule.getAiDefinitionKey(), rule.getPromptKey());
+        }
+        EngineSupport.requireDefinedModels(modelDefinitionSupport, routed);
+        EngineSupport.requirePrompts(promptSupport, routed);
+
+        // Distinct routed models, each mapped to a representative prompt key; a valid route rule has both.
+        final Map<String, String> modelToPrompt = new LinkedHashMap<>();
+        for (final RoutingRule rule : routed) {
+            modelToPrompt.putIfAbsent(rule.requireAiDefinitionKey(), rule.requirePromptKey());
         }
         if (modelToPrompt.isEmpty()) {
             throw new SrcMorphException("No routable (model + prompt) rule found to calibrate.");
         }
 
         // Same fail-fast check as the generate goal: calibrate loads every routed model in turn.
-        EngineSupport.validateRoutedModelPaths(
-                config.getGenerationProvider(), modelDefinitionSupport, fieldGenerations);
+        EngineSupport.validateRoutedModelPaths(config.getGenerationProvider(), modelDefinitionSupport, rules);
 
         LOGGER.info(
                 "AI index calibration: {} model(s). Provider: {}",
@@ -102,12 +131,7 @@ public final class CalibrateEngine {
         final List<CalibrationReport.ModelMeasurement> measurements = new ArrayList<>(modelToPrompt.size());
         for (final Map.Entry<String, String> entry : modelToPrompt.entrySet()) {
             measurements.add(calibrateModel(
-                    entry.getKey(),
-                    entry.getValue(),
-                    modelDefinitionSupport,
-                    promptSupport,
-                    promptPreparationSupport,
-                    providerFactory));
+                    entry.getKey(), entry.getValue(), modelDefinitionSupport, promptSupport, promptPreparationSupport));
         }
 
         final CalibrationReport report = new CalibrationReport(measurements);
@@ -157,35 +181,60 @@ public final class CalibrateEngine {
     }
 
     /**
-     * Loads one model, measures it via {@link AiCalibrationRunner}, and logs the result.
+     * Loads one model, measures it via {@link CalibrationRunner}, and logs the result.
      *
      * @param modelKey                 the aiDefinitionKey to calibrate
      * @param promptKey                a representative prompt key routed to this model
      * @param modelDefinitionSupport   model lookup
      * @param promptSupport            prompt lookup (for the provider)
      * @param promptPreparationSupport prompt preparation (for the window calculation)
-     * @param providerFactory          provider factory
      * @return the model's key paired with its measurement
-     * @throws SrcMorphException if the model fails to load or generate
+     * @throws SrcMorphException if the model fails to load or generate: an {@link IOException} and a
+     *                           {@link RuntimeException} (the JNI binding's {@code IllegalStateException}
+     *                           of a model that does not load, say) alike, naming the model
      */
     private CalibrationReport.ModelMeasurement calibrateModel(
             final String modelKey,
             final String promptKey,
-            final AiModelDefinitionSupport modelDefinitionSupport,
-            final AiPromptSupport promptSupport,
-            final AiPromptPreparationSupport promptPreparationSupport,
-            final AiGenerationProviderFactory providerFactory)
+            final ModelRegistry modelDefinitionSupport,
+            final PromptCatalog promptSupport,
+            final PromptPreparer promptPreparationSupport)
             throws SrcMorphException {
-        final AiGenerationConfig modelConfig = modelDefinitionSupport.getConfig(modelKey);
+        try {
+            return measureModel(modelKey, promptKey, modelDefinitionSupport, promptSupport, promptPreparationSupport);
+        } catch (final IOException | RuntimeException e) {
+            throw new SrcMorphException("Calibration failed for model '" + modelKey + "': " + e, e);
+        }
+    }
+
+    /**
+     * Loads one model, measures it and logs the result; {@link #calibrateModel} names the model in a failure.
+     *
+     * @param modelKey                 the aiDefinitionKey to calibrate
+     * @param promptKey                a representative prompt key routed to this model
+     * @param modelDefinitionSupport   model lookup
+     * @param promptSupport            prompt lookup (for the provider)
+     * @param promptPreparationSupport prompt preparation (for the window calculation)
+     * @return the model's key paired with its measurement
+     * @throws IOException if the provider fails
+     */
+    private CalibrationReport.ModelMeasurement measureModel(
+            final String modelKey,
+            final String promptKey,
+            final ModelRegistry modelDefinitionSupport,
+            final PromptCatalog promptSupport,
+            final PromptPreparer promptPreparationSupport)
+            throws IOException {
+        final ModelDefinition modelConfig = modelDefinitionSupport.definition(modelKey);
         final long windowChars = calibrationRunner.windowChars(modelConfig, promptKey, promptPreparationSupport);
 
         LOGGER.info("");
         LOGGER.info("Model '{}': loading (window ~{} source chars)...", modelKey, windowChars);
-        try (AiGenerationProvider provider = providerFactory.create(
+        try (GenerationProvider provider = providerFactory.create(
                 config.getGenerationProvider(),
-                EngineSupport.resolveLlamaCppJniConfig(modelDefinitionSupport, modelKey),
+                EngineSupport.resolveProviderConfig(modelDefinitionSupport, modelKey),
                 promptSupport)) {
-            final AiCalibrationMeasurement m =
+            final CalibrationMeasurement m =
                     calibrationRunner.measure(provider, modelConfig, promptKey, promptPreparationSupport);
 
             LOGGER.info(String.format(
@@ -203,19 +252,46 @@ public final class CalibrateEngine {
                         m.midPrefillTokensPerSecond(),
                         m.prefillTokensPerSecond()));
             }
-            // The only observable the prefix-reuse settings produce. Reporting it is what turns
-            // cachePrompt/cacheReuse/swaFull from an article of faith into a measurement.
-            if (m.cachedPromptTokens() > 0) {
-                LOGGER.info(
-                        "  (prompt cache: {} prompt token(s) reused from the KV cache - prefix reuse is working)",
-                        m.cachedPromptTokens());
-            } else {
-                LOGGER.warn("  (prompt cache: no prompt tokens were reused on this model; "
-                        + "cachePrompt/cacheReuse/swaFull are costing KV memory without paying for it)");
-            }
+            logPromptCache(modelKey, modelConfig, m.cachedPromptTokens());
             return new CalibrationReport.ModelMeasurement(modelKey, m);
-        } catch (final IOException e) {
-            throw new SrcMorphException("Calibration failed for model '" + modelKey + "': " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Logs the prompt tokens the model reused, as its provider reuses them.
+     *
+     * <p>For a local model it is the only observable the prefix-reuse settings produce; reporting it is
+     * what turns {@code cachePrompt}/{@code cacheReuse}/{@code swaFull} from an article of faith into a
+     * measurement, so none reused is a warning about them. An {@code openai-compatible} server caches a
+     * prompt (or not) on its own: those settings do not reach it, and none reused names no setting.</p>
+     *
+     * @param modelKey           the calibrated model's key
+     * @param modelConfig        its definition (its own {@code provider} overrides the run's)
+     * @param cachedPromptTokens the prompt tokens the near-window request reused
+     */
+    private void logPromptCache(
+            final String modelKey, final ModelDefinition modelConfig, final int cachedPromptTokens) {
+        final boolean remote = GenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE.equals(
+                GenerationProviderFactory.effectiveProvider(config.getGenerationProvider(), modelConfig.getProvider()));
+        if (remote) {
+            if (cachedPromptTokens > 0) {
+                LOGGER.info(
+                        "  (prompt cache: the server reports {} prompt token(s) of model '{}' read from its cache)",
+                        cachedPromptTokens,
+                        modelKey);
+            } else {
+                LOGGER.info(
+                        "  (prompt cache: the server reports no cached prompt tokens for model '{}'; a remote"
+                                + " server caches on its own, cachePrompt/cacheReuse/swaFull do not reach it)",
+                        modelKey);
+            }
+        } else if (cachedPromptTokens > 0) {
+            LOGGER.info(
+                    "  (prompt cache: {} prompt token(s) reused from the KV cache - prefix reuse is working)",
+                    cachedPromptTokens);
+        } else {
+            LOGGER.warn("  (prompt cache: no prompt tokens were reused on this model; "
+                    + "cachePrompt/cacheReuse/swaFull are costing KV memory without paying for it)");
         }
     }
 }

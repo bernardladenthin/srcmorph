@@ -24,8 +24,10 @@ covers every OS, CPU and GPU. Yours carries only the natives of this machine (32
 below) and the GPU module you choose.
 
 > [!NOTE]
-> This is for **srcmorph 1.4.0** (on `net.ladenthin:llama` 6.0.0); both resolve from Maven Central.
-> For 1.3.0, read this page at the `v1.3.0` tag: its configuration keys differ.
+> The jar's `pom.xml` takes **srcmorph 1.4.0** (on `net.ladenthin:llama` 6.0.0), both from Maven
+> Central; the configuration files on `main` need the next release: until it is out, `mvn install`
+> the reactor and pass `-Dsrcmorph.version=1.5.0-SNAPSHOT`, or read this page at the `v1.4.0` tag.
+> For 1.3.0, read it at the `v1.3.0` tag: its configuration keys differ.
 
 ## Step 1 — pick the GPU module, build the jar
 
@@ -60,8 +62,9 @@ every key. The ones to set:
   where the `.ai.md` files go. Write forward slashes (`C:/work/project`): in a double-quoted YAML
   string, `C:\x` is an escape.
 - **`modelDirectory`** and the GGUF files of the three models under `aiDefinitions` (`modelPath`):
-  gpt-oss-20b for every file up to ~275 KB, every package and the project overview, IBM Granite 4.0
-  H-Tiny and H-1B for larger files. gpt-oss-20b takes about 12 GB for the model and up to 11 GB more
+  gpt-oss-20b for every package, the project overview and every file but the Java, SQL, POM and
+  plain XML files from ~260 KB, which IBM Granite 4.0 H-Tiny and H-1B take (a larger file of any
+  other kind stays on gpt-oss-20b, read chunk by chunk). gpt-oss-20b takes about 12 GB for the model and up to 11 GB more
   when its 96K window is full; with less memory, lower its `contextSize`, or let the rules'
   `aiDefinitionKey` name `granite-4.0-h-tiny-mapreduce`, the fastest on a CPU in
   [the benchmark](ai-index-benchmark/COMPARISON.md).
@@ -69,9 +72,9 @@ every key. The ones to set:
   (`promptKey`, `factsKey`). The shipped `../../profiles/v3` is this repository's measured profile and
   is found as long as the example stays in the clone; copy the directory and point there to change a
   prompt.
-- **`fieldGenerations`**: which prompt and model each file gets, by extension and size; the package
-  and project summaries have rules of their own, `packageFieldGenerations` and
-  `projectFieldGenerations`.
+- **`rules`**: which prompt and model each file gets, by extension and size; the package
+  and project summaries have rules of their own, `packageRules` and
+  `projectRules`.
 
 What a run does: for every matching file, srcmorph sends the prompt and the source to the model and
 writes the answer next to the source's path under `outputDirectory`, as `<file>.ai.md`.

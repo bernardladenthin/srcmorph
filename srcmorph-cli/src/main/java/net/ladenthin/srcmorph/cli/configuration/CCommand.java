@@ -30,23 +30,26 @@ public enum CCommand {
      * Phase 1: indexes source files and fills in their AI-generated summary fields
      * ({@code net.ladenthin.srcmorph.engine.GenerateEngine}, exactly as configured).
      */
-    GenerateFileIndex("one .ai.md per source file (srcMorph.fieldGenerations)"),
+    GenerateFileIndex("one .ai.md per source file (srcMorph.rules)"),
 
     /**
      * Phase 2: aggregates per-package {@code .ai.md} index files
      * ({@code net.ladenthin.srcmorph.engine.AggregatePackagesEngine}).
      */
-    AggregatePackages("one package.ai.md per directory (packageFieldGenerations)"),
+    AggregatePackages("one package.ai.md per directory (packageRules)"),
 
     /**
      * Phase 3: aggregates the single project-level {@code .ai.md} index
      * ({@code net.ladenthin.srcmorph.engine.AggregateProjectEngine}).
      */
-    AggregateProject("project.ai.md, with an overview by projectFieldGenerations"),
+    AggregateProject("project.ai.md, with an overview by projectRules"),
 
     /**
      * Runs all three phases in order: {@link #GenerateFileIndex}, then {@link #AggregatePackages},
-     * then {@link #AggregateProject}, stopping at the first phase that fails.
+     * then {@link #AggregateProject}, stopping at the first phase that fails. The package and the
+     * project phase are checked first, as {@link #Check} checks them (their rules, profile files and
+     * models), so a missing or wrong phase rule fails before the file phase sends a single file;
+     * with {@code planOnly} only the file phase is planned and nothing else is checked.
      */
     All("GenerateFileIndex, then AggregatePackages, then AggregateProject"),
 

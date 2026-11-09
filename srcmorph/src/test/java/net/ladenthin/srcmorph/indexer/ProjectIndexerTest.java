@@ -9,6 +9,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -16,15 +17,16 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
 import net.ladenthin.srcmorph.CommonTestFixtures;
-import net.ladenthin.srcmorph.config.AiFieldGenerationConfig;
+import net.ladenthin.srcmorph.config.PromptDefinition;
+import net.ladenthin.srcmorph.config.RegenerateOn;
+import net.ladenthin.srcmorph.config.RoutingRule;
 import net.ladenthin.srcmorph.document.AiMdDocument;
 import net.ladenthin.srcmorph.document.AiMdDocumentCodec;
 import net.ladenthin.srcmorph.document.AiMdHeader;
 import net.ladenthin.srcmorph.document.AiMdHeaderCodec;
-import net.ladenthin.srcmorph.prompt.AiPromptDefinition;
-import net.ladenthin.srcmorph.prompt.AiPromptSupport;
-import net.ladenthin.srcmorph.provider.AiGenerationProvider;
-import net.ladenthin.srcmorph.provider.MockAiGenerationProvider;
+import net.ladenthin.srcmorph.prompt.PromptCatalog;
+import net.ladenthin.srcmorph.provider.GenerationProvider;
+import net.ladenthin.srcmorph.provider.MockGenerationProvider;
 import org.junit.jupiter.api.Test;
 
 public class ProjectIndexerTest {
@@ -47,13 +49,13 @@ public class ProjectIndexerTest {
                 "main/java/com/example/billing",
                 "> Creates and sends invoices.\n\n#### Purpose\n- billing\n");
 
-        final ProjectIndexer indexer = new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false);
+        final ProjectIndexer indexer = new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false, new RegenerateOn());
 
         // act
-        final AiIndexOutcome written = indexer.aggregate(outputRoot);
+        final IndexOutcome written = indexer.aggregate(outputRoot);
 
         // pre-assert
-        assertThat(written, is(AiIndexOutcome.WRITTEN));
+        assertThat(written, is(IndexOutcome.WRITTEN));
         final Path projectFile = outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME);
         assertThat(Files.exists(projectFile), is(true));
 
@@ -61,12 +63,12 @@ public class ProjectIndexerTest {
         final AiMdDocument document = documentCodec.read(projectFile);
         assertThat(document, is(notNullValue()));
         assertThat(document.header().title(), is(equalTo(PROJECT_TITLE)));
-        assertThat(document.header().x(), is(equalTo(AiMdHeaderCodec.NODE_TYPE_PROJECT)));
-        assertThat(document.header().g(), is(equalTo("1.0.0")));
-        assertThat(document.header().a(), is(equalTo("0.0.0")));
-        assertThat(document.header().c().trim().isEmpty(), is(false));
-        assertThat(document.header().d().trim().isEmpty(), is(false));
-        assertThat(document.header().t().trim().isEmpty(), is(false));
+        assertThat(document.header().nodeType(), is(equalTo(AiMdHeaderCodec.NODE_TYPE_PROJECT)));
+        assertThat(document.header().generatorVersion(), is(equalTo("1.0.0")));
+        assertThat(document.header().aiVersion(), is(equalTo("0.0.0")));
+        assertThat(document.header().checksum().trim().isEmpty(), is(false));
+        assertThat(document.header().sourceDate().trim().isEmpty(), is(false));
+        assertThat(document.header().generatedAt().trim().isEmpty(), is(false));
 
         // assert: the body carries each package's path + lead (one line each, no link)
         final String body = document.body();
@@ -85,18 +87,108 @@ public class ProjectIndexerTest {
 
     // <editor-fold defaultstate="collapsed" desc="no packages">
     @Test
+    public void aggregate_aDirectoryThatCannotBeListed_failsWithItsIOException() throws Exception {
+        // arrange
+        final Path outputRoot = Files.createTempDirectory("ai-index-test").resolve("ai");
+        final Path locked = outputRoot.resolve("main/locked");
+        Files.createDirectories(locked);
+        final ProjectIndexer indexer = new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false, new RegenerateOn());
+
+        // act
+        final IOException thrown;
+        try (AutoCloseable denied = CommonTestFixtures.unlistable(locked)) {
+            thrown = assertThrows(IOException.class, () -> indexer.aggregate(outputRoot));
+        }
+
+        // assert
+        assertThat(thrown.getMessage(), containsString("locked"));
+    }
+
+    @Test
+    public void aggregate_aLinkToADirectory_isNotEntered() throws Exception {
+        // arrange: a package, a link to it beside it and a link back up, a loop
+        final Path outputRoot = Files.createTempDirectory("ai-index-test").resolve("ai");
+        writePackageFile(outputRoot.resolve("main/a/package.ai.md"), "main/a", "> A package.\n");
+        CommonTestFixtures.directoryLink(outputRoot.resolve("main/b"), outputRoot.resolve("main/a"));
+        CommonTestFixtures.directoryLink(outputRoot.resolve("main/a/loop"), outputRoot.resolve("main"));
+        final ProjectIndexer indexer = new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false, new RegenerateOn());
+
+        // act
+        final IndexOutcome written = indexer.aggregate(outputRoot);
+
+        // assert
+        assertThat(written, is(IndexOutcome.WRITTEN));
+        final String project = Files.readString(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME));
+        assertThat(project, containsString("main/a/package.ai.md"));
+        assertThat(project, not(containsString("main/b/")));
+        assertThat(project, not(containsString("loop")));
+    }
+
+    @Test
+    public void aggregate_anOutputDirectoryThatIsALink_isEntered() throws Exception {
+        // arrange
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        writePackageFile(temp.resolve("real/main/a/package.ai.md"), "main/a", "> A package.\n");
+        final Path outputRoot = temp.resolve("ai");
+        CommonTestFixtures.directoryLink(outputRoot, temp.resolve("real"));
+        final ProjectIndexer indexer = new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false, new RegenerateOn());
+
+        // act
+        final IndexOutcome written = indexer.aggregate(outputRoot);
+
+        // assert
+        assertThat(written, is(IndexOutcome.WRITTEN));
+        assertThat(
+                Files.readString(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME)),
+                containsString("main/a/package.ai.md"));
+    }
+
+    @Test
+    public void aggregate_aJunctionWhoseTargetIsGone_isLeftOut() throws Exception {
+        // arrange
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path outputRoot = temp.resolve("ai");
+        writePackageFile(outputRoot.resolve("main/a/package.ai.md"), "main/a", "> A package.\n");
+        final Path target = Files.createDirectory(temp.resolve("target"));
+        CommonTestFixtures.junction(outputRoot.resolve("main/gone"), target);
+        Files.delete(target);
+        final ProjectIndexer indexer = new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false, new RegenerateOn());
+
+        // act
+        final IndexOutcome written = indexer.aggregate(outputRoot);
+
+        // assert
+        assertThat(written, is(IndexOutcome.WRITTEN));
+    }
+
+    @Test
+    public void aggregate_anOutputDirectoryThatIsALinkToADirectoryThatCannotBeListed_fails() throws Exception {
+        // arrange
+        final Path temp = Files.createTempDirectory("ai-index-test");
+        final Path target = Files.createDirectories(temp.resolve("real"));
+        final Path outputRoot = temp.resolve("ai");
+        CommonTestFixtures.directoryLink(outputRoot, target);
+        final ProjectIndexer indexer = new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false, new RegenerateOn());
+
+        // act, assert
+        try (AutoCloseable denied = CommonTestFixtures.unlistable(target)) {
+            assertThrows(IOException.class, () -> indexer.aggregate(outputRoot));
+        }
+    }
+
+    @Test
     public void aggregate_noPackages_writesNothing() throws Exception {
         // arrange: the output root exists but holds no package.ai.md
         final Path outputRoot = Files.createTempDirectory("ai-index-test").resolve("ai");
         Files.createDirectories(outputRoot);
 
-        final ProjectIndexer indexer = new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false);
+        final ProjectIndexer indexer = new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false, new RegenerateOn());
 
         // act
-        final AiIndexOutcome written = indexer.aggregate(outputRoot);
+        final IndexOutcome written = indexer.aggregate(outputRoot);
 
         // assert
-        assertThat(written, is(AiIndexOutcome.UNCHANGED));
+        assertThat(written, is(IndexOutcome.UNCHANGED));
         assertThat(Files.exists(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME)), is(false));
     }
     // </editor-fold>
@@ -113,14 +205,15 @@ public class ProjectIndexerTest {
 
         // first run writes the file
         assertThat(
-                new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false).aggregate(outputRoot),
-                is(AiIndexOutcome.WRITTEN));
+                new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false, new RegenerateOn()).aggregate(outputRoot),
+                is(IndexOutcome.WRITTEN));
 
         // act: a second run over the same packages must detect no change
-        final AiIndexOutcome second = new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false).aggregate(outputRoot);
+        final IndexOutcome second =
+                new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false, new RegenerateOn()).aggregate(outputRoot);
 
         // assert
-        assertThat(second, is(AiIndexOutcome.UNCHANGED));
+        assertThat(second, is(IndexOutcome.UNCHANGED));
     }
 
     @Test
@@ -131,13 +224,14 @@ public class ProjectIndexerTest {
                 outputRoot.resolve("main/java/com/example/package.ai.md"),
                 "main/java/com/example",
                 "> Example package.\n");
-        new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false).aggregate(outputRoot);
+        new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false, new RegenerateOn()).aggregate(outputRoot);
 
         // act: force=true rewrites despite no content change
-        final AiIndexOutcome forced = new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", true).aggregate(outputRoot);
+        final IndexOutcome forced =
+                new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", true, new RegenerateOn()).aggregate(outputRoot);
 
         // assert
-        assertThat(forced, is(AiIndexOutcome.WRITTEN));
+        assertThat(forced, is(IndexOutcome.WRITTEN));
     }
     // </editor-fold>
 
@@ -148,7 +242,7 @@ public class ProjectIndexerTest {
         final Path outputRoot = Files.createTempDirectory("ai-index-test").resolve("ai");
         writePackageFile(outputRoot.resolve("main/java/com/example/package.ai.md"), "main/java/com/example", "");
 
-        final ProjectIndexer indexer = new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false);
+        final ProjectIndexer indexer = new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false, new RegenerateOn());
 
         // act
         indexer.aggregate(outputRoot);
@@ -168,7 +262,7 @@ public class ProjectIndexerTest {
         final Path outputRoot = Files.createTempDirectory("ai-index-test").resolve("ai");
         writePackageFile(outputRoot.resolve("package.ai.md"), "ai", "> The whole project.\n");
 
-        final ProjectIndexer indexer = new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false);
+        final ProjectIndexer indexer = new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false, new RegenerateOn());
 
         // act
         indexer.aggregate(outputRoot);
@@ -191,10 +285,10 @@ public class ProjectIndexerTest {
                 "> Example package.\n");
 
         // act
-        final AiIndexOutcome written = overviewIndexer(false).aggregate(outputRoot);
+        final IndexOutcome written = overviewIndexer(false).aggregate(outputRoot);
 
         // assert: an #### Overview section with the generated text precedes the deterministic listing
-        assertThat(written, is(AiIndexOutcome.WRITTEN));
+        assertThat(written, is(IndexOutcome.WRITTEN));
         final AiMdDocument document = documentCodec.read(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME));
         final String body = document.body();
         assertThat(body, containsString(OVERVIEW_HEADING));
@@ -214,7 +308,7 @@ public class ProjectIndexerTest {
                 "> Example package.\n");
 
         // act: the deterministic constructor performs no AI call
-        new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false).aggregate(outputRoot);
+        new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false, new RegenerateOn()).aggregate(outputRoot);
 
         // assert
         final AiMdDocument document = documentCodec.read(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME));
@@ -231,14 +325,14 @@ public class ProjectIndexerTest {
                 "> Example package.\n");
 
         // first run writes the overview
-        assertThat(overviewIndexer(false).aggregate(outputRoot), is(AiIndexOutcome.WRITTEN));
+        assertThat(overviewIndexer(false).aggregate(outputRoot), is(IndexOutcome.WRITTEN));
 
         // act: a second run over the same packages and same overview config must detect no change
-        // (the checksum folds in the generation signature but not the AI output)
-        final AiIndexOutcome second = overviewIndexer(false).aggregate(outputRoot);
+        // (the header records the overview's prompt and model, not the AI output)
+        final IndexOutcome second = overviewIndexer(false).aggregate(outputRoot);
 
         // assert
-        assertThat(second, is(AiIndexOutcome.UNCHANGED));
+        assertThat(second, is(IndexOutcome.UNCHANGED));
     }
 
     @Test
@@ -250,16 +344,97 @@ public class ProjectIndexerTest {
                 "main/java/com/example",
                 "> Example package.\n");
         assertThat(
-                new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false).aggregate(outputRoot),
-                is(AiIndexOutcome.WRITTEN));
+                new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false, new RegenerateOn()).aggregate(outputRoot),
+                is(IndexOutcome.WRITTEN));
 
-        // act: enabling the overview changes the generation signature in the checksum -> regenerate
-        final AiIndexOutcome rewritten = overviewIndexer(false).aggregate(outputRoot);
+        // act: enabling the overview records a prompt and a model hash where there were none -> regenerate
+        final IndexOutcome rewritten = overviewIndexer(false).aggregate(outputRoot);
 
         // assert
-        assertThat(rewritten, is(AiIndexOutcome.WRITTEN));
+        assertThat(rewritten, is(IndexOutcome.WRITTEN));
         final AiMdDocument document = documentCodec.read(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME));
         assertThat(document.body(), containsString(OVERVIEW_HEADING));
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="regenerateOn: children, prompt, model">
+    private static RegenerateOn childrenOff() {
+        final RegenerateOn on = new RegenerateOn();
+        on.setChildren(false);
+        return on;
+    }
+
+    @Test
+    public void aggregate_aChangedPackageLead_rewritesTheProjectWhileChildrenIsOn() throws Exception {
+        // arrange: the same packages, the second time with another lead
+        final Path outputRoot = Files.createTempDirectory("ai-index-test").resolve("ai");
+        final Path packageFile = outputRoot.resolve("main/java/com/example/package.ai.md");
+        writePackageFile(packageFile, "main/java/com/example", "> Example package.\n");
+        final ProjectIndexer indexer = new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false, new RegenerateOn());
+        assertThat(indexer.aggregate(outputRoot), is(IndexOutcome.WRITTEN));
+        final String firstK = documentCodec
+                .read(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME))
+                .header()
+                .childrenHash();
+        writePackageFile(packageFile, "main/java/com/example", "> Another lead.\n");
+
+        // act
+        final IndexOutcome frozen =
+                new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false, childrenOff()).aggregate(outputRoot);
+        final IndexOutcome rewritten = indexer.aggregate(outputRoot);
+
+        // assert
+        assertThat(firstK.isEmpty(), is(false));
+        assertThat(frozen, is(IndexOutcome.UNCHANGED));
+        assertThat(rewritten, is(IndexOutcome.WRITTEN));
+        final AiMdDocument document = documentCodec.read(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME));
+        assertThat(document.body(), containsString("Another lead."));
+        assertThat(document.header().childrenHash().equals(firstK), is(false));
+    }
+
+    @Test
+    public void aggregate_aChangedPackageChecksum_rewritesTheProjectAlsoWithChildrenOff() throws Exception {
+        // arrange: the same package and lead, the second time over another source checksum
+        final Path outputRoot = Files.createTempDirectory("ai-index-test").resolve("ai");
+        final Path packageFile = outputRoot.resolve("main/java/com/example/package.ai.md");
+        writePackageFile(packageFile, "main/java/com/example", "> Example package.\n", "AAAAAAAA");
+        final ProjectIndexer frozenChildren = new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false, childrenOff());
+        assertThat(frozenChildren.aggregate(outputRoot), is(IndexOutcome.WRITTEN));
+        final Path projectFile = outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME);
+        final String firstC = documentCodec.read(projectFile).header().checksum();
+        final IndexOutcome unchanged = frozenChildren.aggregate(outputRoot);
+        writePackageFile(packageFile, "main/java/com/example", "> Example package.\n", "BBBBBBBB");
+
+        // act
+        final IndexOutcome rewritten = frozenChildren.aggregate(outputRoot);
+
+        // assert
+        assertThat(unchanged, is(IndexOutcome.UNCHANGED));
+        assertThat(rewritten, is(IndexOutcome.WRITTEN));
+        assertThat(documentCodec.read(projectFile).header().checksum().equals(firstC), is(false));
+    }
+
+    @Test
+    public void aggregate_overviewVersusDeterministicIndex_onlyTheOverviewRecordsItsPromptAndModel() throws Exception {
+        // arrange
+        final Path outputRoot = Files.createTempDirectory("ai-index-test").resolve("ai");
+        writePackageFile(
+                outputRoot.resolve("main/java/com/example/package.ai.md"), "main/java/com/example", "> Example.\n");
+        final Path projectFile = outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME);
+
+        // act
+        new ProjectIndexer(PROJECT_TITLE, "1.0.0", "0.0.0", false, new RegenerateOn()).aggregate(outputRoot);
+        final AiMdHeader deterministic = documentCodec.read(projectFile).header();
+        overviewIndexer(false).aggregate(outputRoot);
+        final AiMdHeader withOverview = documentCodec.read(projectFile).header();
+
+        // assert
+        assertThat(deterministic.promptHash(), is(""));
+        assertThat(deterministic.modelHash(), is(""));
+        assertThat(withOverview.promptHash().isEmpty(), is(false));
+        assertThat(withOverview.modelHash().isEmpty(), is(false));
+        assertThat(withOverview.checksum(), is(deterministic.checksum()));
+        assertThat(withOverview.childrenHash(), is(deterministic.childrenHash()));
     }
     // </editor-fold>
 
@@ -271,42 +446,46 @@ public class ProjectIndexerTest {
 
     /**
      * Builds a {@link ProjectIndexer} with the AI overview enabled, backed by the deterministic
-     * {@link MockAiGenerationProvider} (which returns {@code "Mock summary for project.ai.md"}).
+     * {@link MockGenerationProvider} (which returns {@code "Mock summary for project.ai.md"}).
      *
      * @param force the force flag to pass through
      * @return an overview-enabled indexer
      */
     private ProjectIndexer overviewIndexer(final boolean force) {
-        return overviewIndexer(force, new MockAiGenerationProvider());
+        return overviewIndexer(force, new MockGenerationProvider());
     }
 
-    private ProjectIndexer overviewIndexer(final boolean force, final AiGenerationProvider provider) {
-        final AiFieldGenerationConfig overview = new AiFieldGenerationConfig();
+    private ProjectIndexer overviewIndexer(final boolean force, final GenerationProvider provider) {
+        final RoutingRule overview = new RoutingRule();
         overview.setPromptKey("project-body");
         overview.setAiDefinitionKey(CommonTestFixtures.AI_DEFINITION_KEY_DEFAULT);
 
-        final AiPromptDefinition prompt = new AiPromptDefinition();
+        final PromptDefinition prompt = new PromptDefinition();
         prompt.setKey("project-body");
         prompt.setTemplate("Write a project overview.\nProject: %s\nLeads:\n%s\n");
-        final AiPromptSupport promptSupport = new AiPromptSupport(Collections.singletonList(prompt));
+        final PromptCatalog promptSupport = new PromptCatalog(Collections.singletonList(prompt));
 
         return new ProjectIndexer(
                 PROJECT_TITLE,
                 "1.0.0",
                 "0.0.0",
                 force,
-                provider,
-                overview,
-                promptSupport,
-                CommonTestFixtures.createDefaultAiModelDefinitionSupport());
+                new RegenerateOn(),
+                new ProjectOverview(
+                        provider, overview, promptSupport, CommonTestFixtures.createDefaultAiModelDefinitionSupport()));
     }
 
     private void writePackageFile(final Path file, final String title, final String body) throws IOException {
+        writePackageFile(file, title, body, "AAAAAAAA");
+    }
+
+    private void writePackageFile(final Path file, final String title, final String body, final String checksum)
+            throws IOException {
         Files.createDirectories(file.getParent());
         final AiMdHeader header = new AiMdHeader(
                 title,
                 AiMdHeaderCodec.HEADER_VERSION_1_0,
-                "AAAAAAAA",
+                checksum,
                 "2026-03-16T00:00:00Z",
                 "2026-03-16T00:00:10Z",
                 "1.0.0",
@@ -318,15 +497,18 @@ public class ProjectIndexerTest {
     // <editor-fold defaultstate="collapsed" desc="incomplete answers">
     @Test
     public void aggregate_overviewWithAnIncompleteAnswer_writesNoProjectIndex() throws Exception {
+        // arrange
         final Path outputRoot = Files.createTempDirectory("ai-index-test").resolve("ai");
         writePackageFile(
                 outputRoot.resolve("main/java/com/example/package.ai.md"),
                 "main/java/com/example",
                 "> Example package.\n");
 
-        final AiIndexOutcome outcome = overviewIndexer(false, request -> "").aggregate(outputRoot);
+        // act
+        final IndexOutcome outcome = overviewIndexer(false, request -> "").aggregate(outputRoot);
 
-        assertThat(outcome, is(AiIndexOutcome.FAILED));
+        // assert
+        assertThat(outcome, is(IndexOutcome.FAILED));
         assertThat(Files.exists(outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME)), is(false));
     }
 
@@ -338,7 +520,7 @@ public class ProjectIndexerTest {
                 outputRoot.resolve("main/java/com/example/package.ai.md"),
                 "main/java/com/example",
                 "> Example package.\n");
-        assertThat(overviewIndexer(false).aggregate(outputRoot), is(AiIndexOutcome.WRITTEN));
+        assertThat(overviewIndexer(false).aggregate(outputRoot), is(IndexOutcome.WRITTEN));
         final Path projectFile = outputRoot.resolve(AiMdHeaderCodec.PROJECT_AI_MD_FILENAME);
         final AiMdDocument complete = documentCodec.read(projectFile);
         final String body = complete.body();
@@ -350,10 +532,10 @@ public class ProjectIndexerTest {
                                 + body.substring(body.indexOf("#### Packages"))));
 
         // act
-        final AiIndexOutcome outcome = overviewIndexer(false).aggregate(outputRoot);
+        final IndexOutcome outcome = overviewIndexer(false).aggregate(outputRoot);
 
         // assert
-        assertThat(outcome, is(AiIndexOutcome.WRITTEN));
+        assertThat(outcome, is(IndexOutcome.WRITTEN));
         assertThat(documentCodec.read(projectFile).body(), containsString(OVERVIEW_HEADING));
     }
     // </editor-fold>

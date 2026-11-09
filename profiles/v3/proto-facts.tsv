@@ -1,0 +1,25 @@
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# Protocol Buffers counters (.proto of proto2, proto3 and editions), for a rule with the prompt
+# file-body-contract: one per line, label TAB pattern (Java regex). The [ignore] line blanks line and
+# block comments and string literals, leftmost region first, so a "message" in a comment or an option
+# value does not count; a block comment that is never closed runs to the end of the file, a string
+# to the end of its line.
+# "fields (approx)" counts a field declared at the start of a line with its number (optional, required
+# or repeated, a scalar, message or map type), not an enum value; "streaming rpcs" an rpc whose
+# request or response is a stream (the request type on the rpc's line, returns on it or below).
+# ContractFactPatternsTest pins every case;
+# ProfileFactPatternsLinearityTest measures that every pattern reads linearly.
+[ignore] comments and string literals	(?s)//[^\n]*+|/\*(?:[^*]++|\*(?!/))*+(?:\*/|\z)|"(?:[^"\\\n]|\\.)*+"?+|'(?:[^'\\\n]|\\.)*+'?+
+messages	\bmessage[ \t]++[A-Za-z_]
+enums	\benum[ \t]++[A-Za-z_]
+services	\bservice[ \t]++[A-Za-z_]
+rpcs	\brpc[ \t]++[A-Za-z_]
+streaming rpcs	\brpc[ \t]++\w++[ \t]*+\((?:[ \t]*+stream\b|[^()\n]*+\)[ \t\r\n]*+returns[ \t]*+\([ \t]*+stream\b)
+fields (approx)	(?m)^[ \t]*+(?:(?:optional|required|repeated)[ \t]++)?(?:map[ \t]*+<[^>\n]*+>|[A-Za-z_][\w.]*+)[ \t]++[A-Za-z_]\w*+[ \t]*+=[ \t]*+\d
+enum values	(?m)^[ \t]*+[A-Z_][A-Z0-9_]*+[ \t]*+=[ \t]*+-?\d
+oneofs	\boneof[ \t]++[A-Za-z_]
+reserved ranges and names	(?m)^[ \t]*+reserved\b
+imports	(?m)^[ \t]*+import[ \t]++

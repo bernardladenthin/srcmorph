@@ -5,29 +5,48 @@
 # SQL fact counters: one per line, label TAB pattern (Java regex). srcmorph counts the pattern's
 # matches over the whole source file and writes them as exact facts before the AI summary.
 # The [ignore] line runs first and reads the file as a lexer does, leftmost region first: it blanks
-# -- comments, '...' string literals ('' and a backslash escape a quote, as in MySQL) and /* ... */
-# block comments, keeping the line breaks, so a /* inside a string or a -- comment opens nothing. It
-# keeps MySQL's /*! ... */ version comments and Oracle's /*+ ... */ hints, which hold real SQL. A /*
-# that is never closed comments out the rest of the file, as PostgreSQL and MySQL read it; a nested
-# PostgreSQL comment ends at its first */. Statements are counted where they start a line (after
-# spaces or tabs, never across a line break, which keeps a long blanked region linear),
+# -- comments, '...' string literals ('' and a backslash escape a quote, as in MySQL's 'it\'s') and
+# /* ... */ block comments, keeping the line breaks, so a /* inside a string or a -- comment opens
+# nothing. A backslash does not escape a quote that a comma, ), ;, +, | or the line end follows (after
+# blanks): T-SQL, Oracle and standard PostgreSQL end a literal at its first quote, so 'C:\',
+# ESCAPE '\' and REPLACE(p, '\', '/') close there; before a quote that a blank and a word follow
+# ('C:\' AS root) it still escapes, as in MySQL's 'say \'hi\' now'. It keeps MySQL's /*! ... */
+# version comments and Oracle's /*+ ... */ hints, which hold real SQL. A /* or a ' literal that is
+# never closed comments out the rest of the file, as PostgreSQL and MySQL read it (so a file of
+# escaped quotes stays linear); a nested PostgreSQL comment ends at its first */. So that an apostrophe in another dialect's quoting opens no
+# literal, it also blanks PostgreSQL's dollar quoting on one line ($$it's$$, $fn$...$fn$; a function
+# body over several lines stays, its statements count), Oracle's q'[...]', q'{...}', q'!...!' and
+# the like (N too), a "..." that holds an apostrophe (a MySQL string; a quoted identifier, which has
+# none, stays, so INSERT "t" still counts; a " right after a word character or a " is an
+# identifier's closing quote and opens none) and MySQL's # comments (at a line start or after a blank
+# or ;, not a T-SQL #temp table, nor PostgreSQL's #> and #- operators), a SQL*Plus REM[ARK] or
+# PRO[MPT] line (abbreviated too, any case; a column named rem or prompt at a line start is blanked
+# with it, which counts the same) and the rows of a COPY ... FROM stdin up to its \. line, which psql
+# reads as data (without that line to the end of the file, as psql does; a COPY from a file opens
+# none). Statements are counted where
+# they start a line (after spaces or tabs, never across a line break, which keeps a long blanked
+# region linear),
 # case-insensitive, for PostgreSQL, MySQL, T-SQL and Oracle. An INSERT counts with or without INTO
 # (MySQL, T-SQL), after an Oracle /*+ hint */ and as INSERT ALL / FIRST, not as the INSERT branch of
 # a MERGE or a trigger's event list; SQLite's INSERT OR REPLACE and a view inside a mysqldump /*!50001
 # */ comment are not seen. A TYPE BODY, a MATERIALIZED VIEW LOG, a DATABASE LINK and a DATABASE
-# SCOPED CREDENTIAL are not counted. "VALUES rows (approx)" counts the row tuples of VALUES lists (a
-# tuple after VALUES or after "),"), so a multi-row INSERT counts every row; rows an INSERT ...
-# SELECT reads from a table are not seen, and a tuple nested inside a row counts once more.
+# SCOPED CREDENTIAL are not counted; MariaDB's CREATE OR REPLACE TABLE, PostgreSQL's CREATE FOREIGN
+# TABLE, Oracle's PRIVATE TEMPORARY TABLE and T-SQL's COLUMNSTORE indexes are, PostgreSQL's TEMP and
+# RECURSIVE views and Oracle's NOFORCE and EDITIONING views too, an EVENT TRIGGER with the triggers
+# and a DOMAIN with the types. "VALUES rows (approx)" counts the row tuples of VALUES
+# lists (a tuple after VALUES or after "),"), so a multi-row INSERT counts every row, but not the
+# VALUES(col) function of MySQL's ON DUPLICATE KEY UPDATE (after an =); rows an INSERT ... SELECT
+# reads from a table are not seen, and a tuple nested inside a row counts once more.
 # SqlFactPatternsTest pins every case.
-[ignore] comments and string literals	(?s)--[^\n]*|'(?:[^'\\]++|''|\\.)*+'|/\*(?![!+])(?:.*?\*/|.*)
+[ignore] comments and string literals	(?sm)--[^\n]*|'(?:[^'\\]++|''|\\(?!'[ \t]*+(?:[,);+|\r\n]|\z)).|\\)*+(?:'|\z)|/\*(?![!+])(?:.*?\*/|.*)|\$((?:[A-Za-z_]\w*+)?)\$[^\n]*?\$\1\$|(?<![\w$])[nN]?[qQ]'(?:\[(?:[^\]]++|\](?!'))*+\]'|\{(?:[^}]++|\}(?!'))*+\}'|\((?:[^)]++|\)(?!'))*+\)'|<(?:[^>]++|>(?!'))*+>'|([^\s\[{(<\w])(?:(?!\2').)*+\2'|.*)|(?<![\w$#@"])"[^"'\n]*+'[^"\n]*+"|(?:^|(?<=[ \t;]))#(?![\w#@$>-])[^\n]*|^[ \t]*+(?i:REM(?:A(?:RK?)?)?|PRO(?:M(?:PT?)?)?)(?![^ \t\r\n])[^\n]*+|^[ \t]*+(?i:COPY\b[^;\n]*?[ \t)]FROM[ \t]++STDIN\b)(?:.*?^\\\.$|.*)
 INSERT statements	(?im)^[ \t]*(?:INSERT(?:\s+/\*\+.*?\*/)?(?:\s+(?:IGNORE|LOW_PRIORITY|DELAYED|HIGH_PRIORITY))*(?:\s+/\*\+.*?\*/)?\s+(?:INTO\b|ALL\b|FIRST\b|(?!(?:VALUES|SELECT|OR|ON|AS|SET|WITH|WHEN|THEN)\b)[A-Za-z_"`\[#@][\w"`\[\].$#@]*)|REPLACE(?:\s+(?:LOW_PRIORITY|DELAYED))*\s+INTO\b)
-VALUES rows (approx)	(?i)(?:\bVALUES|\),)\s*\(
-tables	(?im)^[ \t]*CREATE\s+(?:(?:GLOBAL\s+|LOCAL\s+)?(?:TEMP|TEMPORARY)\s+|UNLOGGED\s+)?TABLE\b
-views	(?im)^[ \t]*CREATE\s+(?:OR\s+(?:REPLACE|ALTER)\s+)?(?:ALGORITHM\s*=\s*\w+\s+)?(?:DEFINER\s*=\s*\S+\s+)?(?:SQL\s+SECURITY\s+\w+\s+)?(?:(?:NO\s+)?FORCE\s+)?(?:(?:NON)?EDITIONABLE\s+)?(?:MATERIALIZED\s+)?VIEW\b(?!\s+LOG\b)
-indexes	(?im)^[ \t]*CREATE\s+(?:UNIQUE\s+|FULLTEXT\s+|SPATIAL\s+|BITMAP\s+)?(?:CLUSTERED\s+|NONCLUSTERED\s+)?INDEX\b
+VALUES rows (approx)	(?i)(?:(?<!=[ \t]{0,8})\bVALUES|\),)\s*\(
+tables	(?im)^[ \t]*CREATE\s+(?:OR\s+REPLACE\s+)?(?:(?:GLOBAL\s+|LOCAL\s+|PRIVATE\s+)?(?:TEMP|TEMPORARY)\s+|UNLOGGED\s+|FOREIGN\s+)?TABLE\b
+views	(?im)^[ \t]*CREATE\s+(?:OR\s+(?:REPLACE|ALTER)\s+)?(?:ALGORITHM\s*=\s*\w+\s+)?(?:DEFINER\s*=\s*\S+\s+)?(?:SQL\s+SECURITY\s+\w+\s+)?(?:(?:NO\s*)?FORCE\s+)?(?:(?:NON)?EDITIONABLE\s+)?(?:EDITIONING\s+)?(?:(?:TEMP|TEMPORARY)\s+)?(?:RECURSIVE\s+)?(?:MATERIALIZED\s+)?VIEW\b(?!\s+LOG\b)
+indexes	(?im)^[ \t]*CREATE\s+(?:UNIQUE\s+|FULLTEXT\s+|SPATIAL\s+|BITMAP\s+)?(?:CLUSTERED\s+|NONCLUSTERED\s+)?(?:COLUMNSTORE\s+)?INDEX\b
 functions/procedures	(?im)^[ \t]*CREATE\s+(?:OR\s+(?:REPLACE|ALTER)\s+)?(?:(?:NON)?EDITIONABLE\s+)?(?:DEFINER\s*=\s*\S+\s+)?(?:FUNCTION|PROCEDURE|PROC)\b
-triggers	(?im)^[ \t]*CREATE\s+(?:OR\s+(?:REPLACE|ALTER)\s+)?(?:(?:NON)?EDITIONABLE\s+)?(?:DEFINER\s*=\s*\S+\s+)?(?:CONSTRAINT\s+)?TRIGGER\b
-types	(?im)^[ \t]*CREATE\s+(?:OR\s+REPLACE\s+)?(?:(?:NON)?EDITIONABLE\s+)?TYPE\b(?!\s+BODY\b)
+triggers	(?im)^[ \t]*CREATE\s+(?:OR\s+(?:REPLACE|ALTER)\s+)?(?:(?:NON)?EDITIONABLE\s+)?(?:DEFINER\s*=\s*\S+\s+)?(?:CONSTRAINT\s+|EVENT\s+)?TRIGGER\b
+types	(?im)^[ \t]*CREATE\s+(?:OR\s+REPLACE\s+)?(?:(?:NON)?EDITIONABLE\s+)?(?:TYPE\b(?!\s+BODY\b)|DOMAIN\b)
 ALTER TABLE	(?im)^[ \t]*ALTER\s+TABLE\b
 sequences	(?im)^[ \t]*CREATE\s+(?:(?:TEMP|TEMPORARY|UNLOGGED)\s+)?SEQUENCE\b
 extensions	(?im)^[ \t]*CREATE\s+EXTENSION\b

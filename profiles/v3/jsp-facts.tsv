@@ -1,0 +1,30 @@
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# JSP counters (.jsp, .jspf, .jspx, tag files .tag and .tagx), for a rule with the prompt
+# file-body-view: one per line, label TAB pattern (Java regex). The [ignore] line blanks JSP comments
+# (<%-- --%>), which the container never sends, so a commented-out scriptlet or EL expression does
+# not count; an HTML comment (<!-- -->) is sent to the browser and its <% %> still runs on the
+# server, so it is kept. A JSP comment that is never closed runs to the end of the file. A directive
+# counts in either syntax, <%@ page %> or the element <jsp:directive.page/> (include and attribute
+# alike); a JSP document (.jspx, .tagx) takes jspx-facts, which blanks its XML comments. "scriptlets"
+# counts <% blocks that are neither directives, expressions, declarations nor comments; "prefixed
+# tags" every opening tag with a namespace prefix (JSTL, Spring form, custom tags); "input fields"
+# every input, select and textarea, Spring's form:password, checkbox(es), radiobutton(s) and hidden
+# too; "request
+# parameters read" both EL's param and getParameter in Java. ViewFactPatternsTest pins every case;
+# ProfileFactPatternsLinearityTest measures that every pattern reads linearly.
+[ignore] JSP comments	(?s)<%--(?:.*?--%>|.*+)
+page directives	<%@[ \t\r\n]*+page\b|<jsp:directive\.page\b
+taglib directives	<%@[ \t\r\n]*+taglib\b
+includes and forwards	<%@[ \t\r\n]*+include\b|<jsp:(?:include|forward|directive\.include)\b
+tag file attributes	<%@[ \t\r\n]*+attribute\b|<jsp:directive\.attribute\b
+scriptlets	<%(?![@=!-])|<jsp:scriptlet\b
+expressions	<%=|<jsp:expression\b
+declarations	<%!|<jsp:declaration\b
+EL expressions	[$#]\{
+prefixed tags	<[A-Za-z][\w-]*+:[A-Za-z]
+forms	<(?:[A-Za-z][\w-]*+:)?form[ \t\r\n>]
+input fields	<(?:[A-Za-z][\w-]*+:)?(?:input\w*+|select\w*+|textarea|password|checkbox(?:es)?+|radiobuttons?+|hidden)[ \t\r\n/>]
+request parameters read	\bparam(?:Values)?+(?:\.|\[)|\bgetParameter(?:Values)?+[ \t]*+\(

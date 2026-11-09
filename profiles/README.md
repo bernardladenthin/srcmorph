@@ -11,11 +11,14 @@ handed on as a whole.
 
 | File | Key | For |
 |---|---|---|
-| [`v3/file-body-java.md`](v3/file-body-java.md) | `promptKey: file-body-java` | one Java source file |
+| [`v3/file-body-oop.md`](v3/file-body-oop.md) | `promptKey: file-body-oop` | one source file of a class-based language: Java, Kotlin, Groovy, Scala; TypeScript (`.ts`, `.mts`, `.cts`) as well |
+| [`v3/file-body-view.md`](v3/file-body-view.md) | `promptKey: file-body-view` | one server-side view: JSP, JSP fragment, tag file, Facelets |
+| [`v3/file-body-contract.md`](v3/file-body-contract.md) | `promptKey: file-body-contract` | one API contract: OpenAPI, AsyncAPI, JSON Schema, Avro, Protobuf, GraphQL |
+| [`v3/file-body-ops.md`](v3/file-body-ops.md) | `promptKey: file-body-ops` | one build, deploy or configuration file: CI, Dockerfile, Compose, Kubernetes, Helm, Ansible, Terraform |
 | [`v3/file-body-sql.md`](v3/file-body-sql.md) | `promptKey: file-body-sql` | one SQL file, as schema |
 | [`v3/file-body-shell.md`](v3/file-body-shell.md) | `promptKey: file-body-shell` | one Bash, POSIX sh or ksh93 script |
 | [`v3/file-body-perl.md`](v3/file-body-perl.md) | `promptKey: file-body-perl` | one Perl script or module |
-| [`v3/file-body-xml.md`](v3/file-body-xml.md) | `promptKey: file-body-xml` | one XML file: a POM, a Spring context, an XSD, an XSLT |
+| [`v3/file-body-xml.md`](v3/file-body-xml.md) | `promptKey: file-body-xml` | one XML file: a POM, a Spring context, a Jakarta EE descriptor, a JPA, Hibernate or MyBatis mapping, an integration route, BPMN or DMN, WSDL, an XSD, an XSLT |
 | [`v3/file-body-fallback.md`](v3/file-body-fallback.md) | `promptKey: file-body-fallback` | any other source file |
 | [`v3/package-body.md`](v3/package-body.md) | `promptKey: package-body` | a package, from its file summaries |
 | [`v3/project-body.md`](v3/project-body.md) | `promptKey: project-body` | the project overview, from the package leads |
@@ -27,16 +30,43 @@ handed on as a whole.
 | [`v3/perl-facts.tsv`](v3/perl-facts.tsv) | `factsKey: perl-facts` | the same for Perl scripts and modules |
 | [`v3/xml-facts.tsv`](v3/xml-facts.tsv) | `factsKey: xml-facts` | the same for XML, XSD and XSLT files |
 | [`v3/pom-facts.tsv`](v3/pom-facts.tsv) | `factsKey: pom-facts` | the same for Maven POMs (a rule matching `**/*pom.xml`) |
+| [`v3/kotlin-facts.tsv`](v3/kotlin-facts.tsv), [`v3/groovy-facts.tsv`](v3/groovy-facts.tsv), [`v3/scala-facts.tsv`](v3/scala-facts.tsv) | `factsKey: kotlin-facts`, `groovy-facts`, `scala-facts` | Kotlin; Groovy and Spock specifications; Scala 2 and 3 (with `file-body-oop`) |
+| [`v3/java-ee-facts.tsv`](v3/java-ee-facts.tsv) | `factsKey: java-ee-facts` | `java-facts` plus the EJB, JPA, CDI, JAX-RS, JAX-WS, Servlet, JTA and security annotations |
+| [`v3/jee-facts.tsv`](v3/jee-facts.tsv), [`v3/persistence-facts.tsv`](v3/persistence-facts.tsv), [`v3/mybatis-facts.tsv`](v3/mybatis-facts.tsv) | `factsKey: jee-facts`, `persistence-facts`, `mybatis-facts` | `web.xml`, `ejb-jar.xml`, `application.xml`; `persistence.xml`, `orm.xml`, `*.hbm.xml`; MyBatis mappers |
+| [`v3/integration-facts.tsv`](v3/integration-facts.tsv), [`v3/bpmn-facts.tsv`](v3/bpmn-facts.tsv), [`v3/dmn-facts.tsv`](v3/dmn-facts.tsv), [`v3/wsdl-facts.tsv`](v3/wsdl-facts.tsv) | `factsKey: integration-facts`, `bpmn-facts`, `dmn-facts`, `wsdl-facts` | Camel, Spring Integration, Mule and Synapse routes; BPMN processes; DMN decisions (inputs, outputs, rules, hit policies); WSDL |
+| [`v3/jsp-facts.tsv`](v3/jsp-facts.tsv), [`v3/jspx-facts.tsv`](v3/jspx-facts.tsv), [`v3/facelets-facts.tsv`](v3/facelets-facts.tsv) | `factsKey: jsp-facts`, `jspx-facts`, `facelets-facts` | JSP pages and tag files; JSP documents (`.jspx`, `.tagx`: `jsp-facts` with their XML comments blanked); Facelets views (with `file-body-view`) |
+| [`v3/openapi-facts.tsv`](v3/openapi-facts.tsv), [`v3/asyncapi-facts.tsv`](v3/asyncapi-facts.tsv) | `factsKey: openapi-facts`, `asyncapi-facts` | OpenAPI and Swagger; AsyncAPI 2 and 3; YAML or JSON (with `file-body-contract`) |
+| [`v3/proto-facts.tsv`](v3/proto-facts.tsv), [`v3/avro-facts.tsv`](v3/avro-facts.tsv), [`v3/graphql-facts.tsv`](v3/graphql-facts.tsv) | `factsKey: proto-facts`, `avro-facts`, `graphql-facts` | Protocol Buffers; Avro schemas (`.avsc`); GraphQL schemas and operations (with `file-body-contract`) |
+| [`v3/k8s-facts.tsv`](v3/k8s-facts.tsv), [`v3/actions-facts.tsv`](v3/actions-facts.tsv), [`v3/dockerfile-facts.tsv`](v3/dockerfile-facts.tsv) | `factsKey: k8s-facts`, `actions-facts`, `dockerfile-facts` | Kubernetes and Helm; GitHub Actions; Dockerfiles (with `file-body-ops`) |
+| [`v3/compose-facts.tsv`](v3/compose-facts.tsv), [`v3/ansible-facts.tsv`](v3/ansible-facts.tsv), [`v3/terraform-facts.tsv`](v3/terraform-facts.tsv), [`v3/camel-yaml-facts.tsv`](v3/camel-yaml-facts.tsv) | `factsKey: compose-facts`, `ansible-facts`, `terraform-facts`, `camel-yaml-facts` | Docker Compose; Ansible playbooks and roles; Terraform, OpenTofu and Terragrunt; Camel's YAML DSL (with `file-body-ops`) |
+| [`v3/gradle-facts.tsv`](v3/gradle-facts.tsv), [`v3/properties-facts.tsv`](v3/properties-facts.tsv) | `factsKey: gradle-facts`, `properties-facts` | Gradle build and settings scripts, Groovy and Kotlin DSL; Java `.properties` files (with `file-body-ops`) |
+| [`v3/npm-facts.tsv`](v3/npm-facts.tsv) | `factsKey: npm-facts` | npm manifests (`package.json`): scripts, dependencies, engines, workspaces, a VS Code extension's contributed commands and language model tools (with `file-body-ops`) |
+| [`v3/powershell-facts.tsv`](v3/powershell-facts.tsv), [`v3/batch-facts.tsv`](v3/batch-facts.tsv) | `factsKey: powershell-facts`, `batch-facts` | PowerShell scripts and modules; Windows batch files (with `file-body-fallback`: no prompt of their own) |
 
 ## Prompt files
 
 A `.md` file is the **system prompt** of its key, sent verbatim: no placeholders, no license header
-(it would reach the model). srcmorph sends the file or package name and the source (or the child
-summaries) as a separate user message. Each file starts with a domain lead line, then fixed `####`
+(it would reach the model). srcmorph sends the file's path below the base directory (a package's
+name) and the source (or the child summaries) as a separate user message, so two `web.xml` of
+different modules read apart. Each file starts with a domain lead line, then fixed `####`
 sections (Purpose, Type, Input, Output, Core logic, Public API, Dependencies, Exceptions, Concurrency
 for Java; Schema, Reads, Writes, Relationships, Routine logic for SQL; Constants and configuration for
 shell, Perl and other files; Definitions, Configuration and Dependencies for XML), with the rules against code fences, `###` headings and invented names, and the "index
-only what is literally present" guard for truncated sources.
+only what is literally present" guard for truncated sources. Every file prompt has the same secrets
+rule: a password, private key, token, API key or credentials in a URL is named, its value written as
+`***`. A configuration keeps the files that hold credentials away from the model altogether with a
+`skip` rule; the self-test, its CLI twin `examples/build-your-own-jar/srcmorph.yaml`, the Luna
+example `examples/copilot-api-gateway/srcmorph-luna.yaml` and the model-card runs carry one
+(`id: secrets`: `.env`,
+`*.tfvars`, `*.pkrvars.hcl`, `*.tfstate`, Maven's `settings.xml` by its `<settings>` root, keys, a
+`.properties` file that gives a password (also `passwd`, `pwd`, `pass`, `passphrase`), secret,
+secret key, token, API key, private key or credentials a value other than a whole placeholder, a
+flag, a number or a log level, a Kubernetes `Secret` by
+its kind, and the `vault*`, `*secret*` and `*credential*` configuration files, `.hcl` too, that are
+no CI workflow under `.github/`, no Helm template and no Kubernetes manifest of another kind than
+`Secret`). A secret in any other file (a password in an `application.yml`) is not recognized, nor
+in a properties file a plural or a qualifier after the key (`passwords=`, `password.prod=`),
+credentials in a URL, an `account-key` or a value on a continuation line.
 
 `map-chunk.md` and `reduce-parts.md` (keys `map-chunk`, `reduce-parts`) are not prompts of their own: a rule's `mapPromptKey` and
 `reducePromptKey` append them to its prompt (after a blank line) in the map and the reduce calls of
@@ -52,9 +82,18 @@ and writes them as one line before the AI summary, for example
 sampled or chunked summary cannot count reliably, these lines can. Every pattern is compiled when the
 run starts, so a broken one fails it with the file and line.
 
+A line `[include]<TAB><key>` puts the counters of `<key>.tsv` of the profile directory at its place,
+its `[ignore]` lines included: `jee-facts` is `xml-facts` plus the descriptor counters,
+`java-ee-facts` is `java-facts` plus the annotations, so a kind that extends another adds its own
+counters and copies none. An included file may include others; one that includes itself, also
+through others, fails the run naming the chain, and so does a label that two of the files use. A
+label must not start with `#`, which makes the line a comment.
+
 A label starting with `[ignore]` marks a region instead of a counter: its matches are blanked out
-before the other counters count, every character except the line breaks, so `^` anchors and line
-counts see the same lines as before. That is how a sub named in Perl's POD, a function or a `set -e`
+before the other counters count: a region over several lines keeps only its line breaks, so `^`
+anchors and line counts see the same lines as before, and a region within one line becomes one
+space, so the words around it stay apart, or nothing at the start of a line, so the line still
+starts with what follows it (`/* x */class A` counts for `^class`). That is how a sub named in Perl's POD, a function or a `set -e`
 in a shell heredoc, a commented-out POM dependency or an `INSERT` inside a SQL block comment stays
 out of the counts. An ignore line is not reported. The prefix may be written in any case; any other
 label starting with `[` is refused as an unknown marker. In a configuration the same is a counter
@@ -62,11 +101,35 @@ with `ignore: true`, and its label must not start with `[`. A configuration's `f
 are held to the same rules: a label and a pattern on every counter, no label twice, and at least one
 counter that is not an ignore counter.
 
+Two more markers open a counter's label, in any order and case. `[raw]` counts the source as written,
+before any ignore line blanked it: a marker that lives in comments, `java-facts`' `TODO/FIXME` and
+PowerShell's `#Requires`, counts next to counters that skip comments. `[distinct]` counts the
+different texts a pattern matched instead of its matches: the first group of the pattern where it
+took part, the whole match otherwise, so twelve `@Inject Clock` fields are one injected type where a
+plain counter counts twelve injection points. In a configuration they are `raw: true` and
+`distinct: true`; an ignore counter is neither (it counts nothing). A summary written before these
+markers existed keeps its facts hash: they enter it only where set.
+
+Every pattern has a time limit, counted in characters the matcher reads rather than in seconds, so
+it holds the same on every machine: 2,000 per character of the source plus 1,000,000. The patterns
+here read at most about 1,160 per character, `perl-facts`' ignore line over one long line of nothing
+but `<` (measured over the inputs of `ProfileFactPatternsLinearityTest`: 1,120 at 2,000 characters,
+1,152 at 8,000, 1,162 at 128,000; next `java-facts`' field initializer over `public x y = ` lines, 690),
+most of them a few
+(`ProfileFactPatternsLinearityTest` asserts that none reaches the limit), so it stops only a
+pattern that backtracks without end, a nested quantifier or a lazy scan for a closer that never
+comes, in a counter of your own: that counter is left out of
+the facts line, an ignore counter blanks nothing, and the run logs a warning naming it. A
+backtracking pattern therefore costs at most that many reads per file instead of hanging the run.
+
 Several ignore lines blank in file order, each over the text the one before left, so a region that
 can hold another one's opener (a `<!--` inside CDATA, POD or `__END__` inside a Perl heredoc, a `/*`
-inside a SQL string) would be cut at the wrong place. The files here therefore have one ignore line
-per language, an alternation of all its regions: the region that starts first wins, as in a lexer.
-Blanking removes the characters, so `INSERT/* x */INTO` reads as `INSERTINTO`. A counter anchored at
+inside a SQL string) would be cut at the wrong place. The files here therefore blank the regions of a
+language that can hold each other's openers in one ignore line, an alternation of them all: the
+region that starts first wins, as in a lexer. A second ignore line only blanks what that one left:
+`bpmn-facts` and `dmn-facts` add one for the diagram interchange after the XML line they include.
+Blanking leaves a space within a line, so `INSERT/* x */INTO` reads as `INSERT INTO`, and nothing at a
+line start. A counter anchored at
 a line start allows spaces and tabs there (`^[ \t]*`), never `\s*`: a blanked region leaves a run of
 line breaks, and `^\s*` over one is quadratic (a 40 000-line block comment took 44 s, now 0.05 s;
 `SqlFactPatternsTest` pins it). For the same reason a region whose end never comes runs to the end
@@ -75,7 +138,21 @@ again from every later opener. A shell or Perl `<<` that is a shift or sits in a
 (20 000 lines of shifts, strings or unclosed heredocs took 25 to 207 s in shell and 95 to 223 s in
 Perl, now at most 0.2 s), and the Java parameter list is read possessively, one level of parentheses
 deep (the 6 000 constants of the large corpus's enum took 8 s, now 0.1 s); `ShellFactPatternsTest`, `PerlFactPatternsTest` and
-`JavaStructureFactPatternsTest` pin these.
+`JavaStructureFactPatternsTest` pin these. `ProfileFactPatternsLinearityTest` measures all of it for
+every pattern of every file here: it repeats 121 adversarial lines (unclosed openers and tags,
+heredoc markers, escaped quotes, unbalanced parentheses, runs of one character), and each of them
+without its line break into one long line, and counts the characters the matcher reads, which may
+grow at most six times for four times the input; a matcher that overflows the stack fails it too.
+It found six quadratic patterns in the 1.4.0 files (the XML and POM regions, the XSD counter, the
+Java type arguments and field initializer, the shell option arms); the one-line inputs found the
+rest: string literals full of escaped quotes in nine files (`gradle`, `graphql`, `groovy`, `java`,
+which `java-ee` includes, `kotlin`, `proto`, `scala`, `sql` and `terraform`; a literal not closed on
+its line now ends there, a SQL one at the end of the file, as a PowerShell string that may span
+lines now does too), the shell and Perl heredoc openers on a
+last line without a line break, the `${`/`#{` placeholders of MyBatis and properties, the secret
+keys of properties, Kotlin's extension functions and the Java modifier lists, which overflowed the
+stack over thousands of annotations on one line. All are fixed, and a new file is measured without a
+change.
 
 The counters are regex heuristics, and their labels say so where they are approximate. The tests read
 these files, not copies, and count through the production extractor, so the ignore lines apply:
@@ -87,10 +164,10 @@ counts of the benchmark's language corpus ([`corpus-languages/`](../docs/ai-inde
 
 | `sql-facts` | Counts |
 |---|---|
-| `[ignore] comments and string literals` | `-- ...` comments, `'...'` literals and `/* ... */` comments, leftmost first, an unclosed `/*` to the end of the file; not MySQL's `/*! ... */` or Oracle's `/*+ ... */`, which hold SQL |
+| `[ignore] comments and string literals` | `-- ...` comments, `'...'` literals and `/* ... */` comments, leftmost first, an unclosed `/*` or `'` to the end of the file; not MySQL's `/*! ... */` or Oracle's `/*+ ... */`, which hold SQL. Also, so an apostrophe in them opens no literal: PostgreSQL's dollar quoting on one line (a multi-line function body stays), Oracle's `q'[...]'`, a `"..."` holding an apostrophe (a quoted identifier stays), MySQL's `#` comments (not a T-SQL `#temp`), SQL*Plus `REM[ARK]` and `PRO[MPT]` lines and the rows of a `COPY ... FROM stdin` up to its `\.` line (without one to the end of the file, as psql reads it). A backslash escapes a quote as in MySQL (`'it\'s'`), but not one a `,`, `)`, `;`, `+`, `\|` or the line end follows: `'C:\'`, `ESCAPE '\'` and `REPLACE(p, '\', '/')` end there, as T-SQL, Oracle and standard PostgreSQL read them. Not seen as written: `'C:\' AS root` (the backslash escapes, as before a word in MySQL) and nested comments (one ends at its first `*/`) |
 | `INSERT statements` | `INSERT [INTO]` at the start of a line, also MySQL's `IGNORE` / `LOW_PRIORITY`, an Oracle hint, `INSERT ALL` / `FIRST` and `REPLACE INTO`; not a `MERGE` branch or a trigger's event list |
-| `VALUES rows (approx)` | the row tuples of `VALUES` lists, so a multi-row `INSERT` counts each row; rows an `INSERT ... SELECT` reads from a table are not seen |
-| `tables`, `views`, `indexes` | `CREATE` statements, also `TEMP`/`UNLOGGED` tables, `MATERIALIZED`, `OR REPLACE`/`OR ALTER`, MySQL's `ALGORITHM` / `DEFINER` / `SQL SECURITY` and Oracle's `FORCE EDITIONABLE` views (not a `MATERIALIZED VIEW LOG`), `UNIQUE`/`CLUSTERED`/`FULLTEXT`/`SPATIAL`/`BITMAP` indexes |
+| `VALUES rows (approx)` | the row tuples of `VALUES` lists, so a multi-row `INSERT` counts each row, not MySQL's `VALUES(col)` of `ON DUPLICATE KEY UPDATE`; rows an `INSERT ... SELECT` reads from a table are not seen |
+| `tables`, `views`, `indexes` | `CREATE` statements, also `TEMP`/`UNLOGGED`/`FOREIGN` and MariaDB's `OR REPLACE` tables, `MATERIALIZED`, `OR REPLACE`/`OR ALTER`, MySQL's `ALGORITHM` / `DEFINER` / `SQL SECURITY` and Oracle's `FORCE EDITIONABLE` views (not a `MATERIALIZED VIEW LOG`), `UNIQUE`/`CLUSTERED`/`COLUMNSTORE`/`FULLTEXT`/`SPATIAL`/`BITMAP` indexes |
 | `functions/procedures`, `triggers` | `CREATE [OR REPLACE / OR ALTER] [EDITIONABLE] FUNCTION / PROCEDURE / PROC / TRIGGER`, also MySQL's `DEFINER=` |
 | `types` | `CREATE [OR REPLACE] [EDITIONABLE] TYPE` (enums, composite and object types; not a `TYPE BODY`) |
 | `ALTER TABLE` | every `ALTER TABLE` statement |
@@ -98,7 +175,7 @@ counts of the benchmark's language corpus ([`corpus-languages/`](../docs/ai-inde
 
 | `shell-facts` (Bash, sh, ksh93) | Counts |
 |---|---|
-| `[ignore]` comments and heredoc bodies | a `#` comment, a whole line or after a blank; a heredoc from `<<` to its end marker, any word quoted or not (`<<EOF`, `<<'END-OF-SQL'`, `<<!`), the marker alone on its line, after tabs for `<<-`, without one to the end of the file (as bash reads it); not a shift inside `(( ))`, `$(( ))` or `$[ ]`, nor a `<<` whose line goes on with an unclosed quote (inside a string) |
+| `[ignore]` comments and heredoc bodies | a `#` comment, a whole line or after a blank; a heredoc from `<<` to its end marker, any word quoted or not (`<<EOF`, `<<'END-OF-SQL'`, `<<!`), the marker alone on its line, after tabs for `<<-`, without one to the end of the file (as bash reads it); not a shift inside `(( ))`, `$(( ))` or `$[ ]` (also after up to three groups in parentheses, `$(( (a) + ((b)) << n ))`), nor a `<<` whose line goes on with an unclosed quote (inside a string; the rest of that line is blanked) |
 | `functions` | `name()`, `name ()` and `function name` definitions, with any compound command as the body (`{`, `(`, `if`, `for`, `while`, `until`, `case`, `select`, `[[`) |
 | `getopts loops`, `getopts option letters`, `dash-option case arms` | `getopts` calls; each letter of a literal option string; `case` arms of `-x` / `--long` options, as a hand-written option loop has them |
 | `named positional parameters` | an argument assigned to a name (`SRC="$1"`, `local mode=${3:-fast}`) |
@@ -109,7 +186,7 @@ counts of the benchmark's language corpus ([`corpus-languages/`](../docs/ai-inde
 
 | `perl-facts` | Counts |
 |---|---|
-| `[ignore]` POD, `__END__`, heredoc bodies and comment lines | from a `=word` line to `=cut`; from `__END__` or `__DATA__` to the end; `<<"END"`, `<<'END'`, `<< "END"`, `<<\END`, `<<END`, `<<~END` bodies, without an end marker to the end of the file; not a shift after a variable, a number, `)` or `]` (`$x <<BITS`; `print $fh <<END` is a heredoc), nor a `<<` in a trailing comment or a string; whole-line `#` comments; leftmost first |
+| `[ignore]` POD, `__END__`, heredoc bodies and comment lines | from a `=word` line to `=cut`; from `__END__` or `__DATA__` to the end; `<<"END"`, `<<'END'`, `<< "END"`, `<<\END`, `<<END`, `<<~END` bodies, without an end marker to the end of the file; not a shift after a variable, a number, `)`, `]` or a hash element (`$x <<BITS`, `$h{x} <<BITS`; `print $fh <<END` and `print {$fh} <<END` are heredocs), nor a `<<` in a trailing comment, a string, a quote-like operator or a regex (`q{...}`, `qq/.../`, `m/.../`, `s/.../.../`; a `<<` whose line goes on with an unclosed quote blanks the rest of that line); whole-line `#` comments; leftmost first |
 | `packages`, `subs` | `package` statements and blocks and 5.38 `class` blocks; named, lexical (`my sub`), signature and attribute subs (`sub f :prototype($$) ($x, $y)`) and 5.38 `method`s, not anonymous subs or forward declarations |
 | `modules used`, `modules required` | `use Some::Module`, `use parent` / `base` (not other pragmas or versions); `require Module` / `require 'file'` (not versions) |
 | `use constant statements`, `package variables (our)`, `file-scope lexicals (my at column 0)` | each `use constant`; `our` declarations; a `my` at column 0 |
@@ -118,7 +195,7 @@ counts of the benchmark's language corpus ([`corpus-languages/`](../docs/ai-inde
 | `xml-facts` / `pom-facts` | Counts |
 |---|---|
 | `[ignore]` comments, CDATA, processing instructions and the DOCTYPE | `<!-- ... -->`, `<![CDATA[ ... ]]>`, `<? ... ?>` and `<!DOCTYPE ... [ ... ]>`, leftmost first (xml-facts); comments, CDATA and the body of every `<plugin>` (pom-facts) |
-| `elements`, `namespace declarations`, `id and name attributes` | start tags; `xmlns` / `xmlns:prefix`; `id=` and `name=` attributes, also prefixed ones (`android:id`, `xml:id`) |
+| `elements`, `namespace declarations`, `id and name attributes` | start tags; `xmlns` / `xmlns:prefix`; `id=` and `name=` attributes inside a tag, also prefixed ones (`android:id`, `xml:id`), not a `name = 'a'` in element text |
 | `XSD type definitions`, `XSLT templates`, `Spring beans` | named `complexType` / `simpleType`; `template` elements (not calls); `bean` elements |
 | `dependencies`, `managed dependency sections`, `plugins`, `modules`, `profiles`, `test-scoped dependencies`, `managed plugin sections` | pom-facts: each `<dependency>` (managed and profile ones included, not a plugin's own), `<dependencyManagement>`, `<plugin>` (build, management, reporting, profiles; not one inside a plugin configuration), `<module>`, `<profile>`, `<scope>test</scope>`, `<pluginManagement>` |
 
@@ -146,6 +223,54 @@ Who reads `v3/`:
 - the plugin's integration-test fixture, [`.github/plugin-it/srcmorph.yaml`](../.github/plugin-it/srcmorph.yaml),
   which also checks that the `java-facts` counts reach the summaries.
 
+## The shared OOP prompt and the enterprise kinds (2026-11-04)
+
+`file-body-oop` replaced `file-body-java`: it keeps the Java prompt's sections and its measured
+sentences, and says them for every class-based language (every type of the file, Kotlin's members
+without a modifier, top-level and extension functions, coroutines, a specification method named by
+a string). Three runs each with both prompts on the model-card corpus gave the same Java recall
+(gpt-oss-20b 99.9 to 100 %, GPT-6 Luna 100 %) and quality 99.8 against 99.9 % (gpt-oss) and 99.7
+against 100 % (Luna) for `file-body-java` and `file-body-oop`; the language corpus, after the
+secrets rule and the XML prompt's new definitions, 98.7 % (gpt-oss, 99.1 % before) and 99.8 % (Luna,
+99.5 %). The enterprise corpus ([`corpus-enterprise/`](../docs/ai-index-benchmark/corpus-enterprise/README.md),
+written for the benchmark) measured the new kinds once: 97.9 % (gpt-oss) and 97.3 % (Luna);
+`web.xml`, the JPA, Hibernate and MyBatis mappings, the Camel routes, the BPMN process, the WSDL,
+the JSP, the OpenAPI contract, the Kubernetes manifest and the Dockerfile complete in all six runs,
+and no summary copied the password the corpus holds. The runs are under
+[`remeasure-2026-11-04/`](../docs/ai-index-benchmark/remeasure-2026-11-04/README.md). Measured are
+therefore Java, SQL, shell, Perl, XML and the fallback on the card and language corpora, and the
+kinds of the enterprise corpus on that corpus alone; Scala, the contract formats other than OpenAPI,
+Terraform, Ansible and Compose ran in none of these measurements. TypeScript ran once, on a repository measured
+internally: with `file-body-oop` both models named more of its exported API than with the fallback,
+which is why `run.py` and the Luna example route `.ts`, `.mts` and `.cts` there; it has no counters.
+On 2026-11-06 the kinds ran on three open-source projects (jpetstore-6, microservices-demo,
+camunda-bpm-examples; 218 files of 13 kinds, [`remeasure-2026-11-06/`](../docs/ai-index-benchmark/remeasure-2026-11-06/README.md)):
+with their rules gpt-oss-20b named 97.3 % of the names derived from the sources, through the fallback
+81.2 %, GPT-6 Luna 97.7 % against 92.2 %; Protocol Buffers, DMN and Terraform ran there for the
+first time. The self-test routes those kinds since. On 2026-11-07 the remaining kinds ran on 16
+open-source projects and 12 Python projects' `pyproject.toml` (272 files of 20 kinds,
+[`remeasure-2026-11-07/`](../docs/ai-index-benchmark/remeasure-2026-11-07/README.md)): gpt-oss-20b
+88.9 % with their rules against 79.7 % through the fallback, Luna 96.6 % against 88.6 %; every kind
+at least level for gpt-oss-20b but Ansible, which the self-test therefore sends to the fallback
+prompt, and a `pyproject.toml` takes the ops prompt (gpt-oss-20b 98 % against 88 %, Luna 97 % against
+86 %). That run counted with `--facts`, so the counters of its kinds ran in a model run,
+`proto-facts`, `dmn-facts` and `terraform-facts` among them; but a facts line is written in front of
+every summary of its rule and reaches the model only in a reduce
+call, and the scores read names, not counts, so no model run checks a count. The counters of the
+kinds added with this profile (`scala-facts`, `proto-facts`, `avro-facts`, `graphql-facts`,
+`asyncapi-facts`, `terraform-facts`, `ansible-facts`, `compose-facts`, `camel-yaml-facts`, and
+`dmn-facts`, `gradle-facts`, `properties-facts`, `powershell-facts`, `batch-facts`, `npm-facts`) are
+therefore pinned by their tests.
+
+Three changes followed the same day ([`remeasure-2026-11-04b/`](../docs/ai-index-benchmark/remeasure-2026-11-04b/README.md)):
+the user message of a file starts with its path below the base directory, `file-body-oop` names the
+private functions, constants and fields the logic uses and each call on a dependency, and
+`file-body-ops` names a workflow or pipeline and defines Gradle scripts. The enterprise corpus went
+to 99.7 % (gpt-oss) and 99.9 % (Luna), every name the morning's runs left out found in all six runs;
+the card corpus gave Luna 100 % again and gpt-oss 99.5 % over six runs, its misses those of earlier
+rounds and two runs that named `ringbuf.c`'s headers instead of its functions; nine gpt-oss runs on
+the language corpus gave 99.0 %, so the morning's 98.7 % was variation.
+
 ## Shell, Perl and XML prompts
 
 Up to these three files, shell scripts, Perl and XML went through `file-body-fallback`. The
@@ -172,12 +297,13 @@ The shell prompt took four drafts on gpt-oss: with the first two, it wrote `tmp`
 built from (the `.partial` file of the benchmark's backup script); with "each as `name=value`" it
 copied the assignments into a code fence in two of three runs; "one bullet each" kept both. Three
 runs each on OpenRouter, six with the language prompts on the language corpus, scored as the model
-card scores (`score.py --facts`; outputs in
-[`languages-2026-11/`](../docs/ai-index-benchmark/languages-2026-11/)):
+card scores (outputs and the command in
+[`languages-2026-11/`](../docs/ai-index-benchmark/languages-2026-11/)). The language corpus has only
+other files, so its score has two parts, (recall + format share) / 2, against the card's four:
 
 | Corpus | Model | before (`file-body-fallback`) | with the language prompts |
 |---|---|---|---|
-| language corpus | gpt-oss-20b | 95.7 % (95.6 to 96.1) | 97.7 % (89.5 to 100; 99.1 % without one empty answer) |
+| language corpus | gpt-oss-20b | 95.7 % (95.3 to 96.1) | 97.7 % (89.5 to 100; 99.1 % without one empty answer) |
 | language corpus | GPT-6 Luna | 99.6 % (99.3 to 100) | 99.9 % (99.3 to 100) |
 | benchmark | gpt-oss-20b | 100 % in all three | 99.6 % (99.0 to 100) |
 | benchmark | GPT-6 Luna | 100 % | 100 % |
@@ -206,7 +332,20 @@ names with the XML prompt and 4 with the generic one. `huge-xml` (Granite H-1B, 
 chunks): on a 1.15 MB catalog H-1B wrote one correct sentence with the XML prompt, while with the
 generic one its final answer ran to the output limit and the file failed, in every run. The runs are
 under [`remeasure-2026-11-02/`](../docs/ai-index-benchmark/remeasure-2026-11-02/README.md).
-`big-pom` and `huge-pom` keep the generic prompt: no large POM was measured.
+The two tiers take what the `xml` rule takes (`.xml`, `.xsd`, `.xsl`, `.xslt`) and leave out every
+file an XML kind rule takes by its name or content (`jee`, `persistence`, a `.bpmn20.xml`, `mybatis`,
+`integration`; their whole conditions are copied, so a large `.xsd` or `.xsl` that only names a
+kind's namespace stays with the tiers), as `.wsdl` and `.xhtml` by their
+extension: at priority 100 and 200 they outrank the kind rules (10 and 11), and up to 2026-11-07 a
+300 KB `persistence.xml`, MyBatis mapper or WSDL got the generic `xml-facts` from them instead of
+its kind's counters. Such a file now stays with its kind rule on gpt-oss, which map-reduces it.
+`big-pom` takes `file-body-xml` too since 2026-11-06: on a real POM of the tier (netty-parent
+4.2.0.Final, 590 KB, 54 modules, 30 profiles, 15 build plugins; three runs each, which wrote the same
+bytes) Granite H-Tiny named 6 of its 99 names with the XML prompt and invented none, 4 with the
+generic one and invented about 51 per 100; neither summary is a good one (both state a wrong
+version, two part summaries were cut at the output budget), and the deterministic strategy names
+none: the facts line's exact counts are what a big POM gets reliably. `huge-pom` keeps the generic
+prompt: no real POM of a megabyte was found.
 
 ## v3 against v2
 
@@ -229,7 +368,8 @@ still lost there:
   family rule names no analysis channel; the SQL, XML and fallback prompts have a family rule for
   long runs of rows, records and constants, and in the SQL prompt more than five `INSERT`s into one
   table are a family; no prompt quotes an example lead any more, and none asks to recount; the
-  closing paragraph says that the user message starts with the file name; chunked rules append
+  closing paragraph says that the user message starts with the file name (its path below the base
+  directory since 2026-11-04); chunked rules append
   `map-chunk` and `reduce-parts`. The tables below were measured before these changes.
 
 The last two additions came from the drafts in between: with the command-line sentence alone,
@@ -276,8 +416,12 @@ materialized views, triggers, types and `ALTER TABLE` are counted.
 
 ## A new version, and the earlier ones
 
-The next profile goes into `v4/` with a file for each key, is measured with `run.py --profile v4`,
-and replaces `v3/` when it wins; the configurations above then switch to it, and `v3/` goes. Only the
+Between releases `v3/` changes in place: a fixed counter, a new kind and a measured prompt change go
+into its files, each in the CHANGELOG, and the facts and prompt hashes in a summary's header rewrite
+what they touch (after 1.4.0: `file-body-java` became `file-body-oop`, the enterprise kinds and their
+counters came in). A rewrite of the prompts that has to be measured against the current set goes
+into `v4/` with a file for each key, is measured with `run.py --profile v4`, and replaces `v3/` when
+it wins; the configurations above then switch to it, and `v3/` goes. Only the
 current profile is kept here, the earlier prompt sets are in the history (`git show <commit>:<path>`
 prints one; the directory was called `prompts/` then):
 

@@ -1,0 +1,35 @@
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# Jakarta EE / Java EE deployment descriptor counters (web.xml, web-fragment.xml, ejb-jar.xml,
+# application.xml, the vendor descriptors that reuse these elements): the counters of xml-facts, its
+# [ignore] line included, then one per descriptor element, with or without a namespace prefix.
+# "session beans" counts every <session> of ejb-jar.xml (stateless, stateful and singleton), and
+# "stateless session beans" the ones whose <session-type> says so; "EAR modules" every <module> of
+# application.xml. A <session> of another vocabulary (a vendor's session configuration) counts too.
+# EnterpriseXmlFactPatternsTest pins every case; ProfileFactPatternsLinearityTest measures that every pattern
+# reads linearly.
+[include]	xml-facts
+servlets	<(?:[\w.-]+:)?servlet[ \t\r\n>]
+servlet mappings	<(?:[\w.-]+:)?servlet-mapping[ \t\r\n>]
+URL patterns	<(?:[\w.-]+:)?url-pattern[ \t\r\n>]
+filters	<(?:[\w.-]+:)?filter[ \t\r\n>]
+filter mappings	<(?:[\w.-]+:)?filter-mapping[ \t\r\n>]
+listeners	<(?:[\w.-]+:)?listener[ \t\r\n>]
+context parameters	<(?:[\w.-]+:)?context-param[ \t\r\n>]
+session beans	<(?:[\w.-]+:)?session[ \t\r\n>]
+stateless session beans	<(?:[\w.-]+:)?session-type>[ \t\r\n]*+Stateless[ \t\r\n]*+</
+message-driven beans	<(?:[\w.-]+:)?message-driven[ \t\r\n>]
+entity beans (EJB 2.x)	<(?:[\w.-]+:)?entity[ \t\r\n>]
+interceptors	<(?:[\w.-]+:)?interceptor[ \t\r\n>]
+timers	<(?:[\w.-]+:)?timer[ \t\r\n>]
+EJB references	<(?:[\w.-]+:)?ejb-(?:local-)?ref[ \t\r\n>]
+resource references	<(?:[\w.-]+:)?(?:resource-ref|resource-env-ref|message-destination-ref)[ \t\r\n>]
+persistence references	<(?:[\w.-]+:)?persistence-(?:context|unit)-ref[ \t\r\n/>]
+environment entries	<(?:[\w.-]+:)?env-entry[ \t\r\n>]
+security roles	<(?:[\w.-]+:)?security-role[ \t\r\n>]
+security constraints	<(?:[\w.-]+:)?security-constraint[ \t\r\n>]
+container transactions	<(?:[\w.-]+:)?container-transaction[ \t\r\n/>]
+method permissions	<(?:[\w.-]+:)?method-permission[ \t\r\n>]
+EAR modules	<(?:[\w.-]+:)?module[ \t\r\n>]

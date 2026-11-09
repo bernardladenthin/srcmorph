@@ -1,0 +1,30 @@
+# SPDX-FileCopyrightText: 2026 Bernard Ladenthin <bernard.ladenthin@gmail.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# PowerShell counters (.ps1, .psm1), for a rule with the prompt file-body-fallback: one per line,
+# label TAB pattern (Java regex), keywords in any case as PowerShell reads them. "requirements" is
+# [raw]: #Requires is a comment to the parser. The [ignore] line then blanks, leftmost region first,
+# block comments (<# ... #>), here-strings (@" or @' at the end of a line up to "@ or '@ first on a
+# line), # comments and string literals, so a "function" in a help comment or a string does not
+# count. A string may span lines, as PowerShell reads it; a block comment, a here-string or a string
+# that is never closed runs to the end of the file.
+# "mandatory parameters" counts Mandatory and Mandatory = $true, not Mandatory = $false; "dot-sourced
+# scripts" a line starting with ". " and a path, a quoted one too (the blanked string leaves the
+# ". " and nothing or the arguments after it). "Verb-Noun command calls (approx)" counts every name of
+# the Verb-Noun shape in any case, as PowerShell resolves a command (ForEach-Object, ConvertTo-Json,
+# get-childitem), a call of the script's own functions too, but not the name a function, filter or
+# workflow defines; a hyphenated word outside a string (a host name argument) counts too. OpsFactPatternsTest pins
+# every case; ProfileFactPatternsLinearityTest measures that every pattern reads linearly.
+[raw] requirements	(?im)^#Requires\b
+[ignore] comments, here-strings and strings	(?ims)<#.*?(?:#>|\z)|@(["'])[ \t]*+\n(?:.*?^\1@|.*+)|(?<![\w`$])#[^\n]*+|"(?:[^"`]++|`.)*+(?:"|\z)|'(?:[^']++|'')*+(?:'|\z)
+functions	(?im)^[ \t]*+(?:function|filter|workflow)[ \t]++[\w-]
+advanced functions	(?i)\[CmdletBinding\b
+parameter blocks	(?i)\bparam[ \t]*+\(
+mandatory parameters	(?i)\bMandatory\b(?![ \t]*+=[ \t]*+\$false\b)
+classes	(?im)^[ \t]*+class[ \t]++\w
+modules imported	(?im)^[ \t]*+(?:Import-Module|using[ \t]++module)\b
+dot-sourced scripts	(?m)^[ \t]*+\.[ \t]++(?:[^\s]|$)
+try blocks	(?i)\btry[ \t\n]*+\{
+errors raised	(?i)\b(?:throw|Write-Error)\b
+Verb-Noun command calls (approx)	(?i)\b[a-z]++-[a-z]++\b(?<!\b(?:function|filter|workflow)[ \t]{1,8}[a-z]{1,60}-[a-z]{1,60})

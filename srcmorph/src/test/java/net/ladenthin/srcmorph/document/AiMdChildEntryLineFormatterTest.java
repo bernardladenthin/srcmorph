@@ -12,8 +12,10 @@ public class AiMdChildEntryLineFormatterTest {
 
     private final AiMdChildEntryLineFormatter formatter = new AiMdChildEntryLineFormatter();
 
+    // <editor-fold defaultstate="collapsed" desc="format">
     @Test
-    public void formatBuildsPipeSeparatedNewlineTerminatedLine() {
+    public void format_headerGiven_returnsPipeSeparatedNewlineTerminatedLine() {
+        // arrange
         AiMdHeader header = new AiMdHeader(
                 "MyClass.java",
                 "1.0",
@@ -23,6 +25,8 @@ public class AiMdChildEntryLineFormatterTest {
                 "0.1.0",
                 "1.0.0",
                 "file");
+
+        // act, assert
         // Pin the exact line so the empty-string return mutant is killed and field order is asserted.
         // the modification time is no part of it: a touched source does not change its package
         assertThat(formatter.format("MyClass.java", header), is("MyClass.java|A1B2C3D4|file\n"));

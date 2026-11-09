@@ -16,18 +16,18 @@ import java.util.concurrent.TimeUnit;
 import net.ladenthin.llama.server.NativeServer;
 import net.ladenthin.srcmorph.CommonTestFixtures;
 import net.ladenthin.srcmorph.NativeLlamaAvailability;
-import net.ladenthin.srcmorph.config.AiGenerationConfig;
-import net.ladenthin.srcmorph.document.AiGenerationRequest;
+import net.ladenthin.srcmorph.config.ModelDefinition;
 import net.ladenthin.srcmorph.document.AiMdHeader;
 import net.ladenthin.srcmorph.document.AiMdHeaderCodec;
-import net.ladenthin.srcmorph.prompt.AiPromptSupport;
+import net.ladenthin.srcmorph.prompt.GenerationRequest;
+import net.ladenthin.srcmorph.prompt.PromptCatalog;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Runs {@link OpenAiCompatibleAiGenerationProvider} against real servers, one test per kind:
+ * Runs {@link OpenAiCompatibleGenerationProvider} against real servers, one test per kind:
  *
  * <ul>
  *   <li><b>jllama's {@code NativeServer}</b>, started in-process on the committed SmolLM2 GGUF. Runs
@@ -82,6 +82,7 @@ public class OpenAiCompatibleLiveTest {
             + "    }\n"
             + "}\n";
 
+    // <editor-fold defaultstate="collapsed" desc="generateWithTimings">
     @Test
     public void generateWithTimings_nativeServer_describesTheFile() throws Exception {
         // arrange
@@ -102,28 +103,35 @@ public class OpenAiCompatibleLiveTest {
             final String baseUrl = "http://127.0.0.1:" + port + "/v1";
             awaitHealthy("http://127.0.0.1:" + port + "/health", server);
 
-            // act + assert
+            // act, assert
             describeGreeter(baseUrl, "", "");
         }
     }
 
     @Test
     public void generateWithTimings_runningServer_describesTheFile() throws Exception {
+        // arrange
         final String baseUrl = System.getProperty(BASE_URL_PROPERTY, "");
         Assumptions.assumeTrue(!baseUrl.trim().isEmpty(), "-D" + BASE_URL_PROPERTY + " is not set");
+
+        // act, assert
         describeGreeter(baseUrl, System.getProperty(MODEL_PROPERTY, ""), System.getProperty(API_KEY_ENV_PROPERTY, ""));
     }
 
     @Test
     public void generateWithTimings_openRouter_describesTheFile() throws Exception {
+        // arrange
         final String model = System.getProperty(OPENROUTER_MODEL_PROPERTY, "");
         Assumptions.assumeTrue(!model.trim().isEmpty(), "-D" + OPENROUTER_MODEL_PROPERTY + " is not set");
         final String key = System.getenv(OPENROUTER_KEY_ENV);
         Assumptions.assumeTrue(
                 key != null && !key.trim().isEmpty(),
                 OPENROUTER_KEY_ENV + " is not set (a pull request from a fork or from Dependabot gets no secret)");
-        describeGreeter(AiGenerationConfig.DEFAULT_BASE_URL, model, OPENROUTER_KEY_ENV);
+
+        // act, assert
+        describeGreeter(ModelDefinition.DEFAULT_BASE_URL, model, OPENROUTER_KEY_ENV);
     }
+    // </editor-fold>
 
     /**
      * Asks the server to describe a small class, through the factory as an engine would, and checks
@@ -132,14 +140,15 @@ public class OpenAiCompatibleLiveTest {
     private static void describeGreeter(final String baseUrl, final String model, final String apiKeyEnv)
             throws IOException {
         // arrange
-        final LlamaCppJniConfig config = LlamaCppJniConfig.builder("")
-                .provider(AiGenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE)
+        final ProviderConfig config = ProviderConfig.builder()
+                .modelPath("")
+                .provider(GenerationProviderFactory.PROVIDER_OPENAI_COMPATIBLE)
                 .baseUrl(baseUrl)
                 .remoteModel(model)
                 .apiKeyEnv(apiKeyEnv)
                 .maxOutputTokens(MAX_OUTPUT_TOKENS)
                 .build();
-        final AiPromptSupport promptSupport = new AiPromptSupport(CommonTestFixtures.createFilePromptDefinitions());
+        final PromptCatalog promptSupport = new PromptCatalog(CommonTestFixtures.createFilePromptDefinitions());
         final AiMdHeader header = new AiMdHeader(
                 "Greeter.java",
                 AiMdHeaderCodec.HEADER_VERSION_1_0,
@@ -149,13 +158,13 @@ public class OpenAiCompatibleLiveTest {
                 "0.1.0-SNAPSHOT",
                 "0.0.0",
                 AiMdHeaderCodec.NODE_TYPE_FILE);
-        final AiGenerationRequest request = new AiGenerationRequest(
-                CommonTestFixtures.PROMPT_KEY_FILE_BODY, Paths.get("Greeter.java"), SOURCE, header);
+        final GenerationRequest request =
+                new GenerationRequest(CommonTestFixtures.PROMPT_KEY_FILE_BODY, Paths.get("Greeter.java"), SOURCE);
 
         // act
-        final AiGenerationTimings timings;
-        try (AiGenerationProvider provider = new AiGenerationProviderFactory()
-                .create(AiGenerationProviderFactory.PROVIDER_LLAMACPP_JNI, config, promptSupport)) {
+        final TimedGeneration timings;
+        try (GenerationProvider provider = new GenerationProviderFactory()
+                .create(GenerationProviderFactory.PROVIDER_LLAMACPP_JNI, config, promptSupport)) {
             timings = provider.generateWithTimings(request);
         }
 
