@@ -231,16 +231,19 @@ public final class SrcMorphConfigurationFileLoader {
      */
     static String substitute(final String text, final Map<String, String> properties) {
         final Matcher matcher = ESCAPABLE_REFERENCE.matcher(text);
-        final StringBuffer result = new StringBuffer(text.length());
+        // Copied by hand rather than with appendReplacement: its StringBuilder overload is Java 9+,
+        // and this module is release 8.
+        final StringBuilder result = new StringBuilder(text.length());
+        int copied = 0;
         while (matcher.find()) {
             final boolean escaped = matcher.group().startsWith(ESCAPED_OPENER);
             final String reference = escaped ? matcher.group().substring(1) : matcher.group();
             final String name = matcher.group(1);
             final String value = escaped || name == null ? null : properties.get(name);
-            matcher.appendReplacement(result, Matcher.quoteReplacement(value != null ? value : reference));
+            result.append(text, copied, matcher.start()).append(value != null ? value : reference);
+            copied = matcher.end();
         }
-        matcher.appendTail(result);
-        return result.toString();
+        return result.append(text, copied, text.length()).toString();
     }
 
     /**
