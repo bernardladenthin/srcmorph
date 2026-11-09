@@ -88,17 +88,19 @@ jobs:
         with:
           persist-credentials: false
       - name: Files equal their templates in bernardladenthin/actions
-        uses: bernardladenthin/actions/common/check-templates@68dde11a60623d76c22a3f1975355a236a6ccd39 # v1.2.0
+        uses: bernardladenthin/actions/common/check-templates@f62f8f48b84f4789ef57af563d364b2c0b658ab0 # v1.2.1
       - name: Release gate (every job gates both publish jobs, or release-gate-exemptions.txt says why)
-        uses: bernardladenthin/actions/common/check-release-gate@68dde11a60623d76c22a3f1975355a236a6ccd39 # v1.2.0
+        uses: bernardladenthin/actions/common/check-release-gate@f62f8f48b84f4789ef57af563d364b2c0b658ab0 # v1.2.1
       - name: Run scripts parse (bash -n over every bash run script of the workflows and actions)
-        uses: bernardladenthin/actions/common/check-run-scripts@68dde11a60623d76c22a3f1975355a236a6ccd39 # v1.2.0
+        uses: bernardladenthin/actions/common/check-run-scripts@f62f8f48b84f4789ef57af563d364b2c0b658ab0 # v1.2.1
       - name: Artifact timeouts (every upload/download-artifact step times out after ARTIFACT_TIMEOUT_MINUTES)
-        uses: bernardladenthin/actions/common/check-artifact-timeouts@68dde11a60623d76c22a3f1975355a236a6ccd39 # v1.2.0
+        uses: bernardladenthin/actions/common/check-artifact-timeouts@f62f8f48b84f4789ef57af563d364b2c0b658ab0 # v1.2.1
+      - name: Dependabot (every update weekly on Saturday, grouped)
+        uses: bernardladenthin/actions/common/check-dependabot@f62f8f48b84f4789ef57af563d364b2c0b658ab0 # v1.2.1
       - name: Maven versions (warns where a dependency or plugin differs from a sibling repository)
-        uses: bernardladenthin/actions/java/check-maven-versions@68dde11a60623d76c22a3f1975355a236a6ccd39 # v1.2.0
+        uses: bernardladenthin/actions/java/check-maven-versions@f62f8f48b84f4789ef57af563d364b2c0b658ab0 # v1.2.1
       - name: Publication wiring and release asset contract (dry run)
-        uses: bernardladenthin/actions/java/check-publication@68dde11a60623d76c22a3f1975355a236a6ccd39 # v1.2.0
+        uses: bernardladenthin/actions/java/check-publication@f62f8f48b84f4789ef57af563d364b2c0b658ab0 # v1.2.1
 
   # ---------------------------------------------------------------------------
   # GPG signing-key preflight: what maven-gpg-plugin does at deploy time, so a
@@ -117,7 +119,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: maven-central
     steps:
-      - uses: bernardladenthin/actions/common/verify-gpg-key@68dde11a60623d76c22a3f1975355a236a6ccd39 # v1.2.0
+      - uses: bernardladenthin/actions/common/verify-gpg-key@f62f8f48b84f4789ef57af563d364b2c0b658ab0 # v1.2.1
         with:
           private-key: ${{ secrets.GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.GPG_PASSPHRASE }}
@@ -138,7 +140,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-      - uses: bernardladenthin/actions/java/verify-signing-key-gradle@68dde11a60623d76c22a3f1975355a236a6ccd39 # v1.2.0
+      - uses: bernardladenthin/actions/java/verify-signing-key-gradle@f62f8f48b84f4789ef57af563d364b2c0b658ab0 # v1.2.1
         with:
           private-key: ${{ secrets.GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.GPG_PASSPHRASE }}
@@ -205,7 +207,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Display CPU Info
-        uses: bernardladenthin/actions/common/print-host-info@68dde11a60623d76c22a3f1975355a236a6ccd39 # v1.2.0
+        uses: bernardladenthin/actions/common/print-host-info@f62f8f48b84f4789ef57af563d364b2c0b658ab0 # v1.2.1
       - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
           java-version-file: .java-version
@@ -296,7 +298,7 @@ jobs:
       # Echo the crash logs into the job log (workspace/policies/ci-test-diagnostics.md 3.1).
       - name: Print crash logs (on failure)
         if: failure()
-        uses: bernardladenthin/actions/java/print-crash-logs@68dde11a60623d76c22a3f1975355a236a6ccd39 # v1.2.0
+        uses: bernardladenthin/actions/java/print-crash-logs@f62f8f48b84f4789ef57af563d364b2c0b658ab0 # v1.2.1
         with:
           modules: srcmorph srcmorph-cli srcmorph-maven-plugin
       - name: Upload crash & surefire dumps
@@ -349,7 +351,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Display CPU Info
-        uses: bernardladenthin/actions/common/print-host-info@68dde11a60623d76c22a3f1975355a236a6ccd39 # v1.2.0
+        uses: bernardladenthin/actions/common/print-host-info@f62f8f48b84f4789ef57af563d364b2c0b658ab0 # v1.2.1
       - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with: { java-version-file: .java-version, distribution: temurin, cache: maven }
       - name: Test under vmlens (one class — staged scope)
@@ -422,13 +424,13 @@ jobs:
       # META-INF/versions/** are skipped because a classpath JVM never loads them. The
       # java/verify-bytecode action of bernardladenthin/actions.
       - name: Verify Java 8 bytecode (no class newer than major 52)
-        uses: bernardladenthin/actions/java/verify-bytecode@68dde11a60623d76c22a3f1975355a236a6ccd39 # v1.2.0
+        uses: bernardladenthin/actions/java/verify-bytecode@f62f8f48b84f4789ef57af563d364b2c0b658ab0 # v1.2.1
         with:
           max-major: "52"
           paths: |
             smoke-jars
       - name: Run the jar
-        uses: bernardladenthin/actions/java/smoke-fatjar-cli@68dde11a60623d76c22a3f1975355a236a6ccd39 # v1.2.0
+        uses: bernardladenthin/actions/java/smoke-fatjar-cli@f62f8f48b84f4789ef57af563d364b2c0b658ab0 # v1.2.1
         with:
           jar-dir: smoke-jars
           jar-glob: 'srcmorph.jar'
@@ -440,7 +442,7 @@ jobs:
       # the working directory, so a launch that resolves them anywhere else (a wrong base directory,
       # a lost subtree) fails here; run from examples/, the two would be the same directory.
       - name: Run the jar from the root and count the planned files
-        uses: bernardladenthin/actions/java/smoke-fatjar-cli@68dde11a60623d76c22a3f1975355a236a6ccd39 # v1.2.0
+        uses: bernardladenthin/actions/java/smoke-fatjar-cli@f62f8f48b84f4789ef57af563d364b2c0b658ab0 # v1.2.1
         with:
           jar-dir: smoke-jars
           jar-glob: 'srcmorph.jar'
@@ -624,7 +626,7 @@ jobs:
       # a release is tagged on.
       - name: Require a SNAPSHOT version
         if: inputs.publish_to_central
-        uses: bernardladenthin/actions/java/check-release-ref@68dde11a60623d76c22a3f1975355a236a6ccd39 # v1.2.0
+        uses: bernardladenthin/actions/java/check-release-ref@f62f8f48b84f4789ef57af563d364b2c0b658ab0 # v1.2.1
         with:
           channel: snapshot
 
@@ -639,7 +641,7 @@ jobs:
           persist-credentials: false
       # The tag names exactly the project version (v1.2.3 for 1.2.3), which is no SNAPSHOT.
       - name: Require the release version the tag names
-        uses: bernardladenthin/actions/java/check-release-ref@68dde11a60623d76c22a3f1975355a236a6ccd39 # v1.2.0
+        uses: bernardladenthin/actions/java/check-release-ref@f62f8f48b84f4789ef57af563d364b2c0b658ab0 # v1.2.1
         with:
           channel: release
 
@@ -684,7 +686,7 @@ jobs:
             *) echo "::error::Refusing to publish non-SNAPSHOT version '$VERSION' from the snapshot job. Snapshot publishing requires a -SNAPSHOT version; releases go through the v* tag path."; exit 1 ;;
           esac
       # The collect step runs actionlib of bernardladenthin/actions (on PYTHONPATH from here).
-      - uses: bernardladenthin/actions/common/setup@68dde11a60623d76c22a3f1975355a236a6ccd39 # v1.2.0
+      - uses: bernardladenthin/actions/common/setup@f62f8f48b84f4789ef57af563d364b2c0b658ab0 # v1.2.1
       - name: Show effective POM (debug)
         run: mvn --batch-mode --no-transfer-progress -P release -DskipUpload=true help:effective-pom
       - name: Stage snapshot
@@ -695,7 +697,7 @@ jobs:
         run: python3 -m actionlib.java.releaseassets central-assets --maven-only
       - name: Finalize and secure the signed publication
         id: finalize
-        uses: bernardladenthin/actions/java/finalize-publication@68dde11a60623d76c22a3f1975355a236a6ccd39 # v1.2.0
+        uses: bernardladenthin/actions/java/finalize-publication@f62f8f48b84f4789ef57af563d364b2c0b658ab0 # v1.2.1
         with:
           channel: snapshot
           maven-assets: central-assets
@@ -712,7 +714,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: bernardladenthin/actions/java/publish-github@68dde11a60623d76c22a3f1975355a236a6ccd39 # v1.2.0
+      - uses: bernardladenthin/actions/java/publish-github@f62f8f48b84f4789ef57af563d364b2c0b658ab0 # v1.2.1
         with:
           channel: snapshot
           assets-complete: ${{ needs.publish-snapshot.outputs.assets_complete }}
@@ -750,7 +752,7 @@ jobs:
           gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
           gpg-passphrase: MAVEN_GPG_PASSPHRASE
       # The collect step runs actionlib of bernardladenthin/actions (on PYTHONPATH from here).
-      - uses: bernardladenthin/actions/common/setup@68dde11a60623d76c22a3f1975355a236a6ccd39 # v1.2.0
+      - uses: bernardladenthin/actions/common/setup@f62f8f48b84f4789ef57af563d364b2c0b658ab0 # v1.2.1
       - name: Show effective POM (debug)
         run: mvn --batch-mode --no-transfer-progress -P release -DskipUpload=true help:effective-pom
       - name: Stage release
@@ -761,7 +763,7 @@ jobs:
         run: python3 -m actionlib.java.releaseassets central-assets --maven-only
       - name: Finalize and secure the signed publication
         id: finalize
-        uses: bernardladenthin/actions/java/finalize-publication@68dde11a60623d76c22a3f1975355a236a6ccd39 # v1.2.0
+        uses: bernardladenthin/actions/java/finalize-publication@f62f8f48b84f4789ef57af563d364b2c0b658ab0 # v1.2.1
         with:
           channel: release
           maven-assets: central-assets
@@ -775,7 +777,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: bernardladenthin/actions/java/publish-github@68dde11a60623d76c22a3f1975355a236a6ccd39 # v1.2.0
+      - uses: bernardladenthin/actions/java/publish-github@f62f8f48b84f4789ef57af563d364b2c0b658ab0 # v1.2.1
         with:
           channel: release
           assets-complete: ${{ needs.publish-release.outputs.assets_complete }}
@@ -800,7 +802,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Transfer frozen artifacts (no rebuild, signing or validation polling)
-        uses: bernardladenthin/actions/java/publish-central@68dde11a60623d76c22a3f1975355a236a6ccd39 # v1.2.0
+        uses: bernardladenthin/actions/java/publish-central@f62f8f48b84f4789ef57af563d364b2c0b658ab0 # v1.2.1
         with:
           channel: snapshot
           assets-complete: ${{ needs.publish-snapshot.outputs.assets_complete }}
@@ -821,7 +823,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Transfer frozen artifacts (no rebuild, signing or validation polling)
-        uses: bernardladenthin/actions/java/publish-central@68dde11a60623d76c22a3f1975355a236a6ccd39 # v1.2.0
+        uses: bernardladenthin/actions/java/publish-central@f62f8f48b84f4789ef57af563d364b2c0b658ab0 # v1.2.1
         with:
           channel: release
           assets-complete: ${{ needs.publish-release.outputs.assets_complete }}
@@ -839,7 +841,7 @@ jobs:
       id-token: write
       attestations: write
     steps:
-      - uses: bernardladenthin/actions/java/attest-publication@68dde11a60623d76c22a3f1975355a236a6ccd39 # v1.2.0
+      - uses: bernardladenthin/actions/java/attest-publication@f62f8f48b84f4789ef57af563d364b2c0b658ab0 # v1.2.1
         with:
           channel: snapshot
           assets-complete: ${{ needs.publish-snapshot.outputs.assets_complete }}
@@ -855,7 +857,7 @@ jobs:
       id-token: write
       attestations: write
     steps:
-      - uses: bernardladenthin/actions/java/attest-publication@68dde11a60623d76c22a3f1975355a236a6ccd39 # v1.2.0
+      - uses: bernardladenthin/actions/java/attest-publication@f62f8f48b84f4789ef57af563d364b2c0b658ab0 # v1.2.1
         with:
           channel: release
           assets-complete: ${{ needs.publish-release.outputs.assets_complete }}
