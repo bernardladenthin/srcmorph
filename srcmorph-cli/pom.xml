@@ -312,7 +312,7 @@ SPDX-License-Identifier: Apache-2.0
                         <configuration>
                             <rules>
                                 <requireMavenVersion>
-                                    <version>[3.6.3,)</version>
+                                    <version>[3.9.0,)</version>
                                 </requireMavenVersion>
                                 <requireJavaVersion>
                                     <version>[1.8,)</version>

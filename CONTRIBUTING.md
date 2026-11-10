@@ -10,7 +10,7 @@ Thank you for your interest in contributing to **srcmorph**, a prompt-driven sou
 
 - JDK 25 to build (the version in `.java-version`, which CI takes, Temurin); the production code of
   `srcmorph` is compiled for Java 8 (`maven.compiler.release` 8), its tests for Java 21
-- Maven 3.6.3+
+- Maven 3.9.0+
 
 ### Common commands
 
