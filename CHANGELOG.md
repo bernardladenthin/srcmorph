@@ -400,6 +400,10 @@ The entries below hold the details; what a 1.4.0 user changes:
 - **bernardladenthin/actions v1.2.0** (from v1.1.1) for every action and reusable workflow it
   pins.
 
+- **exec-maven-plugin 3.7.0 (`srcmorph-maven-plugin`) and `anthropics/claude-code-action` v1.0.271**, in
+  step with the sibling repositories. exec-maven-plugin 3.7.0 needs Maven 3.9.0, so maven-enforcer
+  requires Maven 3.9.0 instead of 3.6.3 to build the reactor. Using the plugin still needs Maven 3.6.3
+  (its descriptor is unchanged).
 - **Dependencies, build plugins and Actions, in step with the sibling repositories:** Jackson 2.23.0,
   maven-enforcer-plugin 3.7.0 in `examples/build-your-own-jar` (the reactor had it already),
   `actions/setup-java` 6.2.0 in the `linearity-jdk8` job and `anthropics/claude-code-action` v1.0.269.
