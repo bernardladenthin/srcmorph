@@ -494,7 +494,7 @@ CLI's and the plugin's are not aggregated).
 | `net.ladenthin:llama` + `llama-platform` (pom) | 6.0.0 | `srcmorph` (`provider` package only) — llama.cpp JNI binding (classes) + the CPU natives jars; its own SLF4J binding is excluded transitively (see "Java 8 bytecode floor") |
 | `org.slf4j:slf4j-api` | 2.0.20 (converged in the parent) | `srcmorph`, `srcmorph-cli`, the plugin |
 | `org.slf4j:slf4j-simple` | 2.0.20 (converged in the parent) | `srcmorph-cli` (runtime binding) |
-| `ch.qos.logback:logback-classic` | 1.6.6 (converged in the parent) | `srcmorph` (**test scope only** — `ListAppender` capture) |
+| `ch.qos.logback:logback-classic` | 1.6.7 (converged in the parent) | `srcmorph` (**test scope only** — `ListAppender` capture) |
 | `com.fasterxml.jackson.core:jackson-databind` | pinned in parent | `srcmorph` (`SrcMorphConfigurationFileLoader`, JSON), `srcmorph-cli` |
 | `com.fasterxml.jackson.dataformat:jackson-dataformat-yaml` | pinned in parent | `srcmorph` (`SrcMorphConfigurationFileLoader`, YAML), `srcmorph-cli` |
 | `org.apache.maven:maven-plugin-api` | 3.10.0 | `srcmorph-maven-plugin` (provided); the descriptor states Maven 3.6.3 regardless |
