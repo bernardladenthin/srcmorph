@@ -497,7 +497,7 @@ CLI's and the plugin's are not aggregated).
 | `ch.qos.logback:logback-classic` | 1.6.7 (converged in the parent) | `srcmorph` (**test scope only** — `ListAppender` capture) |
 | `com.fasterxml.jackson.core:jackson-databind` | pinned in parent | `srcmorph` (`SrcMorphConfigurationFileLoader`, JSON), `srcmorph-cli` |
 | `com.fasterxml.jackson.dataformat:jackson-dataformat-yaml` | pinned in parent | `srcmorph` (`SrcMorphConfigurationFileLoader`, YAML), `srcmorph-cli` |
-| `org.apache.maven:maven-plugin-api` | 3.10.0 | `srcmorph-maven-plugin` (provided); the descriptor states Maven 3.6.3 regardless |
+| `org.apache.maven:maven-plugin-api` | 3.10.1 | `srcmorph-maven-plugin` (provided); the descriptor states Maven 3.6.3 regardless |
 | `org.apache.maven.plugin-tools:maven-plugin-annotations` | 3.16.0 | `srcmorph-maven-plugin` (provided) |
 
 Test-only (every module): `org.junit.jupiter:junit-jupiter`, `org.hamcrest:hamcrest`,
