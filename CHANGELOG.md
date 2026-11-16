@@ -378,6 +378,8 @@ The entries below hold the details; what a 1.4.0 user changes:
   search scores from `scores/` (Pearson and Spearman, the card's 32 runs by default).
 
 ### Changed
+- **maven-plugin-api 3.10.1 (provided; the plugin descriptor still states Maven 3.6.3) and
+  `anthropics/claude-code-action` v1.0.278**, in step with the sibling repositories.
 - **logback-classic 1.6.7 (test scope), `actions/setup-java` 6.3.0 and `anthropics/claude-code-action`
   v1.0.276**, in step with the sibling repositories.
 - - **Dependabot: one grouped pull request per ecosystem a week, on Saturday.**
